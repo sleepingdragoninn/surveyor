@@ -1,7 +1,6 @@
 package folk.sisby.surveyor;
 
 import com.google.common.collect.Multimap;
-import folk.sisby.surveyor.landmark.LandmarkType;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.structure.WorldStructureSummary;
 import folk.sisby.surveyor.terrain.WorldTerrainSummary;
@@ -9,7 +8,6 @@ import folk.sisby.surveyor.util.MapUtil;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.Structure;
@@ -18,6 +16,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class SurveyorEvents {
 	private static final Map<Identifier, WorldLoad> worldLoad = new HashMap<>();
@@ -43,12 +42,12 @@ public class SurveyorEvents {
 
 	@FunctionalInterface
 	public interface LandmarksAdded {
-		void onLandmarksAdded(World world, WorldLandmarks worldLandmarks, Multimap<LandmarkType<?>, BlockPos> landmarks);
+		void onLandmarksAdded(World world, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
 	}
 
 	@FunctionalInterface
 	public interface LandmarksRemoved {
-		void onLandmarksRemoved(World world, WorldLandmarks worldLandmarks, Multimap<LandmarkType<?>, BlockPos> landmarks);
+		void onLandmarksRemoved(World world, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
 	}
 
 	public static class Invoke {
@@ -79,13 +78,13 @@ public class SurveyorEvents {
 			structuresAdded(world, MapUtil.asMultiMap(Map.of(key, List.of(pos))));
 		}
 
-		public static void landmarksAdded(World world, Multimap<LandmarkType<?>, BlockPos> landmarks) {
+		public static void landmarksAdded(World world, Multimap<UUID, Identifier> landmarks) {
 			if (landmarksAdded.isEmpty() || landmarks.isEmpty()) return;
 			WorldLandmarks summary = WorldSummary.of(world).landmarks();
 			landmarksAdded.forEach((id, handler) -> handler.onLandmarksAdded(world, summary, landmarks));
 		}
 
-		public static void landmarksRemoved(World world, Multimap<LandmarkType<?>, BlockPos> landmarks) {
+		public static void landmarksRemoved(World world, Multimap<UUID, Identifier> landmarks) {
 			if (landmarksRemoved.isEmpty() || landmarks.isEmpty()) return;
 			WorldLandmarks summary = WorldSummary.of(world).landmarks();
 			landmarksRemoved.forEach((id, handler) -> handler.onLandmarksRemoved(world, summary, landmarks));
