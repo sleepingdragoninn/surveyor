@@ -6,8 +6,9 @@ import folk.sisby.surveyor.ServerSummary;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.SurveyorPlayer;
 import folk.sisby.surveyor.WorldSummary;
-import folk.sisby.surveyor.landmark.PlayerDeathLandmark;
+import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.TextUtil;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.nbt.NbtCompound;
@@ -15,6 +16,7 @@ import net.minecraft.network.packet.c2s.play.ClientSettingsC2SPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -57,7 +59,12 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 		if (summary == null) return;
 		summary.put(
 			self.getServerWorld(),
-			new PlayerDeathLandmark(self.getBlockPos(), Surveyor.getUuid(self), TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()), self.getServerWorld().getTimeOfDay(), self.getRandom().nextInt())
+			summary.createIncremental(SurveyorClient.getClientUuid(), new Identifier(Surveyor.ID, "grave"), builder -> builder
+				.add(LandmarkComponentTypes.POS, self.getBlockPos())
+				.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()))
+				.add(LandmarkComponentTypes.TIME, self.getWorld().getTimeOfDay())
+				.add(LandmarkComponentTypes.SEED, self.getRandom().nextInt())
+			)
 		);
 	}
 

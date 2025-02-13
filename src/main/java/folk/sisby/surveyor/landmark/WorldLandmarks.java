@@ -7,6 +7,7 @@ import folk.sisby.surveyor.SurveyorEvents;
 import folk.sisby.surveyor.SurveyorExploration;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SystemMode;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentMap;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
 import folk.sisby.surveyor.util.MapUtil;
@@ -16,7 +17,6 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 public class WorldLandmarks {
 	public static final UUID GLOBAL = UUID.fromString("99999999-9999-9999-9999-999999999999");
@@ -54,6 +56,14 @@ public class WorldLandmarks {
 
 	public boolean contains(UUID uuid, Identifier id) {
 		return landmarks.containsKey(uuid) && landmarks.get(uuid).containsKey(id);
+	}
+
+	public Landmark createIncremental(UUID uuid, Identifier prefix, UnaryOperator<LandmarkComponentMap.Builder> buildOps) {
+		int i = 1;
+		while (contains(uuid, new Identifier(prefix.getNamespace(), prefix.getPath() + "/" + i))) {
+			i++;
+		}
+		return new Landmark(uuid, new Identifier(prefix.getNamespace(), prefix.getPath() + "/" + i), buildOps.apply(LandmarkComponentMap.builder()).build());
 	}
 
 	public Landmark get(UUID uuid, Identifier id) {
@@ -132,19 +142,19 @@ public class WorldLandmarks {
 
 	public void putLocal(World world, Landmark landmark) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = landmark.put(new HashMap<>(), world, this);
+		Map<UUID, Map<Identifier, Landmark>> changed = putForBatch(new HashMap<>(), landmark);
 		handleChanged(world, changed, true, null);
 	}
 
 	public void put(World world, Landmark landmark) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = landmark.put(new HashMap<>(), world, this);
+		Map<UUID, Map<Identifier, Landmark>> changed = putForBatch(new HashMap<>(), landmark);
 		handleChanged(world, changed, false, null);
 	}
 
 	public void put(ServerPlayerEntity sender, ServerWorld world, Landmark landmark) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = landmark.put(new HashMap<>(), world, this);
+		Map<UUID, Map<Identifier, Landmark>> changed = putForBatch(new HashMap<>(), landmark);
 		handleChanged(world, changed, false, sender);
 	}
 
@@ -161,35 +171,35 @@ public class WorldLandmarks {
 	public void removeLocal(World world, UUID uuid, Identifier id) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
 		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = landmarks.get(uuid).get(id).remove(new HashMap<>(), world, this);
+		Landmark landmark = landmarks.get(uuid).get(id);
+		Map<UUID, Map<Identifier, Landmark>> changed = removeForBatch(new HashMap<>(), landmark.owner(), landmark.id());
 		handleChanged(world, changed, true, null);
 	}
 
 	public void remove(World world, UUID uuid, Identifier id) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
 		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = landmarks.get(uuid).get(id).remove(new HashMap<>(), world, this);
+		Landmark landmark = landmarks.get(uuid).get(id);
+		Map<UUID, Map<Identifier, Landmark>> changed = removeForBatch(new HashMap<>(), landmark.owner(), landmark.id());
 		handleChanged(world, changed, false, null);
 	}
 
 	public void remove(ServerPlayerEntity sender, ServerWorld world, UUID uuid, Identifier id) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
 		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = landmarks.get(uuid).get(id).remove(new HashMap<>(), world, this);
+		Landmark landmark = landmarks.get(uuid).get(id);
+		Map<UUID, Map<Identifier, Landmark>> changed = removeForBatch(new HashMap<>(), landmark.owner(), landmark.id());
 		handleChanged(world, changed, false, sender);
 	}
 
-	public void removeAll(World world, Class<?> clazz, BlockPos pos) {
+	public void removeAll(World world, Predicate<Landmark> predicate) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
 		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
-		landmarks.forEach((uuid, map) -> {
-			if (map.containsKey(pos)) {
-				Landmark landmark = map.get(pos);
-				if (clazz.isAssignableFrom(landmark.getClass())) {
-					landmark.remove(changed, world, this);
-				}
-			}
-		});
+		Multimap<UUID, Identifier> toRemove = HashMultimap.create();
+		landmarks.forEach((uuid, map) -> map.forEach((id, landmark) -> {
+			if (predicate.test(landmark)) toRemove.put(uuid, id);
+		}));
+		toRemove.forEach((uuid, id) -> removeForBatch(changed, uuid, id));
 		handleChanged(world, changed, false, null);
 	}
 
