@@ -14,6 +14,7 @@ import net.minecraft.world.poi.PointOfInterestType;
 import net.minecraft.world.poi.PointOfInterestTypes;
 
 import java.util.Map;
+import java.util.UUID;
 
 public record NetherPortalLandmark(BlockBox box, Direction.Axis axis) implements Landmark<NetherPortalLandmark>, HasAxisBlockBoxMergeable, HasPoiType {
 	public static final LandmarkType<NetherPortalLandmark> TYPE = new SimpleLandmarkType<>(
@@ -34,7 +35,7 @@ public record NetherPortalLandmark(BlockBox box, Direction.Axis axis) implements
 	}
 
 	@Override
-	public Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> put(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, World world, WorldLandmarks landmarks) {
+	public Map<UUID, Map<Identifier, Landmark>> put(Map<UUID, Map<Identifier, Landmark>> changed, World world, WorldLandmarks landmarks) {
 		Landmark.super.put(changed, world, landmarks);
 		return tryMerge(changed, world, landmarks);
 	}

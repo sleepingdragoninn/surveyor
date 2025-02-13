@@ -15,12 +15,13 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 public class Landmarks {
 	public static final String KEY_LANDMARKS = "landmarks";
 	private static final Map<Identifier, LandmarkType<?>> TYPES = new HashMap<>();
 	public static final Codec<LandmarkType<?>> TYPE_CODEC = Identifier.CODEC.comapFlatMap(Landmarks::decode, LandmarkType::id);
-	public static final Codec<Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>>> CODEC = DispatchMapCodec.of(
+	public static final Codec<Map<UUID, Map<Identifier, Landmark>>> CODEC = DispatchMapCodec.of(
 		TYPE_CODEC,
 		Landmarks::typedCodec
 	);
@@ -33,10 +34,10 @@ public class Landmarks {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T extends Landmark<T>> Codec<Map<BlockPos, Landmark<?>>> typedCodec(LandmarkType<T> type) {
+	public static Codec<Map<Identifier, Landmark>> typedCodec(LandmarkType<T> type) {
 		return DispatchMapCodec.of(
 			SurveyorCodecs.STRINGIFIED_BLOCKPOS,
-			pos -> (Codec<Landmark<?>>) type.createCodec(pos)
+			pos -> (Codec<Landmark>) type.createCodec(pos)
 		);
 	}
 
@@ -50,12 +51,12 @@ public class Landmarks {
 		return TYPES.containsKey(id);
 	}
 
-	public static NbtCompound writeNbt(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> landmarks, NbtCompound nbt) {
+	public static NbtCompound writeNbt(Map<UUID, Map<Identifier, Landmark>> landmarks, NbtCompound nbt) {
 		nbt.put(KEY_LANDMARKS, CODEC.encodeStart(NbtOps.INSTANCE, landmarks).getOrThrow(false, Surveyor.LOGGER::error));
 		return nbt;
 	}
 
-	public static Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> fromNbt(NbtCompound nbt) {
+	public static Map<UUID, Map<Identifier, Landmark>> fromNbt(NbtCompound nbt) {
 		return CODEC.decode(NbtOps.INSTANCE, nbt.getCompound(KEY_LANDMARKS)).getOrThrow(false, Surveyor.LOGGER::error).getFirst();
 	}
 

@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface VariableLandmark<T extends VariableLandmark<T>> extends Landmark<T> {
+public interface VariableLandmark<T extends VariableLandmark> extends Landmark {
 	default @Nullable UUID owner() {
 		return optionalOwner().orElse(null);
 	}

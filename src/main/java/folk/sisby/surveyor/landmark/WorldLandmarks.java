@@ -15,6 +15,7 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -23,14 +24,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class WorldLandmarks {
+	public static final UUID GLOBAL = UUID.fromString("99999999-9999-9999-9999-999999999999");
 	protected final RegistryKey<World> worldKey;
-	protected final Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> landmarks = new ConcurrentHashMap<>();
+	protected final Map<UUID, Map<Identifier, Landmark>> landmarks = new ConcurrentHashMap<>();
 	protected boolean dirty = false;
 
-	public WorldLandmarks(RegistryKey<World> worldKey, Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> landmarks) {
+	public WorldLandmarks(RegistryKey<World> worldKey, Map<UUID, Map<Identifier, Landmark>> landmarks) {
 		this.worldKey = worldKey;
 		this.landmarks.putAll(landmarks);
 	}
@@ -49,68 +52,67 @@ public class WorldLandmarks {
 		return new WorldLandmarks(world.getRegistryKey(), landmarks);
 	}
 
-	public boolean contains(LandmarkType<?> type, BlockPos pos) {
-		return landmarks.containsKey(type) && landmarks.get(type).containsKey(pos);
+	public boolean contains(UUID uuid, Identifier id) {
+		return landmarks.containsKey(uuid) && landmarks.get(uuid).containsKey(id);
+	}
+
+	public Landmark get(UUID uuid, Identifier id) {
+		return landmarks.get(uuid).get(id);
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T extends Landmark<T>> Landmark<T> get(LandmarkType<T> type, BlockPos pos) {
-		return (Landmark<T>) landmarks.get(type).get(pos);
-	}
-
-	@SuppressWarnings("unchecked")
-	public <T extends Landmark<T>> Map<BlockPos, T> asMap(LandmarkType<T> type, SurveyorExploration exploration) {
-		Map<BlockPos, T> outMap = new HashMap<>();
-		if (landmarks.containsKey(type)) landmarks.get(type).forEach((pos, landmark) -> {
-			if (exploration == null || exploration.exploredLandmark(worldKey, landmark)) outMap.put(pos, (T) landmark);
+	public <T extends Landmark> Map<Identifier, T> asMap(UUID uuid, SurveyorExploration exploration) {
+		Map<Identifier, T> outMap = new HashMap<>();
+		if (landmarks.containsKey(uuid)) landmarks.get(uuid).forEach((id, landmark) -> {
+			if (exploration == null || exploration.exploredLandmark(worldKey, landmark)) outMap.put(id, (T) landmark);
 		});
 		return outMap;
 	}
 
-	public Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> asMap(SurveyorExploration exploration) {
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> outmap = new HashMap<>();
-		landmarks.forEach((type, map) -> map.forEach((pos, landmark) -> {
-			if (exploration == null || exploration.exploredLandmark(worldKey, landmark)) outmap.computeIfAbsent(type, t -> new HashMap<>()).put(pos, landmark);
+	public Map<UUID, Map<Identifier, Landmark>> asMap(SurveyorExploration exploration) {
+		Map<UUID, Map<Identifier, Landmark>> outmap = new HashMap<>();
+		landmarks.forEach((uuid, map) -> map.forEach((id, landmark) -> {
+			if (exploration == null || exploration.exploredLandmark(worldKey, landmark)) outmap.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
 		}));
 		return outmap;
 	}
 
-	public Multimap<LandmarkType<?>, BlockPos> keySet(SurveyorExploration exploration) {
-		Multimap<LandmarkType<?>, BlockPos> outMap = HashMultimap.create();
-		landmarks.forEach((type, map) -> map.forEach((pos, landmark) -> {
-			if (exploration == null || exploration.exploredLandmark(worldKey, landmark)) outMap.put(type, pos);
+	public Multimap<UUID, Identifier> keySet(SurveyorExploration exploration) {
+		Multimap<UUID, Identifier> outMap = HashMultimap.create();
+		landmarks.forEach((uuid, map) -> map.forEach((id, landmark) -> {
+			if (exploration == null || exploration.exploredLandmark(worldKey, landmark)) outMap.put(uuid, id);
 		}));
 		return outMap;
 	}
 
-	public void handleChanged(World world, Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, boolean local, @Nullable ServerPlayerEntity sender) {
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> landmarksAddedChanged = new HashMap<>();
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> landmarksRemoved = new HashMap<>();
-		changed.forEach((type, map) -> map.forEach((pos, mark) -> {
-			if (contains(type, pos)) {
-				landmarksAddedChanged.computeIfAbsent(type, t -> new HashMap<>()).put(pos, mark);
+	public void handleChanged(World world, Map<UUID, Map<Identifier, Landmark>> changed, boolean local, @Nullable ServerPlayerEntity sender) {
+		Map<UUID, Map<Identifier, Landmark>> landmarksAddedChanged = new HashMap<>();
+		Map<UUID, Map<Identifier, Landmark>> landmarksRemoved = new HashMap<>();
+		changed.forEach((uuid, map) -> map.forEach((id, landmark) -> {
+			if (contains(uuid, id)) {
+				landmarksAddedChanged.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
 			} else {
-				landmarksRemoved.computeIfAbsent(type, t -> new HashMap<>()).put(pos, mark);
+				landmarksRemoved.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
 			}
 		}));
 		if (!landmarksRemoved.isEmpty()) SurveyorEvents.Invoke.landmarksRemoved(world, MapUtil.keyMultiMap(landmarksRemoved));
 		if (!landmarksAddedChanged.isEmpty()) SurveyorEvents.Invoke.landmarksAdded(world, MapUtil.keyMultiMap(landmarksAddedChanged));
 		if (!local) {
-			Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> waypointsRemoved = new HashMap<>();
-			Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> waypointsAddedChanged = new HashMap<>();
-			landmarksRemoved.forEach((type, map) -> map.forEach((pos, mark) -> {
-				if (mark.owner() != null) waypointsRemoved.computeIfAbsent(type, t -> new HashMap<>()).put(pos, mark);
+			Map<UUID, Map<Identifier, Landmark>> waypointsRemoved = new HashMap<>();
+			Map<UUID, Map<Identifier, Landmark>> waypointsAddedChanged = new HashMap<>();
+			landmarksRemoved.forEach((uuid, map) -> map.forEach((id, landmark) -> {
+				if (landmark.owner() != null) waypointsRemoved.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
 			}));
-			waypointsRemoved.forEach((type, map) -> map.forEach((pos, mark) -> {
-				landmarksRemoved.get(type).remove(pos);
-				if (landmarksRemoved.get(type).isEmpty()) landmarksRemoved.remove(type);
+			waypointsRemoved.forEach((uuid, map) -> map.forEach((id, landmark) -> {
+				landmarksRemoved.get(uuid).remove(id);
+				if (landmarksRemoved.get(uuid).isEmpty()) landmarksRemoved.remove(uuid);
 			}));
-			landmarksAddedChanged.forEach((type, map) -> map.forEach((pos, mark) -> {
-				if (mark.owner() != null) waypointsAddedChanged.computeIfAbsent(type, t -> new HashMap<>()).put(pos, mark);
+			landmarksAddedChanged.forEach((uuid, map) -> map.forEach((id, landmark) -> {
+				if (landmark.owner() != null) waypointsAddedChanged.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
 			}));
-			waypointsAddedChanged.forEach((type, map) -> map.forEach((pos, mark) -> {
-				landmarksAddedChanged.get(type).remove(pos);
-				if (landmarksAddedChanged.get(type).isEmpty()) landmarksAddedChanged.remove(type);
+			waypointsAddedChanged.forEach((uuid, map) -> map.forEach((id, landmark) -> {
+				landmarksAddedChanged.get(uuid).remove(id);
+				if (landmarksAddedChanged.get(uuid).isEmpty()) landmarksAddedChanged.remove(uuid);
 			}));
 
 			if (!landmarksRemoved.isEmpty()) new SyncLandmarksRemovedPacket(MapUtil.keyMultiMap(landmarksRemoved)).send(sender, world, Surveyor.CONFIG.networking.landmarks);
@@ -120,69 +122,69 @@ public class WorldLandmarks {
 		}
 	}
 
-	public Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> putForBatch(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, Landmark<?> landmark) {
+	public Map<UUID, Map<Identifier, Landmark>> putForBatch(Map<UUID, Map<Identifier, Landmark>> changed, Landmark landmark) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return changed;
-		landmarks.computeIfAbsent(landmark.type(), t -> new ConcurrentHashMap<>()).put(landmark.pos(), landmark);
+		landmarks.computeIfAbsent(landmark.owner(), t -> new ConcurrentHashMap<>()).put(landmark.id(), landmark);
 		dirty();
-		changed.computeIfAbsent(landmark.type(), t -> new HashMap<>()).put(landmark.pos(), landmark);
+		changed.computeIfAbsent(landmark.owner(), t -> new HashMap<>()).put(landmark.id(), landmark);
 		return changed;
 	}
 
-	public void putLocal(World world, Landmark<?> landmark) {
+	public void putLocal(World world, Landmark landmark) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed = landmark.put(new HashMap<>(), world, this);
+		Map<UUID, Map<Identifier, Landmark>> changed = landmark.put(new HashMap<>(), world, this);
 		handleChanged(world, changed, true, null);
 	}
 
-	public void put(World world, Landmark<?> landmark) {
+	public void put(World world, Landmark landmark) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed = landmark.put(new HashMap<>(), world, this);
+		Map<UUID, Map<Identifier, Landmark>> changed = landmark.put(new HashMap<>(), world, this);
 		handleChanged(world, changed, false, null);
 	}
 
-	public void put(ServerPlayerEntity sender, ServerWorld world, Landmark<?> landmark) {
+	public void put(ServerPlayerEntity sender, ServerWorld world, Landmark landmark) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed = landmark.put(new HashMap<>(), world, this);
+		Map<UUID, Map<Identifier, Landmark>> changed = landmark.put(new HashMap<>(), world, this);
 		handleChanged(world, changed, false, sender);
 	}
 
-	public Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> removeForBatch(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, LandmarkType<?> type, BlockPos pos) {
+	public Map<UUID, Map<Identifier, Landmark>> removeForBatch(Map<UUID, Map<Identifier, Landmark>> changed, UUID uuid, Identifier id) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return changed;
-		if (!landmarks.containsKey(type) || !landmarks.get(type).containsKey(pos)) return changed;
-		Landmark<?> landmark = landmarks.get(type).remove(pos);
-		if (landmarks.get(type).isEmpty()) landmarks.remove(type);
+		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return changed;
+		Landmark landmark = landmarks.get(uuid).remove(id);
+		if (landmarks.get(uuid).isEmpty()) landmarks.remove(uuid);
 		dirty();
-		changed.computeIfAbsent(type, t -> new HashMap<>()).put(pos, landmark);
+		changed.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
 		return changed;
 	}
 
-	public void removeLocal(World world, LandmarkType<?> type, BlockPos pos) {
+	public void removeLocal(World world, UUID uuid, Identifier id) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		if (!landmarks.containsKey(type) || !landmarks.get(type).containsKey(pos)) return;
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed = landmarks.get(type).get(pos).remove(new HashMap<>(), world, this);
+		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return;
+		Map<UUID, Map<Identifier, Landmark>> changed = landmarks.get(uuid).get(id).remove(new HashMap<>(), world, this);
 		handleChanged(world, changed, true, null);
 	}
 
-	public void remove(World world, LandmarkType<?> type, BlockPos pos) {
+	public void remove(World world, UUID uuid, Identifier id) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		if (!landmarks.containsKey(type) || !landmarks.get(type).containsKey(pos)) return;
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed = landmarks.get(type).get(pos).remove(new HashMap<>(), world, this);
+		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return;
+		Map<UUID, Map<Identifier, Landmark>> changed = landmarks.get(uuid).get(id).remove(new HashMap<>(), world, this);
 		handleChanged(world, changed, false, null);
 	}
 
-	public void remove(ServerPlayerEntity sender, ServerWorld world, LandmarkType<?> type, BlockPos pos) {
+	public void remove(ServerPlayerEntity sender, ServerWorld world, UUID uuid, Identifier id) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		if (!landmarks.containsKey(type) || !landmarks.get(type).containsKey(pos)) return;
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed = landmarks.get(type).get(pos).remove(new HashMap<>(), world, this);
+		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return;
+		Map<UUID, Map<Identifier, Landmark>> changed = landmarks.get(uuid).get(id).remove(new HashMap<>(), world, this);
 		handleChanged(world, changed, false, sender);
 	}
 
 	public void removeAll(World world, Class<?> clazz, BlockPos pos) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed = new HashMap<>();
-		landmarks.forEach((type, map) -> {
+		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
+		landmarks.forEach((uuid, map) -> {
 			if (map.containsKey(pos)) {
-				Landmark<?> landmark = map.get(pos);
+				Landmark landmark = map.get(pos);
 				if (clazz.isAssignableFrom(landmark.getClass())) {
 					landmark.remove(changed, world, this);
 				}
@@ -206,8 +208,8 @@ public class WorldLandmarks {
 	}
 
 	public void readUpdatePacket(World world, SyncLandmarksAddedPacket packet, @Nullable ServerPlayerEntity sender) {
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed = new HashMap<>();
-		packet.landmarks().forEach((type, map) -> map.forEach((pos, landmark) -> {
+		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
+		packet.landmarks().forEach((uuid, map) -> map.forEach((id, landmark) -> {
 			boolean waypoint = landmark.owner() != null;
 			boolean owned = sender == null || Surveyor.getUuid(sender).equals(landmark.owner());
 			if (owned && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
@@ -218,22 +220,22 @@ public class WorldLandmarks {
 	}
 
 	public void readUpdatePacket(World world, SyncLandmarksRemovedPacket packet, @Nullable ServerPlayerEntity sender) {
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed = new HashMap<>();
-		packet.landmarks().forEach((type, pos) -> {
-			if (!contains(type, pos)) return;
-			Landmark<?> landmark = get(type, pos);
+		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
+		packet.landmarks().forEach((uuid, id) -> {
+			if (!contains(uuid, id)) return;
+			Landmark landmark = get(uuid, id);
 			boolean waypoint = landmark.owner() != null;
 			boolean owned = sender == null || Surveyor.getUuid(sender).equals(landmark.owner());
 			if (owned && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
-				removeForBatch(changed, type, pos);
+				removeForBatch(changed, uuid, id);
 			}
 		});
 		if (!changed.isEmpty()) handleChanged(world, changed, sender == null, sender);
 	}
 
-	public SyncLandmarksAddedPacket createUpdatePacket(Multimap<LandmarkType<?>, BlockPos> keySet) {
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> landmarks = new HashMap<>();
-		keySet.forEach((type, pos) -> landmarks.computeIfAbsent(type, k -> new HashMap<>()).put(pos, get(type, pos)));
+	public SyncLandmarksAddedPacket createUpdatePacket(Multimap<UUID, Identifier> keySet) {
+		Map<UUID, Map<Identifier, Landmark>> landmarks = new HashMap<>();
+		keySet.forEach((uuid, id) -> landmarks.computeIfAbsent(uuid, k -> new HashMap<>()).put(id, get(uuid, id)));
 		return new SyncLandmarksAddedPacket(landmarks);
 	}
 

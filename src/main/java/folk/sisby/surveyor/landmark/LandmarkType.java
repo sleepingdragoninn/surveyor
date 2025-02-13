@@ -2,10 +2,11 @@ package folk.sisby.surveyor.landmark;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
 
-public interface LandmarkType<T extends Landmark<T>> {
+import java.util.UUID;
+
+public interface LandmarkType<T> {
 	Identifier id();
 
-	Codec<T> createCodec(BlockPos pos);
+	Codec<T> createCodec(UUID uuid, Identifier id);
 }

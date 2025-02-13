@@ -10,14 +10,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
-public interface Landmark<T extends Landmark<T>> {
-	LandmarkType<T> type();
+public interface Landmark {
+	UUID owner();
+
+	Identifier id();
 
 	BlockPos pos();
-
-	default @Nullable UUID owner() {
-		return null;
-	}
 
 	default @Nullable DyeColor color() {
 		return null;
@@ -31,11 +29,11 @@ public interface Landmark<T extends Landmark<T>> {
 		return null;
 	}
 
-	default Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> put(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, World world, WorldLandmarks landmarks) {
+	default Map<UUID, Map<Identifier, Landmark>> put(Map<UUID, Map<Identifier, Landmark>> changed, World world, WorldLandmarks landmarks) {
 		return landmarks.putForBatch(changed, this);
 	}
 
-	default Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> remove(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, World world, WorldLandmarks landmarks) {
-		return landmarks.removeForBatch(changed, this.type(), this.pos());
+	default Map<UUID, Map<Identifier, Landmark>> remove(Map<UUID, Map<Identifier, Landmark>> changed, World world, WorldLandmarks landmarks) {
+		return landmarks.removeForBatch(changed, this.owner(), this.id());
 	}
 }

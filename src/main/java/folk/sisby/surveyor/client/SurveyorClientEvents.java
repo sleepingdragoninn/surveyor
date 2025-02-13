@@ -4,7 +4,6 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.SurveyorExploration;
 import folk.sisby.surveyor.WorldSummary;
-import folk.sisby.surveyor.landmark.LandmarkType;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.structure.WorldStructureSummary;
 import folk.sisby.surveyor.terrain.WorldTerrainSummary;
@@ -13,7 +12,6 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.Structure;
@@ -23,6 +21,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class SurveyorClientEvents {
 	private static final Map<Identifier, WorldLoad> worldLoad = new HashMap<>();
@@ -34,7 +33,7 @@ public class SurveyorClientEvents {
 
 	@FunctionalInterface
 	public interface WorldLoad {
-		void onWorldLoad(ClientWorld world, WorldSummary summary, ClientPlayerEntity player, Map<ChunkPos, BitSet> terrain, Multimap<RegistryKey<Structure>, ChunkPos> structures, Multimap<LandmarkType<?>, BlockPos> landmarks);
+		void onWorldLoad(ClientWorld world, WorldSummary summary, ClientPlayerEntity player, Map<ChunkPos, BitSet> terrain, Multimap<RegistryKey<Structure>, ChunkPos> structures, Multimap<UUID, Identifier> landmarks);
 	}
 
 	@FunctionalInterface
@@ -49,12 +48,12 @@ public class SurveyorClientEvents {
 
 	@FunctionalInterface
 	public interface LandmarksAdded {
-		void onLandmarksAdded(World world, WorldLandmarks worldLandmarks, Multimap<LandmarkType<?>, BlockPos> landmarks);
+		void onLandmarksAdded(World world, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
 	}
 
 	@FunctionalInterface
 	public interface LandmarksRemoved {
-		void onLandmarksRemoved(World world, WorldLandmarks worldLandmarks, Multimap<LandmarkType<?>, BlockPos> landmarks);
+		void onLandmarksRemoved(World world, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
 	}
 
 	public static class Invoke {
@@ -64,7 +63,7 @@ public class SurveyorClientEvents {
 			WorldSummary summary = WorldSummary.of(world);
 			Map<ChunkPos, BitSet> terrain = summary.terrain() == null ? new HashMap<>() : summary.terrain().bitSet(exploration);
 			Multimap<RegistryKey<Structure>, ChunkPos> structures = summary.structures() == null ? HashMultimap.create() : summary.structures().keySet(exploration);
-			Multimap<LandmarkType<?>, BlockPos> landmarks = summary.landmarks() == null ? HashMultimap.create() : summary.landmarks().keySet(exploration);
+			Multimap<UUID, Identifier> landmarks = summary.landmarks() == null ? HashMultimap.create() : summary.landmarks().keySet(exploration);
 			worldLoad.forEach((id, handler) -> handler.onWorldLoad(world, summary, player, terrain, structures, landmarks));
 		}
 
@@ -88,13 +87,13 @@ public class SurveyorClientEvents {
 			structuresAdded(world, MapUtil.asMultiMap(Map.of(key, List.of(pos))));
 		}
 
-		public static void landmarksAdded(World world, Multimap<LandmarkType<?>, BlockPos> landmarks) {
+		public static void landmarksAdded(World world, Multimap<UUID, Identifier> landmarks) {
 			if (landmarksAdded.isEmpty() || landmarks.isEmpty()) return;
 			WorldLandmarks summary = WorldSummary.of(world).landmarks();
 			landmarksAdded.forEach((id, handler) -> handler.onLandmarksAdded(world, summary, landmarks));
 		}
 
-		public static void landmarksRemoved(World world, Multimap<LandmarkType<?>, BlockPos> landmarks) {
+		public static void landmarksRemoved(World world, Multimap<UUID, Identifier> landmarks) {
 			if (landmarksRemoved.isEmpty() || landmarks.isEmpty()) return;
 			WorldLandmarks summary = WorldSummary.of(world).landmarks();
 			landmarksRemoved.forEach((id, handler) -> handler.onLandmarksRemoved(world, summary, landmarks));

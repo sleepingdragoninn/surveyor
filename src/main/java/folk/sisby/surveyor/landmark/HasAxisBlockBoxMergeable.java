@@ -1,20 +1,22 @@
 package folk.sisby.surveyor.landmark;
 
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public interface HasAxisBlockBoxMergeable extends HasAxis, HasBlockBox {
-	private static Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> tryMergeOnce(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, World world, WorldLandmarks landmarks) {
-		Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> mergeableLandmarks = landmarks.asMap(null);
+	private static Map<UUID, Map<Identifier, Landmark>> tryMergeOnce(Map<UUID, Map<Identifier, Landmark>> changed, World world, WorldLandmarks landmarks) {
+		Map<UUID, Map<Identifier, Landmark>> mergeableLandmarks = landmarks.asMap(null);
 
-		for (Map<BlockPos, Landmark<?>> posMap : mergeableLandmarks.values()) {
-			for (Landmark<?> genericLandmark : posMap.values()) {
+		for (Map<Identifier, Landmark> posMap : mergeableLandmarks.values()) {
+			for (Landmark genericLandmark : posMap.values()) {
 				if (!(genericLandmark instanceof HasAxisBlockBoxMergeable landmark)) break;
-				for (Landmark<?> genericLandmark2 : posMap.values()) {
+				for (Landmark genericLandmark2 : posMap.values()) {
 					if (!(genericLandmark2 instanceof HasAxisBlockBoxMergeable landmark2)) break;
 					if (genericLandmark == genericLandmark2) continue;
 					if (landmark.axis().equals(landmark2.axis())) {
@@ -33,7 +35,7 @@ public interface HasAxisBlockBoxMergeable extends HasAxis, HasBlockBox {
 		return changed;
 	}
 
-	default Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> tryMerge(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, World world, WorldLandmarks landmarks) {
+	default Map<UUID, Map<Identifier, Landmark>> tryMerge(Map<UUID, Map<Identifier, Landmark>> changed, World world, WorldLandmarks landmarks) {
 		int oldSize;
 		int newSize;
 		do {

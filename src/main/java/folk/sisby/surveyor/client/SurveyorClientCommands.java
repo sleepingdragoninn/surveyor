@@ -11,7 +11,6 @@ import folk.sisby.surveyor.SurveyorExploration;
 import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.Landmark;
-import folk.sisby.surveyor.landmark.LandmarkType;
 import folk.sisby.surveyor.landmark.Landmarks;
 import folk.sisby.surveyor.landmark.SimplePointLandmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
@@ -54,15 +53,15 @@ public class SurveyorClientCommands {
 	}
 
 	private static int info(WorldSummary summary, SurveyorExploration exploration, SurveyorExploration groupExploration, Consumer<Text> feedback) {
-		Set<Landmark<?>> landmarks = new HashSet<>();
-		Set<Landmark<?>> waypoints = new HashSet<>();
-		Set<Landmark<?>> groupLandmarks = new HashSet<>();
-		Set<Landmark<?>> groupWaypoints = new HashSet<>();
+		Set<Landmark> landmarks = new HashSet<>();
+		Set<Landmark> waypoints = new HashSet<>();
+		Set<Landmark> groupLandmarks = new HashSet<>();
+		Set<Landmark> groupWaypoints = new HashSet<>();
 		Map<UUID, PlayerSummary> group = SurveyorClient.getFriends();
 		WorldLandmarks worldLandmarks = summary.landmarks();
 		if (worldLandmarks != null) {
-			worldLandmarks.asMap(exploration).forEach((type, inner) -> inner.forEach((pos, landmark) -> (landmark.owner() == null ? landmarks : waypoints).add(landmark)));
-			worldLandmarks.asMap(groupExploration).forEach((type, inner) -> inner.forEach((pos, landmark) -> (landmark.owner() == null ? groupLandmarks : groupWaypoints).add(landmark)));
+			worldLandmarks.asMap(exploration).forEach((type, inner) -> inner.forEach((id, landmark) -> (landmark.owner() == null ? landmarks : waypoints).add(landmark)));
+			worldLandmarks.asMap(groupExploration).forEach((type, inner) -> inner.forEach((id, landmark) -> (landmark.owner() == null ? groupLandmarks : groupWaypoints).add(landmark)));
 		}
 		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("---Map Exploration Summary---").formatted(Formatting.GRAY)));
 		feedback.accept(
@@ -119,19 +118,19 @@ public class SurveyorClientCommands {
 	private static int landmarkInfo(WorldSummary summary, SurveyorExploration exploration, SurveyorExploration groupExploration, Consumer<Text> feedback) {
 		Collection<PlayerSummary> group = SurveyorClient.getFriends().values();
 		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("---World Landmark Types---").formatted(Formatting.GRAY)));
-		Set<LandmarkType<?>> waypoints = new HashSet<>();
-		Multimap<LandmarkType<?>, BlockPos> keys = HashMultimap.create();
-		Multimap<LandmarkType<?>, BlockPos> groupKeys = HashMultimap.create();
-		Multimap<LandmarkType<?>, BlockPos> personalKeys = HashMultimap.create();
+		Set<UUID> waypoints = new HashSet<>();
+		Multimap<UUID, Identifier> keys = HashMultimap.create();
+		Multimap<UUID, Identifier> groupKeys = HashMultimap.create();
+		Multimap<UUID, Identifier> personalKeys = HashMultimap.create();
 		WorldLandmarks worldLandmarks = summary.landmarks();
 		if (worldLandmarks != null) {
-			waypoints.addAll(worldLandmarks.asMap(null).values().stream().flatMap(e -> e.values().stream().filter(l -> l.owner() != null)).map(Landmark::type).toList());
+			waypoints.addAll(worldLandmarks.asMap(null).values().stream().flatMap(e -> e.values().stream().filter(l -> l.owner() != null)).map(Landmark::owner).toList());
 			keys.putAll(worldLandmarks.keySet(null));
 			groupKeys.putAll(worldLandmarks.keySet(groupExploration));
 			personalKeys.putAll(worldLandmarks.keySet(exploration));
 		}
 		keys.asMap().forEach((type, list) -> feedback.accept(
-			Text.literal("%s".formatted(type.id())).formatted(Formatting.WHITE)
+			Text.literal("%s".formatted(type)).formatted(Formatting.WHITE)
 				.append(Text.literal(waypoints.contains(type) ? ": created " : ": explored ").formatted(Formatting.AQUA))
 				.append(Text.literal("%d".formatted(personalKeys.get(type).size())).formatted(Formatting.WHITE))
 				.append(
@@ -155,13 +154,13 @@ public class SurveyorClientCommands {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		Map<BlockPos, ? extends Landmark<?>> landmarks = summary.landmarks().asMap(Landmarks.getType(type), null);
+		Map<BlockPos, ? extends Landmark> landmarks = summary.landmarks().asMap(Landmarks.getType(type), null);
 		if (landmarks.isEmpty()) {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("There are no landmarks of that type in this world!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
 		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("---World %s Landmarks---".formatted(type)).formatted(Formatting.GRAY)));
-		for (Landmark<?> landmark : landmarks.values()) {
+		for (Landmark landmark : landmarks.values()) {
 			feedback.accept(
 				Text.literal("[").formatted(Formatting.AQUA)
 					.append(Text.literal(landmark.pos().toShortString()).formatted(Formatting.WHITE))
@@ -185,7 +184,7 @@ public class SurveyorClientCommands {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("No landmark exists of that type and position!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		Landmark<?> landmark = summary.landmarks().get(Landmarks.getType(type), pos);
+		Landmark landmark = summary.landmarks().get(Landmarks.getType(type), pos);
 		summary.landmarks().remove(world, Landmarks.getType(type), pos);
 		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("%s removed successfully!".formatted(landmark.owner() == null ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
 		return 1;
