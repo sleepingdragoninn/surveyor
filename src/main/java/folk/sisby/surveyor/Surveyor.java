@@ -23,6 +23,7 @@ import net.minecraft.structure.StructurePiece;
 import net.minecraft.structure.StructureStart;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -44,6 +45,10 @@ public class Surveyor implements ModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger(ID);
 	public static final String DATA_SUBFOLDER = "data";
 	public static final SurveyorConfig CONFIG = SurveyorConfig.createToml(FabricLoader.getInstance().getConfigDir(), "", "surveyor", SurveyorConfig.class);
+
+	public static Identifier id(String path) {
+		return new Identifier(ID, path);
+	}
 
 	public static File getSavePath(RegistryKey<World> worldKey, MinecraftServer server) {
 		return DimensionType.getSaveDirectory(worldKey, server.getSavePath(WorldSavePath.ROOT)).resolve(DATA_SUBFOLDER).resolve(Surveyor.ID).toFile();

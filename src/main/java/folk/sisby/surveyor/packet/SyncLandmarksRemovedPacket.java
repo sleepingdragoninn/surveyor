@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public record SyncLandmarksRemovedPacket(Multimap<UUID, Identifier> landmarks) implements SyncPacket {
-	public static final CustomPayload.Id<SyncLandmarksRemovedPacket> ID = new CustomPayload.Id<>(Identifier.of(Surveyor.ID, "landmarks_removed"));
+	public static final CustomPayload.Id<SyncLandmarksRemovedPacket> ID = new CustomPayload.Id<>(Surveyor.id("landmarks_removed"));
 	public static final PacketCodec<RegistryByteBuf, SyncLandmarksRemovedPacket> CODEC = PacketCodecs.<RegistryByteBuf, UUID, List<Identifier>, Map<UUID, List<Identifier>>>map(HashMap::new, Uuids.PACKET_CODEC, Identifier.PACKET_CODEC.collect(PacketCodecs.toList()))
 		.xmap(MapUtil::asMultiMap, MapUtil::asListMap)
 		.xmap(SyncLandmarksRemovedPacket::new, SyncLandmarksRemovedPacket::landmarks);

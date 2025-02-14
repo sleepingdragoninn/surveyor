@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public record SyncLandmarksAddedPacket(Map<UUID, Map<Identifier, Landmark>> landmarks) implements SyncPacket {
-	public static final CustomPayload.Id<SyncLandmarksAddedPacket> ID = new CustomPayload.Id<>(Identifier.of(Surveyor.ID, "landmarks_added"));
+	public static final CustomPayload.Id<SyncLandmarksAddedPacket> ID = new CustomPayload.Id<>(Surveyor.id("landmarks_added"));
 	public static final PacketCodec<ByteBuf, SyncLandmarksAddedPacket> CODEC = SurveyorPacketCodecs.LANDMARK_SUMMARIES.xmap(SyncLandmarksAddedPacket::new, SyncLandmarksAddedPacket::landmarks);
 
 	public static SyncLandmarksAddedPacket of(Multimap<UUID, Identifier> keySet, WorldLandmarks summary) {

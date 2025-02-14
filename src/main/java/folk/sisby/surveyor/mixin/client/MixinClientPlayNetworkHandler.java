@@ -6,6 +6,7 @@ import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.client.NetworkHandlerSummary;
 import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.client.SurveyorNetworkHandler;
+import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.TextUtil;
 import net.minecraft.client.MinecraftClient;
@@ -14,7 +15,6 @@ import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.packet.s2c.play.DeathMessageS2CPacket;
-import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -51,7 +51,7 @@ public abstract class MixinClientPlayNetworkHandler implements SurveyorNetworkHa
 			if (summary.landmarks() == null) return;
 			summary.landmarks().put(
 				player.getWorld(),
-				summary.landmarks().createIncremental(SurveyorClient.getClientUuid(), Identifier.of(Surveyor.ID, "grave"), builder -> builder
+				Landmark.createIncremental(summary.landmarks(), SurveyorClient.getClientUuid(), Surveyor.id("grave"), builder -> builder
 					.add(LandmarkComponentTypes.POS, player.getBlockPos())
 					.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(packet.message()))
 					.add(LandmarkComponentTypes.TIME, player.getWorld().getTimeOfDay())

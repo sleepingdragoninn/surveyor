@@ -12,7 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 import java.util.Set;
 
-public record LandmarkComponentMap(Reference2ObjectMap<LandmarkComponentType<?>, Object> map) {
+public class LandmarkComponentMap {
 	private static final Codec<Map<LandmarkComponentType<?>, Object>> TYPE_TO_VALUE_MAP_CODEC = DispatchMapCodec.of(
 		LandmarkComponentType.CODEC,
 		type -> (Codec<Object>) type.codec()
@@ -27,11 +27,17 @@ public record LandmarkComponentMap(Reference2ObjectMap<LandmarkComponentType<?>,
 				return DataResult.success(Reference2ObjectMaps.emptyMap());
 			} else {
 				Reference2ObjectMap<LandmarkComponentType<?>, Object> reference2ObjectMap = new Reference2ObjectArrayMap<>(i);
-				reference2ObjectMap.putAll(componentMap.map());
+				reference2ObjectMap.putAll(componentMap.map);
 				return DataResult.success(reference2ObjectMap);
 			}
 		});
 	}
+
+	private LandmarkComponentMap(Reference2ObjectMap<LandmarkComponentType<?>, Object> map) {
+		this.map = map;
+	}
+
+	private final Reference2ObjectMap<LandmarkComponentType<?>, Object> map;
 
 	@SuppressWarnings("unchecked")
 	@Nullable
@@ -41,6 +47,11 @@ public record LandmarkComponentMap(Reference2ObjectMap<LandmarkComponentType<?>,
 
 	public boolean contains(LandmarkComponentType<?> type) {
 		return this.map.containsKey(type);
+	}
+
+	public <T> T getOrDefault(LandmarkComponentType<? extends T> type, T fallback) {
+		T object = this.get(type);
+		return object != null ? object : fallback;
 	}
 
 	public Set<LandmarkComponentType<?>> keySet() {
@@ -53,6 +64,18 @@ public record LandmarkComponentMap(Reference2ObjectMap<LandmarkComponentType<?>,
 
 	public String toString() {
 		return this.map.toString();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	public <T> T set(LandmarkComponentType<? extends T> type, @Nullable T value) {
+		return (T) this.map.put(type, value);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	public <T> T remove(LandmarkComponentType<? extends T> type) {
+		return (T) this.map.remove(type);
 	}
 
 	public static Builder builder() {

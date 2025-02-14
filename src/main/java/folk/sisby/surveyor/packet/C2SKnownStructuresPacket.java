@@ -11,7 +11,7 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.gen.structure.Structure;
 
 public record C2SKnownStructuresPacket(Multimap<RegistryKey<Structure>, ChunkPos> structureKeys) implements C2SPacket {
-	public static final CustomPayload.Id<C2SKnownStructuresPacket> ID = new CustomPayload.Id<>(Identifier.of(Surveyor.ID, "c2s_known_structures"));
+	public static final CustomPayload.Id<C2SKnownStructuresPacket> ID = new CustomPayload.Id<>(Surveyor.id("c2s_known_structures"));
 	public static final PacketCodec<PacketByteBuf, C2SKnownStructuresPacket> CODEC = SurveyorPacketCodecs.STRUCTURE_KEYS.xmap(C2SKnownStructuresPacket::new, C2SKnownStructuresPacket::structureKeys);
 
 	@Override

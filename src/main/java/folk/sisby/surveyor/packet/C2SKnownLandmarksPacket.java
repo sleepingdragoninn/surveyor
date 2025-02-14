@@ -9,7 +9,7 @@ import net.minecraft.util.Identifier;
 import java.util.UUID;
 
 public record C2SKnownLandmarksPacket(Multimap<UUID, Identifier> landmarks) implements C2SPacket {
-	public static final Id<C2SKnownLandmarksPacket> ID = new Id<>(Identifier.of(Surveyor.ID, "c2s_known_landmarks"));
+	public static final Id<C2SKnownLandmarksPacket> ID = new Id<>(Surveyor.id("c2s_known_landmarks"));
 	public static final PacketCodec<PacketByteBuf, C2SKnownLandmarksPacket> CODEC = SurveyorPacketCodecs.LANDMARK_KEYS.xmap(C2SKnownLandmarksPacket::new, C2SKnownLandmarksPacket::landmarks);
 
 	@Override
