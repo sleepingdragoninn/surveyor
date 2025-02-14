@@ -18,7 +18,7 @@ public record LandmarkComponentType<T>(Identifier id, Codec<T> codec) {
 	private static DataResult<? extends LandmarkComponentType<?>> decode(Identifier id) {
 		return Optional.ofNullable(TYPES.get(id))
 			.map(DataResult::success)
-			.orElse(DataResult.error(() -> "No landmark type found with id " + id));
+			.orElse(DataResult.error(() -> "No landmark component type found with id " + id));
 	}
 
 	public static boolean containsType(Identifier id) {

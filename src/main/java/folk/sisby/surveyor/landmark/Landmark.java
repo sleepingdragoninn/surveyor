@@ -4,6 +4,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentHolder;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentMap;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.util.Identifier;
 
 import java.util.UUID;
@@ -34,5 +36,9 @@ public record Landmark(UUID owner, Identifier id, LandmarkComponentMap component
 
 	public static Landmark globalIncremental(WorldLandmarks landmarks, Identifier prefix, UnaryOperator<LandmarkComponentMap.Builder> componentChanges) {
 		return createIncremental(landmarks, WorldLandmarks.GLOBAL, prefix, componentChanges);
+	}
+
+	public NbtElement toNbt() {
+		return createCodec(owner, id).encodeStart(NbtOps.INSTANCE, this).getOrThrow(false, e -> {});
 	}
 }

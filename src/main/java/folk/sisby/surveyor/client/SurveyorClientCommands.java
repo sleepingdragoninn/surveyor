@@ -186,7 +186,7 @@ public class SurveyorClientCommands {
 		}
 		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), type);
 		summary.landmarks().remove(world, global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), type);
-		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("%s removed successfully!".formatted(landmark.owner() == null ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
+		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("%s removed successfully!".formatted(global ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
 		return 1;
 	}
 

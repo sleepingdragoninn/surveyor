@@ -29,6 +29,7 @@ import net.minecraft.util.math.BlockPos;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -64,8 +65,8 @@ public class SurveyorCommands {
 		for (ServerWorld world : player.getServer().getWorlds()) {
 			WorldLandmarks summary = WorldSummary.of(world).landmarks();
 			if (summary != null) {
-				summary.asMap(exploration).forEach((type, inner) -> inner.forEach((id, landmark) -> (landmark.owner() == null ? landmarks : waypoints).add(landmark)));
-				summary.asMap(groupExploration).forEach((type, inner) -> inner.forEach((id, landmark) -> (landmark.owner() == null ? groupLandmarks : groupWaypoints).add(landmark)));
+				summary.asMap(exploration).forEach((type, inner) -> inner.forEach((id, landmark) -> (landmark.owner() == WorldLandmarks.GLOBAL ? landmarks : waypoints).add(landmark)));
+				summary.asMap(groupExploration).forEach((type, inner) -> inner.forEach((id, landmark) -> (landmark.owner() == WorldLandmarks.GLOBAL ? groupLandmarks : groupWaypoints).add(landmark)));
 			}
 		}
 		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("---Map Exploration Summary---").formatted(Formatting.GRAY)));
@@ -230,7 +231,7 @@ public class SurveyorCommands {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		Map<Identifier, Landmark> landmarks = summary.landmarks().asMap(global ? WorldLandmarks.GLOBAL : player.getUuid(), player.hasPermissionLevel(2) ? null : exploration);
+		Map<Identifier, Landmark> landmarks = summary.landmarks().asMap(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), player.hasPermissionLevel(2) ? null : exploration);
 		if (landmarks.isEmpty()) {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("There are no landmarks in this world!").formatted(Formatting.YELLOW)));
 			return 0;
@@ -253,22 +254,56 @@ public class SurveyorCommands {
 		return landmarks.size();
 	}
 
+	private static int rawLandmark(WorldSummary summary, ServerPlayerEntity player, ServerWorld world, Consumer<Text> feedback, Identifier id, boolean global) {
+		if (summary.landmarks() == null) {
+			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		if (!summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id)) {
+			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id);
+		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("%s %s has data: ".formatted(landmark.owner() == WorldLandmarks.GLOBAL ? "Landmark" : "Waypoint", id)).formatted(Formatting.GRAY)).append(Text.literal(landmark.toNbt().toString()).formatted(Formatting.WHITE)));
+		return 1;
+	}
+
+
 	private static int removeLandmark(WorldSummary summary, ServerPlayerEntity player, ServerWorld world, Consumer<Text> feedback, Identifier type, boolean global) {
 		if (summary.landmarks() == null) {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (!summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : player.getUuid(), type)) {
-			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("No landmark exists of that type and position!").formatted(Formatting.YELLOW)));
+		if (!summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), type)) {
+			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : player.getUuid(), type);
-		if ((landmark.owner() == null || landmark.owner() != Surveyor.getUuid(player)) && !player.hasPermissionLevel(2)) {
+		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), type);
+		if ((landmark.owner() == WorldLandmarks.GLOBAL || landmark.owner() != Surveyor.getUuid(player)) && !player.hasPermissionLevel(2)) {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("You don't have permission to delete that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		summary.landmarks().remove(world, global ? WorldLandmarks.GLOBAL : player.getUuid(), type);
-		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("%s removed successfully!".formatted(landmark.owner() == null ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
+		summary.landmarks().remove(world, global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), type);
+		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("%s removed successfully!".formatted(landmark.owner() == WorldLandmarks.GLOBAL ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
+		return 1;
+	}
+
+	private static int addBlockLandmark(WorldSummary summary, ServerPlayerEntity player, ServerWorld world, Consumer<Text> feedback, BlockPos pos, boolean global) {
+		if (summary.landmarks() == null) {
+			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		if (global && !player.hasPermissionLevel(2)) {
+			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("You don't have permission to add that landmark!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		Identifier id = Surveyor.id("block/%s/%s/%s".formatted(pos.getX(), pos.getY(), pos.getZ()));
+		if (summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id)) {
+			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("The specified block landmark already exists!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		summary.landmarks().put(world, Landmark.create(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id, builder -> LandmarkComponentTypes.forBlock(builder, world, pos)));
+		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("Added new %s %s!".formatted(global ? "Landmark" : "Waypoint", id)).formatted(Formatting.GREEN)));
 		return 1;
 	}
 
@@ -281,7 +316,7 @@ public class SurveyorCommands {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("You don't have permission to add that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : player.getUuid(), id)) {
+		if (summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id)) {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("The specified landmark already exists!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -295,23 +330,27 @@ public class SurveyorCommands {
 		return 1;
 	}
 
-	public static int execute(CommandContext<ServerCommandSource> context, SurveyorCommandExecutor<Integer> executor) {
+	public static <T> T map(CommandContext<ServerCommandSource> context, SurveyorCommandExecutor<T> executor, boolean feedback) {
 		ServerPlayerEntity player;
 		try {
 			player = context.getSource().getPlayerOrThrow();
 		} catch (CommandSyntaxException e) {
-			Surveyor.LOGGER.error("[Surveyor] Commands cannot be invoked by a non-player");
-			return 0;
+			if (feedback) Surveyor.LOGGER.error("[Surveyor] Commands cannot be invoked by a non-player");
+			return null;
 		}
 
 		SurveyorExploration exploration = SurveyorExploration.of(player);
 		try {
 			return executor.execute(ServerSummary.of(player.getServer()), WorldSummary.of(context.getSource().getWorld()), player, context.getSource().getWorld(), exploration, t -> context.getSource().sendFeedback(() -> t, false));
 		} catch (Exception e) {
-			context.getSource().sendFeedback(() -> Text.literal("Command failed! Check log for details.").formatted(Formatting.RED), false);
-			Surveyor.LOGGER.error("[Surveyor] Error while executing command: {}", context.getInput(), e);
-			return 0;
+			if (feedback) context.getSource().sendFeedback(() -> Text.literal("Command failed! Check log for details.").formatted(Formatting.RED), false);
+			if (feedback) Surveyor.LOGGER.error("[Surveyor] Error while executing command: {}", context.getInput(), e);
+			return null;
 		}
+	}
+
+	public static int execute(CommandContext<ServerCommandSource> context, SurveyorCommandExecutor<Integer> executor) {
+		return Objects.requireNonNullElse(map(context, executor, true), 0);
 	}
 
 	public static void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess registryAccess, CommandManager.RegistrationEnvironment environment) {
@@ -331,44 +370,82 @@ public class SurveyorCommands {
 						.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.informGlobal(s, p, f))) :
 					CommandManager.literal("unshare")
 						.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.unshare(s, p, f)))
-				).then(CommandManager.literal("landmarks")
-					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.DISABLED)
-					.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.landmarkInfo(s, p, e, f)))
-					.then(CommandManager.literal("get")
-						.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.getLandmarks(w, p, e, f, true))
+				)
+		);
+		dispatcher.register(
+			CommandManager.literal("landmarks")
+				.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.DISABLED)
+				.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.getLandmarks(w, p, e, f, true)))
+				.then(CommandManager.literal("block")
+					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
+					.requires(c -> c.getPlayer() == null || c.getPlayer().hasPermissionLevel(2))
+					.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
+						.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.addBlockLandmark(w, p, sw, f, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), true)))
+					)
+				)
+				.then(CommandManager.literal("custom")
+					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
+					.requires(c -> c.getPlayer() == null || c.getPlayer().hasPermissionLevel(2))
+					.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+						.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
+							.then(CommandManager.argument("color", StringArgumentType.word())
+								.suggests((c, b) -> CommandSource.suggestMatching(Arrays.stream(DyeColor.values()).map(DyeColor::getName), b))
+								.then(CommandManager.argument("name", StringArgumentType.greedyString())
+									.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.addLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), DyeColor.byName(c.getArgument("color", String.class), DyeColor.WHITE), c.getArgument("name", String.class), true)))
+								)
+							)
 						)
+					)
+				)
+		);
+		dispatcher.register(
+			CommandManager.literal("waypoints")
+				.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.DISABLED)
+				.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.getLandmarks(w, p, e, f, false)))
+				.then(CommandManager.literal("block")
+					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
+					.requires(c -> c.getPlayer() == null || c.getPlayer().hasPermissionLevel(2))
+					.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
+						.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.addBlockLandmark(w, p, sw, f, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), false)))
+					)
+				)
+				.then(CommandManager.literal("custom")
+					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
+					.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+						.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
+							.then(CommandManager.argument("color", StringArgumentType.word())
+								.suggests((c, b) -> CommandSource.suggestMatching(Arrays.stream(DyeColor.values()).map(DyeColor::getName), b))
+								.then(CommandManager.argument("name", StringArgumentType.greedyString())
+									.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.addLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), DyeColor.byName(c.getArgument("color", String.class), DyeColor.WHITE), c.getArgument("name", String.class), false)))
+								)
+							)
+						)
+					)
+				)
+		);
+		dispatcher.register(
+			CommandManager.literal("landmark")
+				.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+					.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (s, w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(WorldLandmarks.GLOBAL, p.hasPermissionLevel(2) ? null : e).keySet(), false), b))
+					.then(CommandManager.literal("raw")
+						.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.rawLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), true)))
 					)
 					.then(CommandManager.literal("remove")
 						.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
-						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
-							.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.removeLandmark(w, p, sw, f, c.getArgument("id", Identifier.class),true))
-							)
-						)
-					).then(CommandManager.literal("add")
+						.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.removeLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), true)))
+					)
+				)
+		);
+		dispatcher.register(
+			CommandManager.literal("waypoint")
+				.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+					.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (s, w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(Surveyor.getUuid(p), e).keySet(), false), b))
+					.then(CommandManager.literal("raw")
+						.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.rawLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), false)))
+					)
+					.then(CommandManager.literal("remove")
 						.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
-						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
-							.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
-								.then(CommandManager.argument("color", StringArgumentType.word())
-									.suggests((c, b) -> CommandSource.suggestMatching(Arrays.stream(DyeColor.values()).map(DyeColor::getName), b))
-									.then(CommandManager.argument("name", StringArgumentType.greedyString())
-										.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.addLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), DyeColor.byName(c.getArgument("color", String.class), DyeColor.WHITE), c.getArgument("name", String.class), false)))
-									)
-								)
-							)
-						)
-					).then(CommandManager.literal("global")
-						.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
-						.requires(c -> c.getPlayer() == null || c.getPlayer().hasPermissionLevel(2))
-						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
-							.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
-								.then(CommandManager.argument("color", StringArgumentType.word())
-									.suggests((c, b) -> CommandSource.suggestMatching(Arrays.stream(DyeColor.values()).map(DyeColor::getName), b))
-									.then(CommandManager.argument("name", StringArgumentType.greedyString())
-										.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.addLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), DyeColor.byName(c.getArgument("color", String.class), DyeColor.WHITE), c.getArgument("name", String.class), true)))
-									)
-								)
-							)
-						)
+						.executes(c -> execute(c, (s, w, p, sw, e, f) -> SurveyorCommands.removeLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), false)))
 					)
 				)
 		);

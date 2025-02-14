@@ -2,6 +2,7 @@ package folk.sisby.surveyor;
 
 import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.config.SurveyorConfig;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.structure.WorldStructureSummary;
 import folk.sisby.surveyor.terrain.WorldTerrainSummary;
 import folk.sisby.surveyor.util.MapUtil;
@@ -99,6 +100,7 @@ public class Surveyor implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		SurveyorNetworking.init();
+		LandmarkComponentTypes.touch();
 		CommandRegistrationCallback.EVENT.register(SurveyorCommands::registerCommands);
 		ServerPlayConnectionEvents.JOIN.register(ServerSummary::onPlayerJoin);
 		ServerChunkEvents.CHUNK_LOAD.register(WorldTerrainSummary::onChunkLoad);

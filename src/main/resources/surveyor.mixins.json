@@ -1,21 +1,22 @@
 {
-	"required": true,
-	"minVersion": "0.8",
-	"package": "folk.sisby.surveyor.mixin",
-	"compatibilityLevel": "JAVA_17",
-	"mixins": [
-		"MixinMinecraftServer",
-		"MixinServerPlayerEntity",
-		"MixinServerWorld",
-		"MixinStructureStart",
-		"MixinThreadedAnvilChunkStorage"
-	],
-	"client": [
-		"client.MixinClientPlayNetworkHandler",
-		"client.MixinClientWorld",
-		"client.MixinMinecraftClient"
-	],
-	"injectors": {
-		"defaultRequire": 1
+  "required": true,
+  "minVersion": "0.8",
+  "package": "folk.sisby.surveyor.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "MixinMinecraftServer",
+    "MixinNetherPortal",
+    "MixinServerPlayerEntity",
+    "MixinServerWorld",
+    "MixinStructureStart",
+    "MixinThreadedAnvilChunkStorage"
+  ],
+  "client": [
+    "client.MixinClientPlayNetworkHandler",
+    "client.MixinClientWorld",
+    "client.MixinMinecraftClient"
+  ],
+  "injectors": {
+    "defaultRequire": 1
 	}
 }
