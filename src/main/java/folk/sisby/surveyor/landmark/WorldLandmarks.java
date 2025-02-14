@@ -7,7 +7,6 @@ import folk.sisby.surveyor.SurveyorEvents;
 import folk.sisby.surveyor.SurveyorExploration;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SystemMode;
-import folk.sisby.surveyor.landmark.component.LandmarkComponentMap;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
 import folk.sisby.surveyor.util.MapUtil;
@@ -27,7 +26,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 
 public class WorldLandmarks {
 	public static final UUID GLOBAL = UUID.fromString("99999999-9999-9999-9999-999999999999");
@@ -56,14 +54,6 @@ public class WorldLandmarks {
 
 	public boolean contains(UUID uuid, Identifier id) {
 		return landmarks.containsKey(uuid) && landmarks.get(uuid).containsKey(id);
-	}
-
-	public Landmark createIncremental(UUID uuid, Identifier prefix, UnaryOperator<LandmarkComponentMap.Builder> buildOps) {
-		int i = 1;
-		while (contains(uuid, new Identifier(prefix.getNamespace(), prefix.getPath() + "/" + i))) {
-			i++;
-		}
-		return new Landmark(uuid, new Identifier(prefix.getNamespace(), prefix.getPath() + "/" + i), buildOps.apply(LandmarkComponentMap.builder()).build());
 	}
 
 	public Landmark get(UUID uuid, Identifier id) {

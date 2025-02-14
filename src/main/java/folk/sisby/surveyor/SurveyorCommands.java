@@ -9,7 +9,6 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
-import folk.sisby.surveyor.landmark.component.LandmarkComponentMap;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.TextUtil;
 import net.minecraft.command.CommandRegistryAccess;
@@ -286,12 +285,12 @@ public class SurveyorCommands {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("The specified landmark already exists!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		summary.landmarks().put(world, new Landmark(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id, LandmarkComponentMap.builder()
+		summary.landmarks().put(world, Landmark.create(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id, builder -> builder
 			.add(LandmarkComponentTypes.POS, pos)
 			.add(LandmarkComponentTypes.COLOR, color.getFireworkColor())
 			.add(LandmarkComponentTypes.NAME, Text.of(name.contains("\\n") ? name.substring(0, name.indexOf("\\n")) : name))
 			.add(LandmarkComponentTypes.LORE, name.contains("\\n") ? Arrays.stream(name.substring(name.indexOf("\\n") + 2).split("\\n")).map(Text::of).toList() : null)
-			.build()));
+		));
 		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("%s added successfully!".formatted(global ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
 		return 1;
 	}

@@ -12,7 +12,6 @@ import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
-import folk.sisby.surveyor.landmark.component.LandmarkComponentMap;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.TextUtil;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -200,12 +199,12 @@ public class SurveyorClientCommands {
 			feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("The specified landmark already exists!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		summary.landmarks().put(world, new Landmark(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), id, LandmarkComponentMap.builder()
+		summary.landmarks().put(world, Landmark.create(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), id, builder -> builder
 			.add(LandmarkComponentTypes.POS, pos)
 			.add(LandmarkComponentTypes.COLOR, color.getFireworkColor())
 			.add(LandmarkComponentTypes.NAME, Text.of(name.contains("\\n") ? name.substring(0, name.indexOf("\\n")) : name))
 			.add(LandmarkComponentTypes.LORE, name.contains("\\n") ? Arrays.stream(name.substring(name.indexOf("\\n") + 2).split("\\n")).map(Text::of).toList() : null)
-			.build()));
+		));
 		feedback.accept(Text.literal("[Surveyor] ").formatted(Formatting.DARK_RED).append(Text.literal("%s added successfully!".formatted(global ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
 		return 1;
 	}
@@ -235,13 +234,13 @@ public class SurveyorClientCommands {
 					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.DISABLED)
 					.executes(c -> execute(c, (s, p, w, e, g, f) -> SurveyorClientCommands.landmarkInfo(s, e, g, f)))
 					.then(ClientCommandManager.literal("get")
-							.executes(c -> execute(c, (s, p, w, e, g, f) -> SurveyorClientCommands.getLandmarks(s, f, true))
+						.executes(c -> execute(c, (s, p, w, e, g, f) -> SurveyorClientCommands.getLandmarks(s, f, true))
 						)
 					)
 					.then(ClientCommandManager.literal("remove")
 						.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
 						.then(ClientCommandManager.argument("id", IdentifierArgumentType.identifier())
-								.executes(c -> execute(c, (s, p, w, e, g, f) -> SurveyorClientCommands.removeLandmark(s, w, f, c.getArgument("type", Identifier.class), true))
+							.executes(c -> execute(c, (s, p, w, e, g, f) -> SurveyorClientCommands.removeLandmark(s, w, f, c.getArgument("type", Identifier.class), true))
 							)
 						)
 					).then(ClientCommandManager.literal("add")
