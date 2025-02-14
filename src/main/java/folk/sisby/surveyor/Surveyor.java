@@ -47,7 +47,7 @@ public class Surveyor implements ModInitializer {
 	public static final SurveyorConfig CONFIG = SurveyorConfig.createToml(FabricLoader.getInstance().getConfigDir(), "", "surveyor", SurveyorConfig.class);
 
 	public static Identifier id(String path) {
-		return new Identifier(ID, path);
+		return Identifier.of(ID, path);
 	}
 
 	public static File getSavePath(RegistryKey<World> worldKey, MinecraftServer server) {
