@@ -9,7 +9,7 @@ import java.util.BitSet;
 import java.util.Map;
 
 public record C2SKnownTerrainPacket(Map<ChunkPos, BitSet> regionBits) implements C2SPacket {
-	public static final Identifier ID = new Identifier(Surveyor.ID, "known_terrain");
+	public static final Identifier ID = Surveyor.id("known_terrain");
 
 	public static C2SKnownTerrainPacket read(PacketByteBuf buf) {
 		return new C2SKnownTerrainPacket(

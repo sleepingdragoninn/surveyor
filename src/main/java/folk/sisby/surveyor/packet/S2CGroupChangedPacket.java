@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public record S2CGroupChangedPacket(Map<UUID, PlayerSummary> players, Map<ChunkPos, BitSet> regionBits, Map<RegistryKey<Structure>, LongSet> structureKeys) implements S2CPacket {
-	public static final Identifier ID = new Identifier(Surveyor.ID, "s2c_group_changed");
+	public static final Identifier ID = Surveyor.id("s2c_group_changed");
 
 	public static S2CGroupChangedPacket read(PacketByteBuf buf) {
 		return new S2CGroupChangedPacket(

@@ -30,7 +30,6 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.Uuids;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
@@ -169,11 +168,11 @@ public class SurveyorClient implements ClientModInitializer {
 				SurveyorClientEvents.Invoke.worldLoad(MinecraftClient.getInstance().player.clientWorld, MinecraftClient.getInstance().player);
 			}
 		}));
-		SurveyorEvents.Register.landmarksAdded(new Identifier(Surveyor.ID, "client"), ((world, worldLandmarks, landmarks) -> {
+		SurveyorEvents.Register.landmarksAdded(Surveyor.id("client"), ((world, worldLandmarks, landmarks) -> {
 			SurveyorExploration exploration = getExploration();
 			if (exploration != null) SurveyorClientEvents.Invoke.landmarksAdded(world, exploration.limitLandmarkKeySet(world.getRegistryKey(), worldLandmarks, HashMultimap.create(landmarks)));
 		}));
-		SurveyorEvents.Register.landmarksRemoved(new Identifier(Surveyor.ID, "client"), (world, summary, landmarks) -> SurveyorClientEvents.Invoke.landmarksRemoved(world, landmarks));
+		SurveyorEvents.Register.landmarksRemoved(Surveyor.id("client"), (world, summary, landmarks) -> SurveyorClientEvents.Invoke.landmarksRemoved(world, landmarks));
 		Surveyor.LOGGER.info("[Surveyor Client] is not a map mod either");
 	}
 

@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 
 public record C2SKnownStructuresPacket(Multimap<RegistryKey<Structure>, ChunkPos> structureKeys) implements C2SPacket {
-	public static final Identifier ID = new Identifier(Surveyor.ID, "c2s_known_structures");
+	public static final Identifier ID = Surveyor.id("c2s_known_structures");
 
 	public static C2SKnownStructuresPacket read(PacketByteBuf buf) {
 		return new C2SKnownStructuresPacket(

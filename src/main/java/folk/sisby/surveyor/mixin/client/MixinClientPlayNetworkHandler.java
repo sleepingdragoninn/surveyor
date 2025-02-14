@@ -17,7 +17,6 @@ import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.util.telemetry.WorldSession;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.packet.s2c.play.DeathMessageS2CPacket;
-import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -54,7 +53,7 @@ public abstract class MixinClientPlayNetworkHandler implements SurveyorNetworkHa
 			if (summary.landmarks() == null) return;
 			summary.landmarks().put(
 				player.getWorld(),
-				Landmark.createIncremental(summary.landmarks(), SurveyorClient.getClientUuid(), new Identifier(Surveyor.ID, "grave"), builder -> builder
+				Landmark.createIncremental(summary.landmarks(), SurveyorClient.getClientUuid(), Surveyor.id("grave"), builder -> builder
 					.add(LandmarkComponentTypes.POS, player.getBlockPos())
 					.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(packet.getMessage()))
 					.add(LandmarkComponentTypes.TIME, player.getWorld().getTimeOfDay())

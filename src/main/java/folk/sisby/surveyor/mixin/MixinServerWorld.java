@@ -10,7 +10,6 @@ import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import net.minecraft.block.NetherPortalBlock;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.poi.PointOfInterestType;
 import net.minecraft.world.poi.PointOfInterestTypes;
@@ -43,7 +42,7 @@ public class MixinServerWorld implements SurveyorWorld {
 		ServerWorld self = (ServerWorld) (Object) this;
 		WorldSummary summary = WorldSummary.of(self);
 		if (summary.landmarks() != null && poiType.getKey().orElse(null) == PointOfInterestTypes.NETHER_PORTAL && self.getBlockState(blockPos).contains(NetherPortalBlock.AXIS)) {
-			summary.landmarks().put(self, Landmark.global(new Identifier(Surveyor.ID, "poi/nether_portal/%s/%s/%s".formatted(blockPos.getX(), blockPos.getY(), blockPos.getZ())), builder -> builder
+			summary.landmarks().put(self, Landmark.global(Surveyor.id("poi/nether_portal/%s/%s/%s".formatted(blockPos.getX(), blockPos.getY(), blockPos.getZ())), builder -> builder
 				.add(LandmarkComponentTypes.POS, blockPos)
 				.add(LandmarkComponentTypes.AXIS, self.getBlockState(blockPos).get(NetherPortalBlock.AXIS))
 			));

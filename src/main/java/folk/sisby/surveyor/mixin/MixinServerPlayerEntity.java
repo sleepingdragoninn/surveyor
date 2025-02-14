@@ -17,7 +17,6 @@ import net.minecraft.network.packet.c2s.play.ClientSettingsC2SPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -60,7 +59,7 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 		if (summary == null) return;
 		summary.put(
 			self.getServerWorld(),
-			Landmark.createIncremental(summary, SurveyorClient.getClientUuid(), new Identifier(Surveyor.ID, "grave"), builder -> builder
+			Landmark.createIncremental(summary, SurveyorClient.getClientUuid(), Surveyor.id("grave"), builder -> builder
 				.add(LandmarkComponentTypes.POS, self.getBlockPos())
 				.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()))
 				.add(LandmarkComponentTypes.TIME, self.getWorld().getTimeOfDay())

@@ -22,7 +22,7 @@ public class LandmarkComponentTypes {
 	public static final LandmarkComponentType<Direction.Axis> AXIS = register("axis", Direction.Axis.CODEC);
 
 	private static <T> LandmarkComponentType<T> register(String path, Codec<T> codec) {
-		return register(new Identifier(Surveyor.ID, path), codec);
+		return register(Surveyor.id(path), codec);
 	}
 
 	public static <T> LandmarkComponentType<T> register(Identifier id, Codec<T> codec) {

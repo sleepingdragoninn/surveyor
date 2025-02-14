@@ -16,7 +16,7 @@ import java.util.Collection;
 import java.util.List;
 
 public record S2CUpdateRegionPacket(boolean shared, ChunkPos regionPos, List<Integer> biomePalette, List<Integer> blockPalette, BitSet set, List<ChunkSummary> chunks) implements S2CPacket {
-	public static final Identifier ID = new Identifier(Surveyor.ID, "s2c_update_region");
+	public static final Identifier ID = Surveyor.id("s2c_update_region");
 
 	public static S2CUpdateRegionPacket of(boolean shared, ChunkPos regionPos, RegionSummary summary, BitSet keys) {
 		return summary.createUpdatePacket(shared, regionPos, keys);

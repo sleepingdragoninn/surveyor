@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public record S2CStructuresAddedPacket(boolean shared, Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> structures, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> types, Multimap<RegistryKey<Structure>, TagKey<Structure>> tags) implements S2CPacket {
-	public static final Identifier ID = new Identifier(Surveyor.ID, "s2c_structures_added");
+	public static final Identifier ID = Surveyor.id("s2c_structures_added");
 
 	public static S2CStructuresAddedPacket of(boolean shared, Multimap<RegistryKey<Structure>, ChunkPos> keys, WorldStructureSummary summary) {
 		return summary.createUpdatePacket(shared, keys);

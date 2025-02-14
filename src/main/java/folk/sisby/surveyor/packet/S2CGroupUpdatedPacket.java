@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public record S2CGroupUpdatedPacket(Map<UUID, PlayerSummary> players) implements S2CPacket {
-	public static final Identifier ID = new Identifier(Surveyor.ID, "s2c_group_updated");
+	public static final Identifier ID = Surveyor.id("s2c_group_updated");
 
 	public static S2CGroupUpdatedPacket of(UUID uuid, PlayerSummary summary) {
 		return new S2CGroupUpdatedPacket(Map.of(uuid, summary));

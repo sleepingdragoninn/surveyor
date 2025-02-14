@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public record SyncLandmarksRemovedPacket(Multimap<UUID, Identifier> landmarks) implements SyncPacket {
-	public static final Identifier ID = new Identifier(Surveyor.ID, "landmarks_removed");
+	public static final Identifier ID = Surveyor.id("landmarks_removed");
 
 	public static SyncLandmarksRemovedPacket of(UUID uuid, Identifier id) {
 		return new SyncLandmarksRemovedPacket(MapUtil.asMultiMap(Map.of(uuid, List.of(id))));
