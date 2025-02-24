@@ -20,9 +20,13 @@ public class SurveyorConfig extends WrappedConfig {
 	@Comment("DISABLED prevents loading, FROZEN loads but prevents updates, DYNAMIC loads with addons or on servers, ENABLED always loads")
 	public SystemMode landmarks = SystemMode.DYNAMIC;
 
-	@Comment("Displays the following logs and messages:")
-	@Comment("[Action Bar] Structure Discovery")
-	public boolean debugMode = false;
+	@Comment("Logs structure discovery to the action bar.")
+	@Comment("E.g. 'Discovered Village Plains at [91, 63, -54]'")
+	public boolean discoveryMessages = false;
+
+	@Comment("Force-enables the following commands.")
+	@Comment("waypoints/landmarks raw | prints the raw SNBT of a landmark")
+	public boolean debugCommands = false;
 
 	public Networking networking = new Networking();
 

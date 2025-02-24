@@ -4,10 +4,16 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentHolder;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentMap;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentType;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 
@@ -36,6 +42,14 @@ public record Landmark(UUID owner, Identifier id, LandmarkComponentMap component
 
 	public static Landmark globalIncremental(WorldLandmarks landmarks, Identifier prefix, UnaryOperator<LandmarkComponentMap.Builder> componentChanges) {
 		return createIncremental(landmarks, WorldLandmarks.GLOBAL, prefix, componentChanges);
+	}
+
+	public List<Text> toText() {
+		List<Text> outList = new ArrayList<>();
+		for (LandmarkComponentType<?> type : components.keySet().stream().sorted(Comparator.comparing(LandmarkComponentType::id)).toList()) {
+			outList.add(Text.literal("").append(Text.literal(type.id().toString().replace("surveyor:", "")).formatted(Formatting.AQUA)).append(Text.literal(": ").append(getView(type))));
+		}
+		return outList;
 	}
 
 	public NbtElement toNbt() {

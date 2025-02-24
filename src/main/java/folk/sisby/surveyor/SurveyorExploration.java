@@ -74,7 +74,7 @@ public interface SurveyorExploration {
 	}
 
 	default boolean exploredLandmark(RegistryKey<World> worldKey, Landmark landmark) {
-		return landmark.owner() == WorldLandmarks.GLOBAL ? !landmark.components().contains(LandmarkComponentTypes.POS) || exploredChunk(worldKey, new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) : sharedPlayers().contains(landmark.owner());
+		return landmark.owner().equals(WorldLandmarks.GLOBAL) ? !landmark.components().contains(LandmarkComponentTypes.POS) || exploredChunk(worldKey, new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) : sharedPlayers().contains(landmark.owner());
 	}
 
 	default int chunkCount() {
@@ -146,7 +146,7 @@ public interface SurveyorExploration {
 		WorldLandmarks summary = WorldSummary.of(world).landmarks();
 		if (summary == null) return;
 		summary.asMap(this).forEach((uuid, map) -> map.forEach((id, landmark) -> {
-			if (landmark.components().contains(LandmarkComponentTypes.POS) && terrainKeys.contains(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner() == WorldLandmarks.GLOBAL) landmarkKeys.put(uuid, id);
+			if (landmark.components().contains(LandmarkComponentTypes.POS) && terrainKeys.contains(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(uuid, id);
 		}));
 		SurveyorClientEvents.Invoke.landmarksAdded(world, landmarkKeys);
 	}
@@ -177,7 +177,7 @@ public interface SurveyorExploration {
 		WorldLandmarks summary = WorldSummary.of(world).landmarks();
 		if (summary == null) return;
 		summary.asMap(this).forEach((uuid, map) -> map.forEach((id, landmark) -> {
-			if (landmark.components().contains(LandmarkComponentTypes.POS) && chunkPos.equals(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner() == WorldLandmarks.GLOBAL) landmarkKeys.put(uuid, id);
+			if (landmark.components().contains(LandmarkComponentTypes.POS) && chunkPos.equals(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(uuid, id);
 		}));
 		SurveyorClientEvents.Invoke.landmarksAdded(world, landmarkKeys);
 	}

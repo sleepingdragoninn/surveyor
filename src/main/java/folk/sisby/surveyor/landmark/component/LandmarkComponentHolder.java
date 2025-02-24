@@ -1,5 +1,6 @@
 package folk.sisby.surveyor.landmark.component;
 
+import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BiFunction;
@@ -11,6 +12,11 @@ public interface LandmarkComponentHolder {
 	@Nullable
 	default <T> T get(LandmarkComponentType<? extends T> type) {
 		return this.components().get(type);
+	}
+
+	@Nullable
+	default <T> Text getView(LandmarkComponentType<T> type) {
+		return type.viewer().apply(this.components().get(type));
 	}
 
 	default <T> T getOrDefault(LandmarkComponentType<? extends T> type, T fallback) {

@@ -32,7 +32,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.gen.structure.Structure;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.text.WordUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,8 +82,8 @@ public class Surveyor implements ModInitializer {
 						}
 					}
 				}
-				if (found && CONFIG.debugMode) {
-					player.sendMessageToClient(Text.literal("Discovered ").append(Text.literal(StringUtils.capitalize(structureKey.getValue().getPath().replace("_", " "))).formatted(Formatting.GREEN)).append(Text.literal(" at ")).append(Text.literal("[%s,%s]".formatted(startPos.x << 4, startPos.z << 4)).formatted(Formatting.GOLD)).formatted(Formatting.GRAY), true);
+				if (found && CONFIG.discoveryMessages) {
+					player.sendMessageToClient(Text.literal("Discovered ").append(Text.literal(WordUtils.capitalize(structureKey.getValue().getPath().replace("_", " "))).formatted(Formatting.GREEN)).append(Text.literal(" at ")).append(Text.literal("[%s,%s]".formatted(startPos.x << 4, startPos.z << 4)).formatted(Formatting.GOLD)).formatted(Formatting.GRAY), true);
 				}
 			});
 		}
