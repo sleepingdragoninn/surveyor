@@ -2,6 +2,7 @@ package folk.sisby.surveyor;
 
 import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.config.SurveyorConfig;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.structure.WorldStructureSummary;
 import folk.sisby.surveyor.terrain.WorldTerrainSummary;
 import folk.sisby.surveyor.util.MapUtil;
@@ -31,7 +32,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.gen.structure.Structure;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.text.WordUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,8 +82,8 @@ public class Surveyor implements ModInitializer {
 						}
 					}
 				}
-				if (found && CONFIG.debugMode) {
-					player.sendMessageToClient(Text.literal("Discovered ").append(Text.literal(StringUtils.capitalize(structureKey.getValue().getPath().replace("_", " "))).formatted(Formatting.GREEN)).append(Text.literal(" at ")).append(Text.literal("[%s,%s]".formatted(startPos.x << 4, startPos.z << 4)).formatted(Formatting.GOLD)).formatted(Formatting.GRAY), true);
+				if (found && CONFIG.discoveryMessages) {
+					player.sendMessageToClient(Text.literal("Discovered ").append(Text.literal(WordUtils.capitalize(structureKey.getValue().getPath().replace("_", " "))).formatted(Formatting.GREEN)).append(Text.literal(" at ")).append(Text.literal("[%s,%s]".formatted(startPos.x << 4, startPos.z << 4)).formatted(Formatting.GOLD)).formatted(Formatting.GRAY), true);
 				}
 			});
 		}
@@ -99,6 +100,7 @@ public class Surveyor implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		SurveyorNetworking.init();
+		LandmarkComponentTypes.touch();
 		CommandRegistrationCallback.EVENT.register(SurveyorCommands::registerCommands);
 		ServerPlayConnectionEvents.JOIN.register(ServerSummary::onPlayerJoin);
 		ServerChunkEvents.CHUNK_LOAD.register(WorldTerrainSummary::onChunkLoad);

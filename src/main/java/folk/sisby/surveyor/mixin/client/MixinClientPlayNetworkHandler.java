@@ -43,7 +43,7 @@ public abstract class MixinClientPlayNetworkHandler implements SurveyorNetworkHa
 
 	@Inject(method = "onDeathMessage", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerEntity;showsDeathScreen()Z"))
 	private void onDeathScreen(DeathMessageS2CPacket packet, CallbackInfo ci) {
-		if (!Surveyor.CONFIG.playerDeathLandmarks) return;
+		if (!Surveyor.CONFIG.builtins.playerDeathWaypoints) return;
 		ClientPlayerEntity player = MinecraftClient.getInstance().player;
 		if (player == null || player.getWorld() == null) return;
 		WorldSummary summary = WorldSummary.of(player.getWorld());

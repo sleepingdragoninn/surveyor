@@ -48,7 +48,7 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 
 	@Inject(method = "onDeath", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/damage/DamageTracker;update()V"))
 	public void onDeath(DamageSource damageSource, CallbackInfo ci) {
-		if (!Surveyor.CONFIG.playerDeathLandmarks) return;
+		if (!Surveyor.CONFIG.builtins.playerDeathWaypoints) return;
 		ServerPlayerEntity self = (ServerPlayerEntity) (Object) this;
 		WorldLandmarks summary = WorldSummary.of(self.getServerWorld()).landmarks();
 		if (summary == null) return;
