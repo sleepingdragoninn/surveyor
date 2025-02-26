@@ -53,6 +53,6 @@ public record Landmark(UUID owner, Identifier id, LandmarkComponentMap component
 	}
 
 	public NbtElement toNbt() {
-		return createCodec(owner, id).encodeStart(NbtOps.INSTANCE, this).getOrThrow(false, e -> {});
+		return createCodec(owner, id).encodeStart(NbtOps.INSTANCE, this).getOrThrow();
 	}
 }
