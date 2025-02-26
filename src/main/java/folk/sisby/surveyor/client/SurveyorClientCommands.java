@@ -144,7 +144,7 @@ public class SurveyorClientCommands {
 	public static void registerCommands(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
 		dispatcher.register(
 			ClientCommandManager.literal("waypointsc")
-				.requires(c -> c.getClient().getNetworkHandler().getCommandDispatcher().findNode(List.of("surveyor")) == null)
+				.requires(c -> !c.getClient().isInSingleplayer() && c.getClient().getNetworkHandler().getCommandDispatcher().findNode(List.of("surveyor")) == null)
 				.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.DISABLED)
 				.executes(c -> execute(c, (w, p, sw, e, f) -> getLandmarks(w, e, f, false)))
 				.then(ClientCommandManager.literal("new")
