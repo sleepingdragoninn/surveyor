@@ -16,6 +16,10 @@ import net.minecraft.command.CommandSource;
 import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.command.argument.DefaultPosArgument;
 import net.minecraft.command.argument.IdentifierArgumentType;
+import net.minecraft.command.argument.ItemStackArgument;
+import net.minecraft.command.argument.ItemStackArgumentType;
+import net.minecraft.command.argument.TextArgumentType;
+import net.minecraft.item.ItemStack;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -27,6 +31,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -290,6 +295,29 @@ public class SurveyorCommands {
 		return 1;
 	}
 
+	private static int addIdLandmark(WorldSummary summary, ServerPlayerEntity player, ServerWorld world, Consumer<Text> feedback, Identifier id, BlockPos pos, ItemStackArgument stack, Text name, Text lore, boolean global) throws CommandSyntaxException {
+		ItemStack icon = stack.createStack(1, false);
+		if (summary.landmarks() == null) {
+			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		if (global && !player.hasPermissionLevel(2)) {
+			feedback.accept(prefix().append(Text.literal("You don't have permission to add that landmark!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		if (summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id)) {
+			feedback.accept(prefix().append(Text.literal("A landmark with this ID already exists! Replacing...").formatted(Formatting.YELLOW)));
+		}
+		summary.landmarks().put(world, Landmark.create(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id, builder -> builder
+			.add(LandmarkComponentTypes.POS, pos)
+			.add(LandmarkComponentTypes.STACK, icon)
+			.add(LandmarkComponentTypes.NAME, name)
+			.add(LandmarkComponentTypes.LORE, List.of(lore))
+		));
+		feedback.accept(prefix().append(Text.literal("Added new %s %s!".formatted(global ? "Landmark" : "Waypoint", id)).formatted(Formatting.GREEN)));
+		return 1;
+	}
+
 	public static <T> T map(CommandContext<ServerCommandSource> context, SurveyorCommandExecutor<T> executor, boolean feedback) {
 		ServerPlayerEntity player;
 		try {
@@ -342,6 +370,25 @@ public class SurveyorCommands {
 					.then(CommandManager.literal("block")
 						.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
 							.executes(c -> execute(c, (s, w, p, sw, e, f) -> addBlockLandmark(w, p, sw, f, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), true)))
+						)
+					)
+					.then(CommandManager.literal("id")
+						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+							.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
+								.then(CommandManager.argument("icon", ItemStackArgumentType.itemStack(registryAccess))
+									.then(CommandManager.argument("name", TextArgumentType.text(registryAccess))
+										.then(CommandManager.argument("lore", TextArgumentType.text(registryAccess))
+											.executes(c -> execute(c, (s, w, p, sw, e, f) -> {
+												try {
+													return addIdLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), ItemStackArgumentType.getItemStackArgument(c, "icon"), c.getArgument("name", Text.class), c.getArgument("lore", Text.class), true);
+												} catch (CommandSyntaxException ex) {
+													throw new RuntimeException(ex);
+												}
+											}))
+										)
+									)
+								)
+							)
 						)
 					)
 				)
