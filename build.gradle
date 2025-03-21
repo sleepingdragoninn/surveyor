@@ -12,6 +12,7 @@ archivesBaseName = project.slug
 
 repositories {
 	maven { url "https://repo.sleeping.town/" }
+	mavenLocal()
 }
 
 dependencies {
@@ -23,6 +24,8 @@ dependencies {
 	modImplementation libs.fl
 
 	modImplementation libs.fapi
+
+	modRuntimeOnly libs.hoofprint
 }
 
 processResources {
