@@ -24,8 +24,6 @@ dependencies {
 	modImplementation libs.fl
 
 	modImplementation libs.fapi
-
-	modRuntimeOnly libs.hoofprint
 }
 
 processResources {

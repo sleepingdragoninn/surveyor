@@ -102,14 +102,14 @@ public class WorldLandmarks {
 			Map<UUID, Map<Identifier, Landmark>> waypointsRemoved = new HashMap<>();
 			Map<UUID, Map<Identifier, Landmark>> waypointsAddedChanged = new HashMap<>();
 			landmarksRemoved.forEach((uuid, map) -> map.forEach((id, landmark) -> {
-				if (landmark.owner() != null) waypointsRemoved.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
+				if (!landmark.owner().equals(GLOBAL)) waypointsRemoved.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
 			}));
 			waypointsRemoved.forEach((uuid, map) -> map.forEach((id, landmark) -> {
 				landmarksRemoved.get(uuid).remove(id);
 				if (landmarksRemoved.get(uuid).isEmpty()) landmarksRemoved.remove(uuid);
 			}));
 			landmarksAddedChanged.forEach((uuid, map) -> map.forEach((id, landmark) -> {
-				if (landmark.owner() != null) waypointsAddedChanged.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
+				if (!landmark.owner().equals(GLOBAL)) waypointsAddedChanged.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
 			}));
 			waypointsAddedChanged.forEach((uuid, map) -> map.forEach((id, landmark) -> {
 				landmarksAddedChanged.get(uuid).remove(id);
@@ -211,7 +211,7 @@ public class WorldLandmarks {
 	public void readUpdatePacket(World world, SyncLandmarksAddedPacket packet, @Nullable ServerPlayerEntity sender) {
 		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
 		packet.landmarks().forEach((uuid, map) -> map.forEach((id, landmark) -> {
-			boolean waypoint = landmark.owner() != null;
+			boolean waypoint = !landmark.owner().equals(GLOBAL);
 			boolean owned = sender == null || Surveyor.getUuid(sender).equals(landmark.owner());
 			if (owned && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
 				putForBatch(changed, landmark);
@@ -225,7 +225,7 @@ public class WorldLandmarks {
 		packet.landmarks().forEach((uuid, id) -> {
 			if (!contains(uuid, id)) return;
 			Landmark landmark = get(uuid, id);
-			boolean waypoint = landmark.owner() != null;
+			boolean waypoint = !landmark.owner().equals(GLOBAL);
 			boolean owned = sender == null || Surveyor.getUuid(sender).equals(landmark.owner());
 			if (owned && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
 				removeForBatch(changed, uuid, id);
