@@ -12,11 +12,9 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.LightType;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.source.BiomeCoords;
 import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.WorldChunk;
 import org.jetbrains.annotations.Nullable;
@@ -37,9 +35,10 @@ public class ChunkSummary {
 	public ChunkSummary(World world, WorldChunk chunk, int[] layerHeights, RegistryPalette<Biome> biomePalette, RegistryPalette<Block> blockPalette, boolean countAir) {
 		this.airCount = countAir ? ChunkUtil.airCount(chunk) : null;
 		LayerSummary.FloorSummary[][] layerFloors = new LayerSummary.FloorSummary[layerHeights.length - 1][256];
-		ChunkSection[] sections = chunk.getSectionArray();
-		for (ChunkSection chunkSection : sections) {
-			chunkSection.lock();
+		ChunkSection[] rawSections = chunk.getSectionArray();
+		SectionSummary[] sections = new SectionSummary[rawSections.length];
+		for (int i = 0; i < rawSections.length; i++) {
+			sections[i] = SectionSummary.ofSection(rawSections[i]);
 		}
 		int chunkX = chunk.getPos().getStartX();
 		int chunkZ = chunk.getPos().getStartZ();
@@ -53,7 +52,7 @@ public class ChunkSummary {
 					LayerSummary.FloorSummary foundFloor = null;
 					for (int y = layerHeights[layerIndex]; y > layerHeights[layerIndex + 1]; y--) {
 						int sectionIndex = chunk.getSectionIndex(y);
-						ChunkSection section = sections[sectionIndex];
+						SectionSummary section = sections[sectionIndex];
 						if (section == null) {
 							int sectionBottom = ChunkSectionPos.getBlockCoord(chunk.sectionIndexToCoord(sectionIndex));
 							walkspaceHeight += (y - sectionBottom + 1);
@@ -62,7 +61,7 @@ public class ChunkSummary {
 							continue;
 						}
 						BlockPos pos = new BlockPos(chunkX + x, y, chunkZ + z);
-						BlockState state = section.getBlockState(x, y & 15, z);
+						BlockState state = section.getBlockState(x, y, z);
 						Fluid fluid = state.getFluidState().getFluid();
 
 						if (!state.blocksMovement() && fluid.matchesType(Fluids.EMPTY)) {
@@ -77,7 +76,7 @@ public class ChunkSummary {
 						} else { // Blocks Movement or Has Non-Water Fluid.
 							if (foundFloor == null) {
 								if (carpetPos.getY() == y + 1) {
-									foundFloor = new LayerSummary.FloorSummary(carpetPos.getY(), biomePalette.findOrAdd(section.getBiome(BiomeCoords.fromBlock(x) & 3, MathHelper.clamp(BiomeCoords.fromBlock(y), BiomeCoords.fromBlock(world.getBottomY()), BiomeCoords.fromBlock(world.getTopY()) - 1) & 3, BiomeCoords.fromBlock(z) & 3).value()), blockPalette.findOrAdd(carpetBlock), world.getLightLevel(LightType.BLOCK, carpetPos), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
+									foundFloor = new LayerSummary.FloorSummary(carpetPos.getY(), biomePalette.findOrAdd(section.getBiomeEntry(x, carpetPos.getY(), z, world.getBottomY(), world.getTopY()).value()), blockPalette.findOrAdd(carpetBlock), world.getLightLevel(LightType.BLOCK, carpetPos), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
 									if (carpetPos.getY() > layerHeights[layerIndex]) { // Actually a floor for the layer above
 										if (layerFloors[layerIndex - 1][x * 16 + z] == null) layerFloors[layerIndex - 1][x * 16 + z] = foundFloor;
 										foundFloor = null;
@@ -86,7 +85,7 @@ public class ChunkSummary {
 									walkspaceHeight = 0;
 									waterDepth = 0;
 								} else if (walkspaceHeight >= MINIMUM_AIR_DEPTH && state.getMapColor(world, pos) != MapColor.CLEAR) {
-									foundFloor = new LayerSummary.FloorSummary(y, biomePalette.findOrAdd(section.getBiome(BiomeCoords.fromBlock(x) & 3, MathHelper.clamp(BiomeCoords.fromBlock(y), BiomeCoords.fromBlock(world.getBottomY()), BiomeCoords.fromBlock(world.getTopY()) - 1) & 3, BiomeCoords.fromBlock(z) & 3).value()), blockPalette.findOrAdd(state.getBlock()), world.getLightLevel(LightType.BLOCK, pos.up()), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
+									foundFloor = new LayerSummary.FloorSummary(y, biomePalette.findOrAdd(section.getBiomeEntry(x, y, z, world.getBottomY(), world.getTopY()).value()), blockPalette.findOrAdd(state.getBlock()), world.getLightLevel(LightType.BLOCK, pos.up()), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
 								}
 							}
 							if (state.getMapColor(world, pos) != MapColor.CLEAR) { // Don't reset walkspace for glass/barriers/etc.
@@ -98,9 +97,6 @@ public class ChunkSummary {
 					layerFloors[layerIndex][x * 16 + z] = foundFloor;
 				}
 			}
-		}
-		for (ChunkSection chunkSection : sections) {
-			chunkSection.unlock();
 		}
 		for (int i = 0; i < layerFloors.length; i++) {
 			this.layers.put(layerHeights[i], LayerSummary.fromSummaries(layerFloors[i], layerHeights[i]));
