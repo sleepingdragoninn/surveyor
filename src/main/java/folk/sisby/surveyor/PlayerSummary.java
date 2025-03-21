@@ -106,6 +106,10 @@ public interface PlayerSummary {
 		}
 
 		public record OfflinePlayerExploration(Set<UUID> sharedPlayers, Map<RegistryKey<World>, Map<ChunkPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures, boolean personal) implements SurveyorExploration {
+			public static OfflinePlayerExploration empty(UUID uuid) {
+				return new OfflinePlayerExploration(Set.of(uuid), new HashMap<>(), new HashMap<>(), true);
+			}
+
 			public static OfflinePlayerExploration ofMerged(Set<SurveyorExploration> explorations) {
 				Set<UUID> sharedPlayers = new HashSet<>();
 				Map<RegistryKey<World>, Map<ChunkPos, BitSet>> terrain = new HashMap<>();

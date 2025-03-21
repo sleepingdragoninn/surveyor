@@ -28,9 +28,13 @@ public class SurveyorConfig extends WrappedConfig {
 	@Comment("waypoints/landmarks raw | prints the raw SNBT of a landmark")
 	public boolean debugCommands = false;
 
+	@Comment("Ignores chunk changes that don't affect the amount of air in the chunk")
+	@Comment("Saves on performance, a little inaccurate sometimes.")
+	public boolean lazyClientUpdating = true;
+
 	public Networking networking = new Networking();
 
-	public static final class Networking implements Section {
+    public static final class Networking implements Section {
 		@Comment("[Server] Whether to place every player in a single share group")
 		@Comment("Disables /surveyor share and /surveyor unshare")
 		public boolean globalSharing = false;
