@@ -31,7 +31,7 @@ import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Uuids;
+import net.minecraft.nbt.NbtCrashException;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.WorldChunk;
@@ -190,7 +190,7 @@ public class SurveyorClient implements ClientModInitializer {
 				if (saveFile.exists()) {
 					try {
 						explorationNbt = NbtIo.readCompressed(saveFile.toPath(), NbtSizeTracker.ofUnlimitedBytes());
-					} catch (IOException e) {
+					} catch (IOException | NbtCrashException e) {
 						Surveyor.LOGGER.error("[Surveyor] Error loading client exploration file.", e);
 					}
 				}

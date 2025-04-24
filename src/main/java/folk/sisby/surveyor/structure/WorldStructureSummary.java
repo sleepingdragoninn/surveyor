@@ -27,6 +27,7 @@ import net.minecraft.structure.StructurePieceType;
 import net.minecraft.structure.StructureStart;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
+import net.minecraft.nbt.NbtCrashException;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.WorldChunk;
@@ -97,7 +98,7 @@ public class WorldStructureSummary {
 		if (structuresFile.exists()) {
 			try {
 				worldNbt = NbtIo.readCompressed(structuresFile.toPath(), NbtSizeTracker.ofUnlimitedBytes());
-			} catch (IOException e) {
+			} catch (IOException | NbtCrashException e) {
 				Surveyor.LOGGER.error("[Surveyor] Error loading structure summary file for {}.", world.getRegistryKey().getValue(), e);
 			}
 		}
