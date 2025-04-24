@@ -17,6 +17,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
+import net.minecraft.util.crash.CrashException;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -45,7 +46,7 @@ public class WorldLandmarks {
 		if (landmarksFile.exists()) {
 			try {
 				landmarkNbt = NbtIo.readCompressed(landmarksFile);
-			} catch (IOException e) {
+			} catch (IOException | CrashException e) {
 				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", world.getRegistryKey().getValue(), e);
 			}
 		}

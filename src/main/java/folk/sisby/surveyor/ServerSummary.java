@@ -15,6 +15,7 @@ import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.WorldSavePath;
+import net.minecraft.util.crash.CrashException;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -54,7 +55,7 @@ public final class ServerSummary {
 		if (sharingFile.exists()) {
 			try {
 				sharingNbt = NbtIo.readCompressed(sharingFile);
-			} catch (IOException e) {
+			} catch (IOException | CrashException e) {
 				Surveyor.LOGGER.error("[Surveyor] Error loading sharing file.", e);
 			}
 		}
@@ -93,7 +94,7 @@ public final class ServerSummary {
 			try {
 				NbtCompound playerNbt = NbtIo.readCompressed(file);
 				offlineSummaries.put(uuid, new PlayerSummary.OfflinePlayerSummary(uuid, playerNbt, false));
-			} catch (IOException e) {
+			} catch (IOException | CrashException e) {
 				Surveyor.LOGGER.error("[Surveyor] Error loading offline player data for {}!", uuid, e);
 			}
 		}
