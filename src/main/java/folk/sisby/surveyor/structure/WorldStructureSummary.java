@@ -25,6 +25,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.structure.StructurePieceType;
 import net.minecraft.structure.StructureStart;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.WorldChunk;
@@ -207,23 +208,28 @@ public class WorldStructureSummary {
 		List<ChunkPos> savedRegions = new ArrayList<>();
 		if (isDirty()) {
 			File structureFile = new File(folder, "structures.dat");
-			try {
-				NbtIo.writeCompressed(writeNbt(new NbtCompound()), structureFile);
-				dirty = false;
-			} catch (IOException e) {
-				Surveyor.LOGGER.error("[Surveyor] Error writing world structure summary file for {}.", world.getRegistryKey().getValue(), e);
-			}
+			NbtCompound structureCompound = writeNbt(new NbtCompound());
+			Util.getIoWorkerExecutor().execute(() -> {
+					try {
+						NbtIo.writeCompressed(structureCompound, structureFile);
+					} catch (IOException e) {
+						Surveyor.LOGGER.error("[Surveyor] Error writing world structure summary file for {}.", world.getRegistryKey().getValue(), e);
+					}
+			});
+			dirty = false;
 			regions.forEach((pos, summary) -> {
 				if (!summary.isDirty()) return;
 				savedRegions.add(pos);
 				NbtCompound regionCompound = summary.writeNbt(new NbtCompound());
 				File regionFile = new File(folder, "s.%d.%d.dat".formatted(pos.x, pos.z));
-				try {
-					NbtIo.writeCompressed(regionCompound, regionFile);
-					summary.dirty = false;
-				} catch (IOException e) {
-					Surveyor.LOGGER.error("[Surveyor] Error writing region structure summary file {}.", regionFile.getName(), e);
-				}
+				Util.getIoWorkerExecutor().execute(() -> {
+					try {
+						NbtIo.writeCompressed(regionCompound, regionFile);
+					} catch (IOException e) {
+						Surveyor.LOGGER.error("[Surveyor] Error writing region structure summary file {}.", regionFile.getName(), e);
+					}
+				});
+				summary.dirty = false;
 			});
 		}
 		return savedRegions.size();

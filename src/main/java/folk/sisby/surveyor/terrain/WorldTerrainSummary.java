@@ -12,6 +12,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
+import net.minecraft.util.Util;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
@@ -122,12 +123,14 @@ public class WorldTerrainSummary {
 			savedRegions.add(pos);
 			NbtCompound regionCompound = summary.writeNbt(world.getRegistryManager(), new NbtCompound(), pos);
 			File regionFile = new File(folder, "c.%d.%d.dat".formatted(pos.x, pos.z));
-			try {
-				NbtIo.writeCompressed(regionCompound, regionFile);
-				summary.dirty = false;
-			} catch (IOException e) {
-				Surveyor.LOGGER.error("[Surveyor] Error writing region summary file {}.", regionFile.getName(), e);
-			}
+			Util.getIoWorkerExecutor().execute(() -> {
+				try {
+					NbtIo.writeCompressed(regionCompound, regionFile);
+				} catch (IOException e) {
+					Surveyor.LOGGER.error("[Surveyor] Error writing region summary file {}.", regionFile.getName(), e);
+				}
+			});
+			summary.dirty = false;
 		});
 		return savedRegions.size();
 	}
