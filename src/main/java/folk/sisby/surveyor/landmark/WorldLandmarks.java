@@ -17,6 +17,7 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -197,12 +198,15 @@ public class WorldLandmarks {
 	public int save(World world, File folder) {
 		if (isDirty()) {
 			File landmarksFile = new File(folder, "landmarks.dat");
-			try {
-				NbtIo.writeCompressed(Landmarks.writeNbt(landmarks, new NbtCompound()), landmarksFile.toPath());
-				dirty = false;
-			} catch (IOException e) {
-				Surveyor.LOGGER.error("[Surveyor] Error writing landmarks file for {}.", world.getRegistryKey().getValue(), e);
-			}
+			NbtCompound landmarksCompound = Landmarks.writeNbt(landmarks, new NbtCompound());
+			Util.getIoWorkerExecutor().execute(() -> {
+				try {
+					NbtIo.writeCompressed(landmarksCompound, landmarksFile.toPath());
+				} catch (IOException e) {
+					Surveyor.LOGGER.error("[Surveyor] Error writing landmarks file for {}.", world.getRegistryKey().getValue(), e);
+				}
+			});
+			dirty = false;
 			return landmarks.values().stream().mapToInt(Map::size).sum();
 		}
 		return 0;

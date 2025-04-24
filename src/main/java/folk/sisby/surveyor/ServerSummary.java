@@ -133,13 +133,7 @@ public final class ServerSummary {
 		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
 			Map<UUID, PlayerSummary> group = Surveyor.CONFIG.networking.positions.atLeast(NetworkMode.SERVER) ? ServerSummary.of(server).getOfflineSummaries(server) : ServerSummary.of(server).getGroupSummaries(Surveyor.getUuid(player), server);
 			PlayerSummary playerSummary = group.get(Surveyor.getUuid(player));
-			group.entrySet().removeIf(e -> e.getKey().equals(Surveyor.getUuid(player)));
-			group.entrySet().removeIf(e -> !e.getValue().online());
-			group.entrySet().removeIf(e -> !e.getValue().dimension().equals(playerSummary.dimension()));
-			group.entrySet().removeIf(e -> {
-				ServerPlayerEntity friend = server.getPlayerManager().getPlayer(e.getKey());
-				return (friend == null || !friend.isSpectator()) && e.getValue().pos().squaredDistanceTo(playerSummary.pos()) < ((playerSummary.viewDistance() * playerSummary.viewDistance() + 1) << 4);
-			});
+			group.entrySet().removeIf(entry -> entry.getKey().equals(Surveyor.getUuid(player)) || !entry.getValue().online() || !entry.getValue().dimension().equals(playerSummary.dimension()));
 			if (!group.isEmpty()) new S2CGroupUpdatedPacket(group).send(player);
 		}
 	}
@@ -197,7 +191,11 @@ public final class ServerSummary {
 	}
 
 	public Map<UUID, PlayerSummary> getOfflineSummaries(MinecraftServer server) {
-		return offlineSummaries.keySet().stream().filter(u -> getPlayer(u, server) != null).collect(Collectors.toMap(u -> u, u -> getPlayer(u, server)));
+		Map<UUID, PlayerSummary> map = new HashMap<>();
+		for (UUID u : offlineSummaries.keySet()) {
+			if (getPlayer(u, server) != null) map.put(u, getPlayer(u, server));
+		}
+		return map;
 	}
 
 	public Set<UUID> getGroup(UUID player) {
@@ -205,7 +203,11 @@ public final class ServerSummary {
 	}
 
 	public Map<UUID, PlayerSummary> getGroupSummaries(UUID player, MinecraftServer server) {
-		return getGroup(player).stream().filter(u -> getPlayer(u, server) != null).collect(Collectors.toMap(u -> u, u -> getPlayer(u, server)));
+		Map<UUID, PlayerSummary> map = new HashMap<>();
+		for (UUID u : getGroup(player)) {
+			if (getPlayer(u, server) != null) map.put(u, getPlayer(u, server));
+		}
+		return map;
 	}
 
 	public void joinGroup(UUID player1, UUID player2, MinecraftServer server) {
