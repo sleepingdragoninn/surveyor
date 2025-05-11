@@ -77,7 +77,7 @@ public class SurveyorNetworking {
 		if (summary.landmarks() == null || Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.NONE)) return;
 		Multimap<UUID, Identifier> landmarks = summary.landmarks().keySet(explorationForMode(Surveyor.CONFIG.networking.landmarks, player));
 		Multimap<UUID, Identifier> addLandmarks = HashMultimap.create(landmarks);
-		packet.landmarks().forEach(addLandmarks::remove);
+		if (!Surveyor.CONFIG.forceUpdateLandmarks) packet.landmarks().forEach(addLandmarks::remove);
 		if (!addLandmarks.isEmpty()) SyncLandmarksAddedPacket.of(addLandmarks, summary.landmarks()).send(player);
 		Multimap<UUID, Identifier> removeLandmarks = HashMultimap.create(packet.landmarks());
 		landmarks.forEach(removeLandmarks::remove);
