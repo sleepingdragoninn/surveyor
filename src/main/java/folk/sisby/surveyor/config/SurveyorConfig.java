@@ -32,6 +32,10 @@ public class SurveyorConfig extends WrappedConfig {
 	@Comment("Saves on performance, a little inaccurate sometimes.")
 	public boolean lazyClientUpdating = true;
 
+	@Comment("Ignores known landmarks when syncing landmarks to the client")
+	@Comment("A temporary fix until landmarks have some kind of revision counter")
+	public boolean forceUpdateLandmarks = true;
+
 	public Networking networking = new Networking();
 
     public static final class Networking implements Section {
