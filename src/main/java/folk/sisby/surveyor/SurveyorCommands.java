@@ -6,6 +6,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.serialization.DataResult;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
@@ -317,12 +318,12 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		TextColor color = TextColor.parse(colorString);
-		if (color == null) {
+		DataResult<TextColor> color = TextColor.parse(colorString);
+		if (color.isError()) {
 			feedback.accept(prefix().append(Text.literal("Not a valid color! Use color names or hex codes").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		landmark.components().set(LandmarkComponentTypes.COLOR, color.getRgb());
+		landmark.components().set(LandmarkComponentTypes.COLOR, color.getOrThrow().getRgb());
 		summary.landmarks().put(world, landmark);
 		feedback.accept(prefix().append(Text.literal("%s appended successfully!".formatted(landmark.owner().equals(WorldLandmarks.GLOBAL) ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
 		return 1;
