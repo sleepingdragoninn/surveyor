@@ -9,6 +9,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentType;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.TextUtil;
 import net.minecraft.command.CommandRegistryAccess;
@@ -16,12 +17,17 @@ import net.minecraft.command.CommandSource;
 import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.command.argument.DefaultPosArgument;
 import net.minecraft.command.argument.IdentifierArgumentType;
+import net.minecraft.command.argument.ItemStackArgument;
+import net.minecraft.command.argument.ItemStackArgumentType;
+import net.minecraft.command.argument.TextArgumentType;
+import net.minecraft.item.ItemStack;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
+import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -253,7 +259,50 @@ public class SurveyorCommands {
 		return 1;
 	}
 
-	private static int removeLandmark(WorldSummary summary, ServerPlayerEntity player, ServerWorld world, Consumer<Text> feedback, Identifier type, boolean global) {
+	private static int removeLandmark(WorldSummary summary, ServerPlayerEntity player, ServerWorld world, Consumer<Text> feedback, Identifier id, boolean global) {
+		if (summary.landmarks() == null) {
+			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		if (!summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id)) {
+			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id);
+		if ((landmark.owner().equals(WorldLandmarks.GLOBAL) || landmark.owner() != Surveyor.getUuid(player)) && !player.hasPermissionLevel(2)) {
+			feedback.accept(prefix().append(Text.literal("You don't have permission to delete that landmark!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		summary.landmarks().remove(world, global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id);
+		feedback.accept(prefix().append(Text.literal("%s removed successfully!".formatted(landmark.owner().equals(WorldLandmarks.GLOBAL) ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
+		return 1;
+	}
+
+	private static int trimLandmark(WorldSummary summary, ServerPlayerEntity player, ServerWorld world, Consumer<Text> feedback, Identifier id, Identifier componentType, boolean global) {
+		if (summary.landmarks() == null) {
+			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		if (!summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id)) {
+			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		if (!LandmarkComponentType.containsType(componentType)) {
+			feedback.accept(prefix().append(Text.literal("No component exists of that id!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id);
+		if ((landmark.owner().equals(WorldLandmarks.GLOBAL) || landmark.owner() != Surveyor.getUuid(player)) && !player.hasPermissionLevel(2)) {
+			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		landmark.components().remove(LandmarkComponentType.getType(componentType));
+		summary.landmarks().put(world, landmark);
+		feedback.accept(prefix().append(Text.literal("%s trimmed successfully!".formatted(landmark.owner().equals(WorldLandmarks.GLOBAL) ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
+		return 1;
+	}
+
+	private static int appendColor(WorldSummary summary, ServerPlayerEntity player, ServerWorld world, Consumer<Text> feedback, Identifier type, String colorString, boolean global) {
 		if (summary.landmarks() == null) {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 			return 0;
@@ -264,11 +313,17 @@ public class SurveyorCommands {
 		}
 		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), type);
 		if ((landmark.owner().equals(WorldLandmarks.GLOBAL) || landmark.owner() != Surveyor.getUuid(player)) && !player.hasPermissionLevel(2)) {
-			feedback.accept(prefix().append(Text.literal("You don't have permission to delete that landmark!").formatted(Formatting.YELLOW)));
+			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		summary.landmarks().remove(world, global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), type);
-		feedback.accept(prefix().append(Text.literal("%s removed successfully!".formatted(landmark.owner().equals(WorldLandmarks.GLOBAL) ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
+		TextColor color = TextColor.parse(colorString);
+		if (color == null) {
+			feedback.accept(prefix().append(Text.literal("Not a valid color! Use color names or hex codes").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		landmark.components().set(LandmarkComponentTypes.COLOR, color.getRgb());
+		summary.landmarks().put(world, landmark);
+		feedback.accept(prefix().append(Text.literal("%s appended successfully!".formatted(landmark.owner().equals(WorldLandmarks.GLOBAL) ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
 		return 1;
 	}
 
@@ -286,6 +341,28 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("A landmark with this ID already exists! Replacing...").formatted(Formatting.YELLOW)));
 		}
 		summary.landmarks().put(world, Landmark.create(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id, builder -> LandmarkComponentTypes.forBlock(builder, world, pos)));
+		feedback.accept(prefix().append(Text.literal("Added new %s %s!".formatted(global ? "Landmark" : "Waypoint", id)).formatted(Formatting.GREEN)));
+		return 1;
+	}
+
+	private static int addIdLandmark(WorldSummary summary, ServerPlayerEntity player, ServerWorld world, Consumer<Text> feedback, Identifier id, BlockPos pos, ItemStackArgument stack, Text name, boolean global) throws CommandSyntaxException {
+		ItemStack icon = stack.createStack(1, false);
+		if (summary.landmarks() == null) {
+			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		if (global && !player.hasPermissionLevel(2)) {
+			feedback.accept(prefix().append(Text.literal("You don't have permission to add that landmark!").formatted(Formatting.YELLOW)));
+			return 0;
+		}
+		if (summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id)) {
+			feedback.accept(prefix().append(Text.literal("A landmark with this ID already exists! Replacing...").formatted(Formatting.YELLOW)));
+		}
+		summary.landmarks().put(world, Landmark.create(global ? WorldLandmarks.GLOBAL : Surveyor.getUuid(player), id, builder -> builder
+			.add(LandmarkComponentTypes.POS, pos)
+			.add(LandmarkComponentTypes.STACK, icon)
+			.add(LandmarkComponentTypes.NAME, name)
+		));
 		feedback.accept(prefix().append(Text.literal("Added new %s %s!".formatted(global ? "Landmark" : "Waypoint", id)).formatted(Formatting.GREEN)));
 		return 1;
 	}
@@ -342,6 +419,43 @@ public class SurveyorCommands {
 					.then(CommandManager.literal("block")
 						.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
 							.executes(c -> execute(c, (s, w, p, sw, e, f) -> addBlockLandmark(w, p, sw, f, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), true)))
+						)
+					)
+					.then(CommandManager.literal("id")
+						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+							.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
+								.then(CommandManager.argument("icon", ItemStackArgumentType.itemStack(registryAccess))
+									.then(CommandManager.argument("name", TextArgumentType.text())
+										.executes(c -> execute(c, (s, w, p, sw, e, f) -> {
+											try {
+												return addIdLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), ItemStackArgumentType.getItemStackArgument(c, "icon"), c.getArgument("name", Text.class),true);
+											} catch (CommandSyntaxException ex) {
+												throw new RuntimeException(ex);
+											}
+										}))
+									)
+								)
+							)
+						)
+					)
+				)
+				.then(CommandManager.literal("append")
+					.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+						.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (s, w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(WorldLandmarks.GLOBAL, p.hasPermissionLevel(2) ? null : e).keySet(), false), b))
+						.then(CommandManager.literal("surveyor:color")
+							.then(CommandManager.argument("color", StringArgumentType.greedyString())
+								.suggests((c, s) -> CommandSource.suggestMatching(Formatting.getNames(true, false), s))
+								.executes(c -> execute(c, (s, w, p, sw, e, f) -> appendColor(w, p, sw, f, c.getArgument("id", Identifier.class), c.getArgument("color", String.class), true)))
+							)
+						)
+					)
+				)
+				.then(CommandManager.literal("trim")
+					.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+						.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (s, w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(WorldLandmarks.GLOBAL, p.hasPermissionLevel(2) ? null : e).keySet(), false), b))
+						.then(CommandManager.argument("component", IdentifierArgumentType.identifier())
+							.suggests((c, b) -> CommandSource.suggestIdentifiers(LandmarkComponentType.keySet(), b))
+							.executes(c -> execute(c, (s, w, p, sw, e, f) -> trimLandmark(w, p, sw, f, c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class), true)))
 						)
 					)
 				)
