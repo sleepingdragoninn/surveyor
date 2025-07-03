@@ -1,5 +1,6 @@
 package folk.sisby.surveyor;
 
+import com.mojang.serialization.Codec;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
 import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
@@ -18,6 +19,8 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
@@ -81,12 +84,25 @@ public interface PlayerSummary {
 			);
 		}
 
+		public OfflinePlayerSummary(UUID uuid, ReadView view, boolean online) {
+			this(
+				OfflinePlayerExploration.from(uuid, view.read(KEY_DATA, NbtCompound.CODEC).get()),
+				view.read(KEY_DATA, NbtCompound.CODEC).isPresent() && view.read(KEY_DATA, NbtCompound.CODEC).get().contains(KEY_USERNAME)
+					? view.read(KEY_DATA, NbtCompound.CODEC).get().getString(KEY_USERNAME).get()
+					: "???",
+				RegistryKey.of(RegistryKeys.WORLD, Identifier.of(view.getString("Dimension", ""))),
+				view.read("Pos", Vec3d.CODEC).isPresent()
+					? view.read("Pos", Vec3d.CODEC).get()
+					: new Vec3d(0, 0, 0),
+				view.getFloat("Rotation", 0),
+				online
+			);
+		}
+
 		public static void writeBuf(PlayerSummary summary, RegistryByteBuf buf) {
 			buf.writeString(summary.username());
 			buf.writeRegistryKey(summary.dimension());
-			buf.writeDouble(summary.pos().x);
-			buf.writeDouble(summary.pos().y);
-			buf.writeDouble(summary.pos().z);
+			buf.writeVec3d(summary.pos());
 			buf.writeFloat(summary.yaw());
 			buf.writeBoolean(summary.online());
 		}
@@ -96,11 +112,7 @@ public interface PlayerSummary {
 				null,
 				buf.readString(),
 				buf.readRegistryKey(RegistryKeys.WORLD),
-				new Vec3d(
-					buf.readDouble(),
-					buf.readDouble(),
-					buf.readDouble()
-				),
+				buf.readVec3d(),
 				buf.readFloat(),
 				buf.readBoolean()
 			);
@@ -198,15 +210,15 @@ public interface PlayerSummary {
 			exploration.copyFrom(oldSummary.exploration);
 		}
 
-		public void read(NbtCompound nbt) {
-			exploration.read(nbt.getCompound(KEY_DATA).get());
+		public void read(ReadView view) {
+			exploration.read(view.read(KEY_DATA, NbtCompound.CODEC).orElseThrow());
 		}
 
-		public void writeNbt(NbtCompound nbt) {
+		public void writeNbt(WriteView view) {
 			NbtCompound surveyorNbt = new NbtCompound();
 			exploration.write(surveyorNbt);
 			surveyorNbt.putString(PlayerSummary.KEY_USERNAME, username());
-			nbt.put(PlayerSummary.KEY_DATA, surveyorNbt);
+			view.put(PlayerSummary.KEY_DATA, NbtCompound.CODEC, surveyorNbt);
 		}
 
 		public record ServerPlayerExploration(ServerPlayerEntity player, Map<RegistryKey<World>, Map<ChunkPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures) implements SurveyorExploration {
@@ -223,7 +235,7 @@ public interface PlayerSummary {
 			@Override
 			public void mergeRegion(RegistryKey<World> worldKey, ChunkPos regionPos, BitSet bitSet) { // This method is currently unused for server players, but its implemented anyway
 				SurveyorExploration.super.mergeRegion(worldKey, regionPos, bitSet);
-				if (player.getServer().isHost(player.getGameProfile())) updateClientForMergeRegion(player.getServerWorld(), regionPos, bitSet);
+				if (player.getServer().isHost(player.getGameProfile())) updateClientForMergeRegion(player.getWorld(), regionPos, bitSet);
 				if (Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.SOLO)) return;
 				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
 					if (friend.getWorld().getRegistryKey().equals(worldKey)) {
@@ -239,7 +251,7 @@ public interface PlayerSummary {
 			@Override
 			public void addChunk(RegistryKey<World> worldKey, ChunkPos pos) {
 				SurveyorExploration.super.addChunk(worldKey, pos);
-				if (player.getServer().isHost(player.getGameProfile())) updateClientForAddChunk(player.getServerWorld(), pos);
+				if (player.getServer().isHost(player.getGameProfile())) updateClientForAddChunk(player.getWorld(), pos);
 				if (Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.SOLO)) return;
 				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
 					if (friend.getWorld().getRegistryKey().equals(worldKey) && !SurveyorExploration.of(friend).exploredChunk(worldKey, pos)) {
@@ -257,7 +269,7 @@ public interface PlayerSummary {
 			@Override
 			public void addStructure(RegistryKey<World> worldKey, RegistryKey<Structure> structureKey, ChunkPos pos) {
 				SurveyorExploration.super.addStructure(worldKey, structureKey, pos);
-				ServerWorld world = player.getServerWorld();
+				ServerWorld world = player.getWorld();
 				if (player.getServer().isHost(player.getGameProfile())) updateClientForAddStructure(world, structureKey, pos);
 				WorldStructureSummary summary = WorldSummary.of(world).structures();
 				if (Surveyor.CONFIG.networking.structures.atMost(NetworkMode.NONE)) return;

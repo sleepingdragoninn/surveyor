@@ -42,7 +42,7 @@ public class RaycastUtil {
 				cameraPos, endPos, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, player
 			),
 			(innerContext, pos) -> {
-				WorldChunk chunk = player.getServerWorld().getChunkManager().getWorldChunk(ChunkSectionPos.getSectionCoord(pos.getX()), ChunkSectionPos.getSectionCoord(pos.getZ()));
+				WorldChunk chunk = player.getWorld().getChunkManager().getWorldChunk(ChunkSectionPos.getSectionCoord(pos.getX()), ChunkSectionPos.getSectionCoord(pos.getZ()));
 				if (chunk == null) {
 					Vec3d vec3d = innerContext.getStart().subtract(innerContext.getEnd());
 					return BlockHitResult.createMissed(pos.toCenterPos(), Direction.getFacing(vec3d.x, vec3d.y, vec3d.z), pos);
