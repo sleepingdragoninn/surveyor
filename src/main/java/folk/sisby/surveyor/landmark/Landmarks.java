@@ -55,7 +55,7 @@ public class Landmarks {
 	}
 
 	public static Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> fromNbt(NbtCompound nbt) {
-		return CODEC.decode(NbtOps.INSTANCE, nbt.getCompound(KEY_LANDMARKS)).getOrThrow().getFirst();
+		return CODEC.decode(NbtOps.INSTANCE, nbt.getCompound(KEY_LANDMARKS).get()).getOrThrow().getFirst();
 	}
 
 	public static LandmarkType<?> getType(Identifier id) {

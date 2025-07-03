@@ -21,6 +21,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
 import net.minecraft.world.chunk.WorldChunk;
+import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -95,10 +96,10 @@ public class RegionSummary {
 		RegionSummary summary = new RegionSummary(manager);
 		Registry<Biome> biomeRegistry = manager.getOrThrow(RegistryKeys.BIOME);
 		Registry<Block> blockRegistry = manager.getOrThrow(RegistryKeys.BLOCK);
-		NbtList biomeList = nbt.getList(KEY_BIOMES, NbtElement.STRING_TYPE);
+		NbtList biomeList = nbt.getList(KEY_BIOMES).get();
 		Map<Integer, Integer> biomeRemap = new Int2IntArrayMap(biomeList.size());
 		for (int i = 0; i < biomeList.size(); i++) {
-			Identifier biomeId = Identifier.tryParse(biomeList.get(i).asString());
+			Identifier biomeId = Identifier.tryParse(biomeList.get(i).asString().get());
 			Biome biome = biomeRegistry.get(biomeId);
 			Biome newBiome = biome == null ? biomeRegistry.get(BiomeKeys.THE_VOID) : biome;
 			int newIndex = summary.biomePalette.findOrAdd(newBiome);
@@ -108,10 +109,10 @@ public class RegionSummary {
 				summary.dirty();
 			}
 		}
-		NbtList blockList = nbt.getList(KEY_BLOCKS, NbtElement.STRING_TYPE);
+		NbtList blockList = nbt.getList(KEY_BLOCKS).get();
 		Map<Integer, Integer> blockRemap = new Int2IntArrayMap(blockList.size());
 		for (int i = 0; i < blockList.size(); i++) {
-			Identifier blockId = Identifier.tryParse(blockList.get(i).asString());
+			Identifier blockId = Identifier.tryParse(blockList.get(i).asString().get());
 			Block block = blockRegistry.get(blockId);
 			Block newBlock = block == null ? Blocks.AIR : block;
 			int newIndex = summary.blockPalette.findOrAdd(newBlock);
@@ -121,11 +122,11 @@ public class RegionSummary {
 				summary.dirty();
 			}
 		}
-		NbtCompound chunksCompound = nbt.getCompound(KEY_CHUNKS);
+		NbtCompound chunksCompound = nbt.getCompound(KEY_CHUNKS).get();
 		for (String posKey : chunksCompound.getKeys()) {
 			int x = regionRelative(Integer.parseInt(posKey.split(",")[0]));
 			int z = regionRelative(Integer.parseInt(posKey.split(",")[1]));
-			summary.chunks[x][z] = new ChunkSummary(chunksCompound.getCompound(posKey));
+			summary.chunks[x][z] = new ChunkSummary(chunksCompound.getCompound(posKey).get());
 			if (!biomeRemap.isEmpty() || !blockRemap.isEmpty()) summary.chunks[x][z].remap(biomeRemap, blockRemap);
 		}
 		return summary;
@@ -159,12 +160,12 @@ public class RegionSummary {
 	public NbtCompound writeNbt(DynamicRegistryManager manager, NbtCompound nbt, ChunkPos regionPos) {
 		Registry<Biome> biomeRegistry = manager.getOrThrow(RegistryKeys.BIOME);
 		Registry<Block> blockRegistry = manager.getOrThrow(RegistryKeys.BLOCK);
-		nbt.put(KEY_BIOMES, new NbtList(mapIterable(biomePalette.view(), b -> NbtString.of(biomeRegistry.getId(b).toString())), NbtElement.STRING_TYPE));
-		nbt.put(KEY_BLOCKS, new NbtList(mapIterable(blockPalette.view(), b -> NbtString.of(blockRegistry.getId(b).toString())), NbtElement.STRING_TYPE));
-		nbt.putIntArray(KEY_BIOME_WATER, mapIterable(biomePalette.view(), Biome::getWaterColor));
-		nbt.putIntArray(KEY_BIOME_FOLIAGE, mapIterable(biomePalette.view(), Biome::getFoliageColor));
-		nbt.putIntArray(KEY_BIOME_GRASS, mapIterable(biomePalette.view(), b -> b.getGrassColorAt(0, 0)));
-		nbt.putIntArray(KEY_BLOCK_COLORS, mapIterable(blockPalette.view(), b -> b.getDefaultMapColor().color));
+		nbt.put(KEY_BIOMES, (NbtElement) (mapIterable(biomePalette.view(), b -> NbtString.of(biomeRegistry.getId(b).toString()))));
+		nbt.put(KEY_BLOCKS, (NbtElement) (mapIterable(blockPalette.view(), b -> NbtString.of(blockRegistry.getId(b).toString()))));
+		nbt.putIntArray(KEY_BIOME_WATER, (int[]) ArrayUtils.toPrimitive(mapIterable(biomePalette.view(), Biome::getWaterColor)));
+		nbt.putIntArray(KEY_BIOME_FOLIAGE, (int[]) ArrayUtils.toPrimitive(mapIterable(biomePalette.view(), Biome::getFoliageColor)));
+		nbt.putIntArray(KEY_BIOME_GRASS, (int[]) ArrayUtils.toPrimitive(mapIterable(biomePalette.view(), b -> b.getGrassColorAt(0, 0))));
+		nbt.putIntArray(KEY_BLOCK_COLORS, (int[]) ArrayUtils.toPrimitive(mapIterable(blockPalette.view(), b -> b.getDefaultMapColor().color)));
 		NbtCompound chunksCompound = new NbtCompound();
 		for (int x = 0; x < REGION_SIZE; x++) {
 			for (int z = 0; z < REGION_SIZE; z++) {

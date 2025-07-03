@@ -60,7 +60,7 @@ public final class ServerSummary {
 			}
 		}
 		Map<UUID, Set<UUID>> shareGroups = new ConcurrentHashMap<>();
-		sharingNbt.getList(KEY_GROUPS, NbtElement.LIST_TYPE).stream().map(l -> ((NbtList) l).stream().map(s -> UUID.fromString(s.asString())).collect(Collectors.toCollection(HashSet::new))).forEach(set -> {
+		sharingNbt.getList(KEY_GROUPS).stream().map(l -> ((NbtList) l).stream().map(s -> UUID.fromString(s.asString().get())).collect(Collectors.toCollection(HashSet::new))).forEach(set -> {
 			for (UUID uuid : set) {
 				shareGroups.put(uuid, set);
 			}
@@ -166,7 +166,7 @@ public final class ServerSummary {
 	}
 
 	private NbtCompound writeNbt(NbtCompound nbt) {
-		nbt.put(KEY_GROUPS, new NbtList(getGroups().stream().filter(s -> s.size() > 1).map(s -> (NbtElement) new NbtList(s.stream().map(u -> (NbtElement) NbtString.of(u.toString())).toList(), NbtElement.STRING_TYPE)).toList(), NbtElement.LIST_TYPE));
+		nbt.put(KEY_GROUPS, (NbtList) getGroups().stream().filter(s -> s.size() > 1).map(s -> (NbtElement) (s.stream().map(u -> (NbtElement) NbtString.of(u.toString())).toList())).toList());
 		return nbt;
 	}
 

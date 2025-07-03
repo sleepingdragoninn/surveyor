@@ -66,11 +66,17 @@ public interface PlayerSummary {
 	record OfflinePlayerSummary(SurveyorExploration exploration, String username, RegistryKey<World> dimension, Vec3d pos, float yaw, boolean online) implements PlayerSummary {
 		public OfflinePlayerSummary(UUID uuid, NbtCompound nbt, boolean online) {
 			this(
-				OfflinePlayerExploration.from(uuid, nbt.getCompound(KEY_DATA)),
-				nbt.getCompound(KEY_DATA).contains(KEY_USERNAME) ? nbt.getCompound(KEY_DATA).getString(KEY_USERNAME) : "???",
-				RegistryKey.of(RegistryKeys.WORLD, Identifier.of(nbt.getString("Dimension"))),
-				nbt.contains("Pos", NbtElement.LIST_TYPE) ? ArrayUtil.toVec3d(nbt.getList("Pos", NbtElement.DOUBLE_TYPE).stream().mapToDouble(e -> ((NbtDouble) e).doubleValue()).toArray()) : new Vec3d(0, 0, 0),
-				nbt.getList("Rotation", NbtElement.FLOAT_TYPE).getFloat(0),
+				OfflinePlayerExploration.from(uuid, nbt.getCompound(KEY_DATA).get()),
+				nbt.getCompound(KEY_DATA).isPresent() && nbt.getCompound(KEY_DATA).get().contains(KEY_USERNAME)
+					? nbt.getCompound(KEY_DATA).get().getString(KEY_USERNAME).get()
+					: "???",
+				RegistryKey.of(RegistryKeys.WORLD, Identifier.of(nbt.getString("Dimension").get())),
+				nbt.getList("Pos").isPresent() && nbt.contains("Pos")
+					? ArrayUtil.toVec3d(nbt.getList("Pos").get().stream().mapToDouble(e -> ((NbtDouble) e).doubleValue()).toArray())
+					: new Vec3d(0, 0, 0),
+				nbt.getList("Rotation").isPresent() && nbt.contains("Rotation")
+					? nbt.getList("Rotation").get().getFloat(0).get()
+					: 0,
 				online
 			);
 		}
@@ -193,7 +199,7 @@ public interface PlayerSummary {
 		}
 
 		public void read(NbtCompound nbt) {
-			exploration.read(nbt.getCompound(KEY_DATA));
+			exploration.read(nbt.getCompound(KEY_DATA).get());
 		}
 
 		public void writeNbt(NbtCompound nbt) {
