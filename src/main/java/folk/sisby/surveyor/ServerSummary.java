@@ -15,6 +15,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -60,7 +62,7 @@ public final class ServerSummary {
 			}
 		}
 		Map<UUID, Set<UUID>> shareGroups = new ConcurrentHashMap<>();
-		sharingNbt.getList(KEY_GROUPS, NbtElement.LIST_TYPE).stream().map(l -> ((NbtList) l).stream().map(s -> UUID.fromString(s.asString())).collect(Collectors.toCollection(HashSet::new))).forEach(set -> {
+		sharingNbt.getList(KEY_GROUPS).stream().map(l -> ((NbtList) l).stream().map(s -> UUID.fromString(s.asString().get())).collect(Collectors.toCollection(HashSet::new))).forEach(set -> {
 			for (UUID uuid : set) {
 				shareGroups.put(uuid, set);
 			}
@@ -116,7 +118,7 @@ public final class ServerSummary {
 		ServerSummary serverSummary = ServerSummary.of(server);
 		UUID uuid = Surveyor.getUuid(handler.player);
 		boolean known = serverSummary.offlineSummaries.containsKey(uuid);
-		serverSummary.updatePlayer(uuid, handler.player.writeNbt(new NbtCompound()), true, server);
+		serverSummary.createPlayer(uuid, true, server);
 		if (serverSummary.groupSize(uuid) > 1) {
 			SurveyorExploration groupExploration = serverSummary.groupExploration(uuid, server);
 			new S2CGroupChangedPacket(serverSummary.getGroupSummaries(uuid, server), groupExploration.terrain().getOrDefault(handler.player.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(handler.player.getWorld().getRegistryKey(), new HashMap<>())).send(handler.player);
@@ -166,7 +168,7 @@ public final class ServerSummary {
 	}
 
 	private NbtCompound writeNbt(NbtCompound nbt) {
-		nbt.put(KEY_GROUPS, new NbtList(getGroups().stream().filter(s -> s.size() > 1).map(s -> (NbtElement) new NbtList(s.stream().map(u -> (NbtElement) NbtString.of(u.toString())).toList(), NbtElement.STRING_TYPE)).toList(), NbtElement.LIST_TYPE));
+		nbt.put(KEY_GROUPS, (NbtList) getGroups().stream().filter(s -> s.size() > 1).map(s -> (NbtElement) (s.stream().map(u -> (NbtElement) NbtString.of(u.toString())).toList())).toList());
 		return nbt;
 	}
 
@@ -184,8 +186,16 @@ public final class ServerSummary {
 		return summary == null ? null : summary.exploration();
 	}
 
-	public void updatePlayer(UUID uuid, NbtCompound nbt, boolean online, MinecraftServer server) {
-		PlayerSummary newSummary = new PlayerSummary.OfflinePlayerSummary(uuid, nbt, online);
+	public void createPlayer(UUID uuid, boolean online, MinecraftServer server) {
+		PlayerSummary newSummary = new PlayerSummary.OfflinePlayerSummary(uuid, new NbtCompound(), online);
+		offlineSummaries.put(uuid, newSummary);
+		for (ServerPlayerEntity friend : groupOtherServerPlayers(uuid, server)) {
+			S2CGroupUpdatedPacket.of(uuid, newSummary).send(friend);
+		}
+	}
+
+	public void updatePlayer(UUID uuid, WriteView view, boolean online, MinecraftServer server) {
+		PlayerSummary newSummary = offlineSummaries.get(uuid);
 		offlineSummaries.put(uuid, newSummary);
 		for (ServerPlayerEntity friend : groupOtherServerPlayers(uuid, server)) {
 			S2CGroupUpdatedPacket.of(uuid, newSummary).send(friend);

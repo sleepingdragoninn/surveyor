@@ -11,7 +11,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
@@ -20,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 public record SyncLandmarksAddedPacket(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> landmarks) implements SyncPacket {
-	public static final CustomPayload.Id<SyncLandmarksAddedPacket> ID = new CustomPayload.Id<>(Identifier.of(Surveyor.ID, "landmarks_added"));
+	public static final Id<SyncLandmarksAddedPacket> ID = new Id<>(Identifier.of(Surveyor.ID, "landmarks_added"));
 	public static final PacketCodec<ByteBuf, SyncLandmarksAddedPacket> CODEC = SurveyorPacketCodecs.LANDMARK_SUMMARIES.xmap(SyncLandmarksAddedPacket::new, SyncLandmarksAddedPacket::landmarks);
 
 	public static SyncLandmarksAddedPacket of(Multimap<LandmarkType<?>, BlockPos> keySet, WorldLandmarks summary) {

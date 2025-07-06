@@ -25,7 +25,7 @@ public class RaycastUtil {
 		double y = blockRadius * Math.tan(phi);
 		double distance;
 		double bottom = player.getWorld().getBottomY() - cameraPos.y;
-		double top = player.getWorld().getTopY() - cameraPos.y;
+		double top = player.getWorld().getTopYInclusive() - cameraPos.y;
 		if (y < bottom || y > top) { // Distance To Circular Planes
 			distance = Math.abs(MathHelper.clamp(y, bottom, top) / Math.sin(phi));
 		} else { // Distance To Curved Surface
@@ -42,7 +42,7 @@ public class RaycastUtil {
 				cameraPos, endPos, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, player
 			),
 			(innerContext, pos) -> {
-				WorldChunk chunk = player.getServerWorld().getChunkManager().getWorldChunk(ChunkSectionPos.getSectionCoord(pos.getX()), ChunkSectionPos.getSectionCoord(pos.getZ()));
+				WorldChunk chunk = player.getWorld().getChunkManager().getWorldChunk(ChunkSectionPos.getSectionCoord(pos.getX()), ChunkSectionPos.getSectionCoord(pos.getZ()));
 				if (chunk == null) {
 					Vec3d vec3d = innerContext.getStart().subtract(innerContext.getEnd());
 					return BlockHitResult.createMissed(pos.toCenterPos(), Direction.getFacing(vec3d.x, vec3d.y, vec3d.z), pos);

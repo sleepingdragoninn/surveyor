@@ -64,7 +64,7 @@ public class ChunkSummary {
 						BlockState state = section.getBlockState(x, y, z);
 						Fluid fluid = state.getFluidState().getFluid();
 
-						if (!state.blocksMovement() && fluid.matchesType(Fluids.EMPTY)) {
+						if (!state.isSolidBlock(world, pos) && fluid.matchesType(Fluids.EMPTY)) {
 							walkspaceHeight++;
 							waterDepth = 0;
 							if (walkspaceHeight >= MINIMUM_AIR_DEPTH && state.getMapColor(world, pos) != MapColor.CLEAR) {
@@ -76,7 +76,7 @@ public class ChunkSummary {
 						} else { // Blocks Movement or Has Non-Water Fluid.
 							if (foundFloor == null) {
 								if (carpetPos.getY() == y + 1) {
-									foundFloor = new LayerSummary.FloorSummary(carpetPos.getY(), biomePalette.findOrAdd(section.getBiomeEntry(x, carpetPos.getY(), z, world.getBottomY(), world.getTopY()).value()), blockPalette.findOrAdd(carpetBlock), world.getLightLevel(LightType.BLOCK, carpetPos), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
+									foundFloor = new LayerSummary.FloorSummary(carpetPos.getY(), biomePalette.findOrAdd(section.getBiomeEntry(x, carpetPos.getY(), z, world.getBottomY(), world.getTopYInclusive()).value()), blockPalette.findOrAdd(carpetBlock), world.getLightLevel(LightType.BLOCK, carpetPos), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
 									if (carpetPos.getY() > layerHeights[layerIndex]) { // Actually a floor for the layer above
 										if (layerFloors[layerIndex - 1][x * 16 + z] == null) layerFloors[layerIndex - 1][x * 16 + z] = foundFloor;
 										foundFloor = null;
@@ -85,7 +85,7 @@ public class ChunkSummary {
 									walkspaceHeight = 0;
 									waterDepth = 0;
 								} else if (walkspaceHeight >= MINIMUM_AIR_DEPTH && state.getMapColor(world, pos) != MapColor.CLEAR) {
-									foundFloor = new LayerSummary.FloorSummary(y, biomePalette.findOrAdd(section.getBiomeEntry(x, y, z, world.getBottomY(), world.getTopY()).value()), blockPalette.findOrAdd(state.getBlock()), world.getLightLevel(LightType.BLOCK, pos.up()), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
+									foundFloor = new LayerSummary.FloorSummary(y, biomePalette.findOrAdd(section.getBiomeEntry(x, y, z, world.getBottomY(), world.getTopYInclusive()).value()), blockPalette.findOrAdd(state.getBlock()), world.getLightLevel(LightType.BLOCK, pos.up()), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
 								}
 							}
 							if (state.getMapColor(world, pos) != MapColor.CLEAR) { // Don't reset walkspace for glass/barriers/etc.
@@ -104,11 +104,11 @@ public class ChunkSummary {
 	}
 
 	public ChunkSummary(NbtCompound nbt) {
-		this.airCount = nbt.contains(KEY_AIR_COUNT) ? nbt.getInt(KEY_AIR_COUNT) : null;
-		NbtCompound layersCompound = nbt.getCompound(KEY_LAYERS);
+		this.airCount = nbt.contains(KEY_AIR_COUNT) ? nbt.getInt(KEY_AIR_COUNT).get() : null;
+		NbtCompound layersCompound = nbt.getCompound(KEY_LAYERS).get();
 		for (String key : layersCompound.getKeys()) {
 			int layerY = Integer.parseInt(key);
-			layers.put(layerY, LayerSummary.fromNbt(layersCompound.getCompound(key)));
+			layers.put(layerY, LayerSummary.fromNbt(layersCompound.getCompound(key).get()));
 		}
 	}
 

@@ -35,7 +35,7 @@ public class MixinServerWorld implements SurveyorWorld {
 		SurveyorEvents.Invoke.worldLoad(self);
 	}
 
-	@Inject(method = "method_19499", at = @At("HEAD"))
+	@Inject(method = "method_66017(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/registry/entry/RegistryEntry;)V", at = @At("HEAD"))
 	public void onPointOfInterestAdded(BlockPos blockPos, RegistryEntry<PointOfInterestType> poiType, CallbackInfo ci) {
 		if (!Surveyor.CONFIG.netherPortalLandmarks) return;
 		ServerWorld self = (ServerWorld) (Object) this;
@@ -45,8 +45,8 @@ public class MixinServerWorld implements SurveyorWorld {
 		}
 	}
 
-	@Inject(method = "method_39222", at = @At("HEAD"))
-	public void onPointOfInterestRemoved(BlockPos blockPos, CallbackInfo ci) {
+	@Inject(method = "method_66019(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/registry/entry/RegistryEntry;)V", at = @At("HEAD"))
+	public void onPointOfInterestRemoved(BlockPos blockPos, RegistryEntry<PointOfInterestType> oldPoiType, CallbackInfo ci) {
 		ServerWorld self = (ServerWorld) (Object) this;
 		WorldSummary summary = WorldSummary.of(self);
 		if (summary.landmarks() == null) return;

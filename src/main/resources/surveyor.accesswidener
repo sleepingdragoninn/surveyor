@@ -4,7 +4,7 @@ accessible field net/minecraft/structure/pool/SinglePoolElement location Lcom/mo
 accessible field net/minecraft/structure/pool/FeaturePoolElement feature Lnet/minecraft/registry/entry/RegistryEntry;
 accessible field net/minecraft/world/chunk/ChunkSection nonEmptyBlockCount S
 accessible method net/minecraft/nbt/NbtList <init> (Ljava/util/List;B)V
-accessible field net/minecraft/world/PersistentStateManager directory Ljava/io/File;
+accessible field net/minecraft/world/PersistentStateManager directory Ljava/nio/file/Path;
 accessible field net/minecraft/world/biome/source/BiomeAccess seed J
 accessible field net/minecraft/structure/pool/ListPoolElement elements Ljava/util/List;
 accessible field net/minecraft/structure/PoolStructurePiece structureTemplateManager Lnet/minecraft/structure/StructureTemplateManager;

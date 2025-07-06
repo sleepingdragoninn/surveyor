@@ -75,13 +75,13 @@ public class WorldStructureSummary {
 	protected static WorldStructureSummary readNbt(RegistryKey<World> worldKey, NbtCompound nbt, Map<ChunkPos, RegionStructureSummary> regions) {
 		Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> structureTypes = new ConcurrentHashMap<>();
 		Multimap<RegistryKey<Structure>, TagKey<Structure>> structureTags = HashMultimap.create();
-		NbtCompound structuresCompound = nbt.getCompound(KEY_STRUCTURES);
+		NbtCompound structuresCompound = nbt.getCompound(KEY_STRUCTURES).get();
 		for (String structureId : structuresCompound.getKeys()) {
 			RegistryKey<Structure> key = RegistryKey.of(RegistryKeys.STRUCTURE, Identifier.of(structureId));
-			NbtCompound structureCompound = structuresCompound.getCompound(structureId);
-			RegistryKey<StructureType<?>> type = RegistryKey.of(RegistryKeys.STRUCTURE_TYPE, Identifier.of(structureCompound.getString(KEY_TYPE)));
+			NbtCompound structureCompound = structuresCompound.getCompound(structureId).get();
+			RegistryKey<StructureType<?>> type = RegistryKey.of(RegistryKeys.STRUCTURE_TYPE, Identifier.of(structureCompound.getString(KEY_TYPE).get()));
 			structureTypes.put(key, type);
-			Collection<TagKey<Structure>> tags = structureCompound.getList(KEY_TAGS, NbtElement.STRING_TYPE).stream().map(e -> TagKey.of(RegistryKeys.STRUCTURE, Identifier.of(e.asString()))).toList();
+			Collection<TagKey<Structure>> tags = structureCompound.getList(KEY_TAGS).stream().map(e -> TagKey.of(RegistryKeys.STRUCTURE, Identifier.of(e.asString().get()))).toList();
 			structureTags.putAll(key, tags);
 		}
 		for (RegionStructureSummary region : regions.values()) {
@@ -164,8 +164,8 @@ public class WorldStructureSummary {
 	public void put(ServerWorld world, StructureStart start) {
 		if (Surveyor.CONFIG.structures == SystemMode.FROZEN) return;
 		ChunkPos rPos = regionPosOf(start.getPos());
-		RegistryKey<Structure> key = world.getRegistryManager().get(RegistryKeys.STRUCTURE).getKey(start.getStructure()).orElseThrow();
-		Optional<RegistryKey<StructureType<?>>> type = world.getRegistryManager().get(RegistryKeys.STRUCTURE_TYPE).getKey(start.getStructure().getType());
+		RegistryKey<Structure> key = world.getRegistryManager().getOrThrow(RegistryKeys.STRUCTURE).getKey(start.getStructure()).orElseThrow();
+		Optional<RegistryKey<StructureType<?>>> type = world.getRegistryManager().getOrThrow(RegistryKeys.STRUCTURE_TYPE).getKey(start.getStructure().getType());
 		if (!start.hasChildren()) {
 			Surveyor.LOGGER.error("Cowardly refusing to save structure {} as it has no pieces! Report this to the structure mod author!", key.getValue());
 			return;
@@ -175,7 +175,7 @@ public class WorldStructureSummary {
 			return;
 		}
 		regions.computeIfAbsent(rPos, k -> new RegionStructureSummary()).put(world, start);
-		List<TagKey<Structure>> tags = world.getRegistryManager().get(RegistryKeys.STRUCTURE).getEntry(start.getStructure()).streamTags().toList();
+		List<TagKey<Structure>> tags = world.getRegistryManager().getOrThrow(RegistryKeys.STRUCTURE).getEntry(start.getStructure()).streamTags().toList();
 		structureTypes.put(key, type.orElseThrow());
 		structureTags.putAll(key, tags);
 		dirty();
@@ -197,7 +197,7 @@ public class WorldStructureSummary {
 		structureTypes.forEach((key, starts) -> {
 			NbtCompound structureCompound = new NbtCompound();
 			structureCompound.putString(KEY_TYPE, structureTypes.get(key).getValue().toString());
-			structureCompound.put(KEY_TAGS, new NbtList(structureTags.get(key).stream().map(t -> (NbtElement) NbtString.of(t.id().toString())).toList(), NbtElement.STRING_TYPE));
+			structureCompound.put(KEY_TAGS, (NbtList) (structureTags.get(key).stream().map(t -> (NbtElement) NbtString.of(t.id().toString())).toList()));
 			structuresCompound.put(key.getValue().toString(), structureCompound);
 		});
 		nbt.put(KEY_STRUCTURES, structuresCompound);

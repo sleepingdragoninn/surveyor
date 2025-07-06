@@ -7,7 +7,6 @@ import folk.sisby.surveyor.util.MapUtil;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
-import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
@@ -16,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 public record SyncLandmarksRemovedPacket(Multimap<LandmarkType<?>, BlockPos> landmarks) implements SyncPacket {
-	public static final CustomPayload.Id<SyncLandmarksRemovedPacket> ID = new CustomPayload.Id<>(Identifier.of(Surveyor.ID, "landmarks_removed"));
+	public static final Id<SyncLandmarksRemovedPacket> ID = new Id<>(Identifier.of(Surveyor.ID, "landmarks_removed"));
 	public static final PacketCodec<RegistryByteBuf, SyncLandmarksRemovedPacket> CODEC = PacketCodecs.<RegistryByteBuf, LandmarkType<?>, List<BlockPos>, Map<LandmarkType<?>, List<BlockPos>>>map(HashMap::new, PacketCodecs.codec(LandmarkType.CODEC), BlockPos.PACKET_CODEC.collect(PacketCodecs.toList()))
 		.xmap(MapUtil::asMultiMap, MapUtil::asListMap)
 		.xmap(SyncLandmarksRemovedPacket::new, SyncLandmarksRemovedPacket::landmarks);

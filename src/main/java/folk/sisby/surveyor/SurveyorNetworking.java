@@ -109,7 +109,7 @@ public class SurveyorNetworking {
 	}
 
 	private static <T extends C2SPacket> void handleServer(T packet, ServerPlayNetworking.Context context, ServerPacketHandler<T> handler) {
-		handler.handle(context.player(), context.player().getServerWorld(), WorldSummary.of(context.player().getServerWorld()), packet);
+		handler.handle(context.player(), context.player().getWorld(), WorldSummary.of(context.player().getWorld()), packet);
 	}
 
 	public interface ServerPacketHandler<T> {

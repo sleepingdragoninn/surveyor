@@ -53,7 +53,7 @@ public class Surveyor implements ModInitializer {
 		if (!world.isChunkLoaded(pos.getX() >> 4, pos.getZ() >> 4)) return;
 		WorldStructureSummary worldStructures = WorldSummary.of(world).structures();
 		if (worldStructures == null) return;
-		Registry<Structure> structureRegistry = world.getRegistryManager().get(RegistryKeys.STRUCTURE);
+		Registry<Structure> structureRegistry = world.getRegistryManager().getOrThrow(RegistryKeys.STRUCTURE);
 		SurveyorExploration exploration = SurveyorExploration.of(player);
 		Map<Structure, LongSet> structureReferences = world.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.STRUCTURE_REFERENCES).getStructureReferences();
 		if (!structureReferences.isEmpty()) {

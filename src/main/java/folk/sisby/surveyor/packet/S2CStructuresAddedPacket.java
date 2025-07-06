@@ -10,7 +10,6 @@ import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
-import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
@@ -23,9 +22,9 @@ import java.util.List;
 import java.util.Map;
 
 public record S2CStructuresAddedPacket(boolean shared, Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> structures, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> types, Multimap<RegistryKey<Structure>, TagKey<Structure>> tags) implements S2CPacket {
-	public static final CustomPayload.Id<S2CStructuresAddedPacket> ID = new CustomPayload.Id<>(Identifier.of(Surveyor.ID, "s2c_structures_added"));
+	public static final Id<S2CStructuresAddedPacket> ID = new Id<>(Identifier.of(Surveyor.ID, "s2c_structures_added"));
 	public static final PacketCodec<PacketByteBuf, S2CStructuresAddedPacket> CODEC = PacketCodec.tuple(
-		PacketCodecs.BOOL, S2CStructuresAddedPacket::shared,
+		PacketCodecs.BOOLEAN, S2CStructuresAddedPacket::shared,
 		SurveyorPacketCodecs.STRUCTURE_SUMMARIES, S2CStructuresAddedPacket::structures,
 		SurveyorPacketCodecs.STRUCTURE_TYPES, S2CStructuresAddedPacket::types,
 		SurveyorPacketCodecs.STRUCTURE_TAGS, S2CStructuresAddedPacket::tags,
@@ -69,7 +68,7 @@ public record S2CStructuresAddedPacket(boolean shared, Map<RegistryKey<Structure
 	}
 
 	@Override
-	public CustomPayload.Id<S2CStructuresAddedPacket> getId() {
+	public Id<S2CStructuresAddedPacket> getId() {
 		return ID;
 	}
 }
