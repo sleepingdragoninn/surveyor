@@ -235,9 +235,9 @@ public interface SurveyorExploration {
 	}
 
 	default void read(NbtCompound nbt) {
-		NbtCompound terrainCompound = nbt.getCompound(KEY_EXPLORED_TERRAIN).get();
+		NbtCompound terrainCompound = nbt.getCompound(KEY_EXPLORED_TERRAIN).orElse(new NbtCompound());
 		for (String worldKeyString : terrainCompound.getKeys()) {
-			long[] regionArray = terrainCompound.getLongArray(worldKeyString).get();
+			long[] regionArray = terrainCompound.getLongArray(worldKeyString).orElse(new long[0]);
 			Map<ChunkPos, BitSet> regionMap = new HashMap<>();
 			for (int i = 0; i + 1 < regionArray.length; i += 2) {
 				ChunkPos rPos = new ChunkPos(regionArray[i]);
@@ -256,12 +256,12 @@ public interface SurveyorExploration {
 			terrain().put(RegistryKey.of(RegistryKeys.WORLD, Identifier.of(worldKeyString)), regionMap);
 		}
 
-		NbtCompound structuresCompound = nbt.getCompound(KEY_EXPLORED_STRUCTURES).get();
+		NbtCompound structuresCompound = nbt.getCompound(KEY_EXPLORED_STRUCTURES).orElse(new NbtCompound());
 		for (String worldKeyString : structuresCompound.getKeys()) {
 			Map<RegistryKey<Structure>, LongSet> structureMap = new HashMap<>();
-			NbtCompound worldStructuresCompound = structuresCompound.getCompound(worldKeyString).get();
+			NbtCompound worldStructuresCompound = structuresCompound.getCompound(worldKeyString).orElse(new NbtCompound());
 			for (String key : worldStructuresCompound.getKeys()) {
-				structureMap.put(RegistryKey.of(RegistryKeys.STRUCTURE, Identifier.of(key)), new LongOpenHashSet(worldStructuresCompound.getLongArray(key).get()));
+				structureMap.put(RegistryKey.of(RegistryKeys.STRUCTURE, Identifier.of(key)), new LongOpenHashSet(worldStructuresCompound.getLongArray(key).orElse(new long[0])));
 			}
 			structures().put(RegistryKey.of(RegistryKeys.WORLD, Identifier.of(worldKeyString)), structureMap);
 		}

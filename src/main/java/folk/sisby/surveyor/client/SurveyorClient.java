@@ -195,7 +195,7 @@ public class SurveyorClient implements ClientModInitializer {
 					}
 				}
 				ClientExploration.INSTANCE.read(explorationNbt);
-				ClientExploration.SHARED.read(explorationNbt.getCompound(KEY_SHARED).get());
+				ClientExploration.SHARED.read(explorationNbt.getCompound(KEY_SHARED).orElse(new NbtCompound()));
 			}
 		}
 

@@ -1,6 +1,5 @@
 package folk.sisby.surveyor;
 
-import com.mojang.serialization.Codec;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
 import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
@@ -12,7 +11,6 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtDouble;
-import net.minecraft.nbt.NbtElement;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -69,32 +67,17 @@ public interface PlayerSummary {
 	record OfflinePlayerSummary(SurveyorExploration exploration, String username, RegistryKey<World> dimension, Vec3d pos, float yaw, boolean online) implements PlayerSummary {
 		public OfflinePlayerSummary(UUID uuid, NbtCompound nbt, boolean online) {
 			this(
-				OfflinePlayerExploration.from(uuid, nbt.getCompound(KEY_DATA).get()),
-				nbt.getCompound(KEY_DATA).isPresent() && nbt.getCompound(KEY_DATA).get().contains(KEY_USERNAME)
+				OfflinePlayerExploration.from(uuid, nbt.getCompound(KEY_DATA).orElse(new NbtCompound())),
+				nbt.getCompound(KEY_DATA).isPresent() && nbt.getCompound(KEY_DATA).get().getString(KEY_USERNAME).isPresent()
 					? nbt.getCompound(KEY_DATA).get().getString(KEY_USERNAME).get()
 					: "???",
-				RegistryKey.of(RegistryKeys.WORLD, Identifier.of(nbt.getString("Dimension").get())),
-				nbt.getList("Pos").isPresent() && nbt.contains("Pos")
+				RegistryKey.of(RegistryKeys.WORLD, Identifier.of(nbt.getString("Dimension").orElse(World.OVERWORLD.getValue().toString()))),
+				nbt.getList("Pos").isPresent()
 					? ArrayUtil.toVec3d(nbt.getList("Pos").get().stream().mapToDouble(e -> ((NbtDouble) e).doubleValue()).toArray())
 					: new Vec3d(0, 0, 0),
-				nbt.getList("Rotation").isPresent() && nbt.contains("Rotation")
-					? nbt.getList("Rotation").get().getFloat(0).get()
+				nbt.getList("Rotation").isPresent()
+					? nbt.getList("Rotation").get().getFloat(0).orElse(0F)
 					: 0,
-				online
-			);
-		}
-
-		public OfflinePlayerSummary(UUID uuid, ReadView view, boolean online) {
-			this(
-				OfflinePlayerExploration.from(uuid, view.read(KEY_DATA, NbtCompound.CODEC).get()),
-				view.read(KEY_DATA, NbtCompound.CODEC).isPresent() && view.read(KEY_DATA, NbtCompound.CODEC).get().contains(KEY_USERNAME)
-					? view.read(KEY_DATA, NbtCompound.CODEC).get().getString(KEY_USERNAME).get()
-					: "???",
-				RegistryKey.of(RegistryKeys.WORLD, Identifier.of(view.getString("Dimension", ""))),
-				view.read("Pos", Vec3d.CODEC).isPresent()
-					? view.read("Pos", Vec3d.CODEC).get()
-					: new Vec3d(0, 0, 0),
-				view.getFloat("Rotation", 0),
 				online
 			);
 		}

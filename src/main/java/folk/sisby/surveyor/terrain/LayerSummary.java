@@ -80,7 +80,7 @@ public class LayerSummary {
 	}
 
 	public static LayerSummary fromNbt(NbtCompound nbt) {
-		if (!nbt.contains(KEY_FOUND)) return null;
+		if (nbt.getLongArray(KEY_FOUND).isEmpty()) return null;
 		BitSet found = BitSet.valueOf(nbt.getLongArray(KEY_FOUND).get());
 		int cardinality = found.cardinality();
 		UInts depth = UInts.readNbt(nbt.get(KEY_DEPTH), cardinality);

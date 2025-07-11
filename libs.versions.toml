@@ -3,12 +3,12 @@ loom = "1.10.+"
 githubRelease = "2.4.1"
 minotaur = "2.+"
 
-kaleidoConfig = "0.3.1+1.3.2"
+kaleidoConfig = "0.3.3+1.3.2"
 
-mc = "1.21.6"
+mc = "1.21.7"
 fl = "0.16.14"
-yarn = "1.21.6+build.1"
-fapi = "0.128.1+1.21.6"
+yarn = "1.21.7+build.6"
+fapi = "0.129.0+1.21.7"
 
 hoofprint = "0.8.0-alpha.5+1.21"
 

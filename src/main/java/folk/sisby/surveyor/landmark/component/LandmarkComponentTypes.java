@@ -9,10 +9,12 @@ import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
+import net.minecraft.storage.NbtWriteView;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.text.TextCodecs;
 import net.minecraft.text.Texts;
+import net.minecraft.util.ErrorReporter;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockBox;
@@ -34,10 +36,14 @@ public class LandmarkComponentTypes {
 
 	public static LandmarkComponentMap.Builder forBlock(LandmarkComponentMap.Builder builder, WorldAccess world, BlockPos pos) {
 		BlockState state = world.getBlockState(pos);
-		ItemStack stack = state.getBlock().getPickStack(world, pos, world.getBlockState(pos));
+		ItemStack stack = state.getBlock().getPickStack(world, pos, world.getBlockState(pos), true);
 		BlockEntity entity = world.getBlockEntity(pos);
 		if (entity != null && Registries.BLOCK_ENTITY_TYPE.getKey(entity.getType()).map(t -> Surveyor.CONFIG.builtins.allowedBlockEntities.contains(t.toString())).orElse(false)) {
-			BlockItem.setBlockEntityData(stack, entity.getType(), entity.createNbt(world.getRegistryManager()));
+			try (ErrorReporter.Logging logging = new ErrorReporter.Logging(entity.getReporterContext(), Surveyor.LOGGER)) {
+				NbtWriteView nbtWriteView = NbtWriteView.create(logging, world.getRegistryManager());
+				entity.writeDataWithoutId(nbtWriteView);
+				BlockItem.setBlockEntityData(stack, entity.getType(), nbtWriteView);
+			}
 		}
 		builder.add(NAME, !stack.isEmpty() ? stack.getName() : state.getBlock().getName());
 		if (!stack.isEmpty()) builder.add(STACK, stack);

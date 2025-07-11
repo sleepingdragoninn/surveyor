@@ -23,14 +23,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(NetherPortal.class)
 public class MixinNetherPortal {
-	@Shadow @Final private WorldAccess world;
-	@Shadow private @Nullable BlockPos lowerCorner;
-	@Shadow private int height;
+	@Shadow @Final private @Nullable BlockPos lowerCorner;
+	@Shadow @Final private int height;
 	@Shadow @Final private Direction negativeDir;
 	@Shadow @Final private int width;
 
 	@Inject(method = "createPortal", at = @At("TAIL"))
-	private void onCreatePortal(CallbackInfo ci) {
+	private void onCreatePortal(WorldAccess world, CallbackInfo ci) {
 		if (!Surveyor.CONFIG.builtins.netherPortalLandmarks) return;
 		if (!(world instanceof ServerWorld serverWorld)) return;
 		WorldSummary summary = WorldSummary.of(serverWorld);

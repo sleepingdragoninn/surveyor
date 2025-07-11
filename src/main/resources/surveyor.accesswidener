@@ -3,7 +3,7 @@ accessible field net/minecraft/world/ChunkRegion world Lnet/minecraft/server/wor
 accessible field net/minecraft/structure/pool/SinglePoolElement location Lcom/mojang/datafixers/util/Either;
 accessible field net/minecraft/structure/pool/FeaturePoolElement feature Lnet/minecraft/registry/entry/RegistryEntry;
 accessible field net/minecraft/world/chunk/ChunkSection nonEmptyBlockCount S
-accessible method net/minecraft/nbt/NbtList <init> (Ljava/util/List;B)V
+accessible method net/minecraft/nbt/NbtList <init> (Ljava/util/List;)V
 accessible field net/minecraft/world/PersistentStateManager directory Ljava/nio/file/Path;
 accessible field net/minecraft/world/biome/source/BiomeAccess seed J
 accessible field net/minecraft/structure/pool/ListPoolElement elements Ljava/util/List;
@@ -12,3 +12,4 @@ accessible field net/minecraft/client/network/ClientLoginNetworkHandler serverIn
 accessible field net/minecraft/world/chunk/PalettedContainer data Lnet/minecraft/world/chunk/PalettedContainer$Data;
 accessible field net/minecraft/world/chunk/PalettedContainer$Data storage Lnet/minecraft/util/collection/PaletteStorage;
 accessible field net/minecraft/world/chunk/PalettedContainer$Data palette Lnet/minecraft/world/chunk/Palette;
+accessible method net/minecraft/block/AbstractBlock getPickStack (Lnet/minecraft/world/WorldView;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/BlockState;Z)Lnet/minecraft/item/ItemStack;

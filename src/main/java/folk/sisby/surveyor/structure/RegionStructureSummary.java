@@ -62,17 +62,17 @@ public class RegionStructureSummary {
 
 	protected static RegionStructureSummary readNbt(NbtCompound nbt) {
 		Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> structures = new ConcurrentHashMap<>();
-		NbtCompound structuresCompound = nbt.getCompound(KEY_STRUCTURES).get();
+		NbtCompound structuresCompound = nbt.getCompound(KEY_STRUCTURES).orElse(new NbtCompound());
 		for (String structureId : structuresCompound.getKeys()) {
 			RegistryKey<Structure> key = RegistryKey.of(RegistryKeys.STRUCTURE, Identifier.of(structureId));
-			NbtCompound structureCompound = structuresCompound.getCompound(structureId).get();
-			NbtCompound startsCompound = structureCompound.getCompound(KEY_STARTS).get();
+			NbtCompound structureCompound = structuresCompound.getCompound(structureId).orElse(new NbtCompound());
+			NbtCompound startsCompound = structureCompound.getCompound(KEY_STARTS).orElse(new NbtCompound());
 			for (String posKey : startsCompound.getKeys()) {
 				int x = Integer.parseInt(posKey.split(",")[0]);
 				int z = Integer.parseInt(posKey.split(",")[1]);
-				NbtCompound startCompound = startsCompound.getCompound(posKey).get();
+				NbtCompound startCompound = startsCompound.getCompound(posKey).orElse(new NbtCompound());
 				List<StructurePieceSummary> pieces = new ArrayList<>();
-				for (NbtElement pieceElement : startCompound.getList(KEY_PIECES).get()) {
+				for (NbtElement pieceElement : startCompound.getList(KEY_PIECES).orElse(new NbtList())) {
 					pieces.add(readStructurePieceNbt((NbtCompound) pieceElement));
 				}
 				structures.computeIfAbsent(key, p -> new ConcurrentHashMap<>()).put(new ChunkPos(x, z), new StructureStartSummary(pieces));
@@ -122,7 +122,7 @@ public class RegionStructureSummary {
 			NbtCompound structureCompound = new NbtCompound();
 			NbtCompound startsCompound = new NbtCompound();
 			starts.forEach((pos, summary) -> {
-				NbtList pieceList = (NbtList)(summary.getChildren().stream().map(p -> (NbtElement) p.toNbt()).toList());
+				NbtList pieceList = new NbtList(summary.getChildren().stream().map(p -> (NbtElement) p.toNbt()).toList());
 				NbtCompound startCompound = new NbtCompound();
 				startCompound.put(KEY_PIECES, pieceList);
 				startsCompound.put("%s,%s".formatted(pos.x, pos.z), startCompound);

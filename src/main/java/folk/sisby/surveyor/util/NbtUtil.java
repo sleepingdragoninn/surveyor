@@ -9,9 +9,9 @@ public class NbtUtil {
 	public static void removeRecursive(NbtCompound nbt, Collection<String> keys) {
 		keys.forEach(nbt::remove);
 		for (String key : nbt.getKeys()) {
-			if (nbt.contains(key)) {
+			if (nbt.getCompound(key).isPresent()) {
 				removeRecursive(nbt.getCompound(key).get(), keys);
-			} else if (nbt.contains(key)) {
+			} else if (nbt.getList(key).isPresent()) {
 				for (NbtElement listNbt : nbt.getList(key).get()) {
 					removeRecursive((NbtCompound) listNbt, keys);
 				}

@@ -26,6 +26,6 @@ public class Landmarks {
 	}
 
 	public static Map<UUID, Map<Identifier, Landmark>> fromNbt(NbtCompound nbt) {
-		return CODEC.decode(NbtOps.INSTANCE, nbt.getCompound(KEY_LANDMARKS).get()).getOrThrow().getFirst();
+		return CODEC.decode(NbtOps.INSTANCE, nbt.getCompound(KEY_LANDMARKS).orElse(new NbtCompound())).getOrThrow().getFirst();
 	}
 }

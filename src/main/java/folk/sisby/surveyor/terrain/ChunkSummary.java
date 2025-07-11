@@ -104,11 +104,11 @@ public class ChunkSummary {
 	}
 
 	public ChunkSummary(NbtCompound nbt) {
-		this.airCount = nbt.contains(KEY_AIR_COUNT) ? nbt.getInt(KEY_AIR_COUNT).get() : null;
-		NbtCompound layersCompound = nbt.getCompound(KEY_LAYERS).get();
+		this.airCount = nbt.getInt(KEY_AIR_COUNT).isPresent() ? nbt.getInt(KEY_AIR_COUNT).get() : null;
+		NbtCompound layersCompound = nbt.getCompound(KEY_LAYERS).orElse(new NbtCompound());
 		for (String key : layersCompound.getKeys()) {
 			int layerY = Integer.parseInt(key);
-			layers.put(layerY, LayerSummary.fromNbt(layersCompound.getCompound(key).get()));
+			layers.put(layerY, LayerSummary.fromNbt(layersCompound.getCompound(key).orElseThrow()));
 		}
 	}
 
