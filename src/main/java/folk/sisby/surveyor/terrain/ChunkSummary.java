@@ -179,4 +179,19 @@ public class ChunkSummary {
 		});
 		return outRaw.exists().cardinality() == 0 ? null : outRaw;
 	}
+
+	public @Nullable LayerSummary.Raw toSingleLayerBelow(Integer minY, int[] depthsAbove, int worldHeight) {
+		LayerSummary.Raw outRaw = new LayerSummary.Raw(new BitSet(256), new int[256], new int[256], new int[256], new int[256], new int[256], new int[256]);
+		layers.descendingMap().forEach((y, layer) -> {
+			if (layer != null) {
+				layer.fillEmptyFloorsUnder(
+					worldHeight - y,
+					depthsAbove,
+					minY == null ? Integer.MAX_VALUE : y - minY,
+					outRaw
+				);
+			}
+		});
+		return outRaw.exists().cardinality() == 0 ? null : outRaw;
+	}
 }

@@ -146,6 +146,25 @@ public class LayerSummary {
 		}
 	}
 
+	public void fillEmptyFloorsUnder(int depthOffset, int[] minRawDepth, int maxDepth, LayerSummary.Raw outLayer) {
+		int i = 0;
+		for (int j = 0; j < 256; j++) {
+			if (found.get(j)) {
+				int floorDepth = depth == null ? DEPTH_DEFAULT : depth.get(i);
+				if (!outLayer.exists.get(j) && floorDepth > minRawDepth[j] - depthOffset && floorDepth <= maxDepth) {
+					outLayer.exists.set(j);
+					outLayer.depths[j] = floorDepth + depthOffset;
+					outLayer.biomes[j] = biome == null ? BIOME_DEFAULT : biome.get(i);
+					outLayer.blocks[j] = block == null ? BLOCK_DEFAULT : block.get(i);
+					outLayer.lightLevels[j] = light == null ? LIGHT_DEFAULT : light.get(i);
+					outLayer.waterDepths[j] = water == null ? WATER_DEFAULT : water.get(i);
+					outLayer.waterLights[j] = glint == null ? GLINT_DEFAULT : glint.get(i);
+				}
+				i++;
+			}
+		}
+	}
+
 	public record Raw(BitSet exists, int[] depths, int[] biomes, int[] blocks, int[] lightLevels, int[] waterDepths, int[] waterLights) {
 	}
 

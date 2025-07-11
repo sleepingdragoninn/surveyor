@@ -3,6 +3,9 @@ package folk.sisby.surveyor.config;
 import folk.sisby.kaleido.api.WrappedConfig;
 import folk.sisby.kaleido.lib.quiltconfig.api.annotations.Comment;
 import folk.sisby.kaleido.lib.quiltconfig.api.annotations.IntegerRange;
+import folk.sisby.kaleido.lib.quiltconfig.api.values.ValueList;
+
+import java.util.List;
 
 public class SurveyorConfig extends WrappedConfig {
 	@Comment("Terrain system - records layers of blocks and biomes for maps to render")
@@ -17,19 +20,25 @@ public class SurveyorConfig extends WrappedConfig {
 	@Comment("DISABLED prevents loading, FROZEN loads but prevents updates, DYNAMIC loads with addons or on servers, ENABLED always loads")
 	public SystemMode landmarks = SystemMode.DYNAMIC;
 
-	@Comment("Whether to automatically add/remove nether portal landmarks")
-	public boolean netherPortalLandmarks = true;
+	@Comment("Logs structure discovery to the action bar.")
+	@Comment("E.g. 'Discovered Village Plains at [91, 63, -54]'")
+	public boolean discoveryMessages = false;
 
-	@Comment("Whether to automatically add player death waypoints")
-	public boolean playerDeathLandmarks = true;
+	@Comment("Force-enables the following commands.")
+	@Comment("waypoints/landmarks raw | prints the raw SNBT of a landmark")
+	public boolean debugCommands = false;
 
-	@Comment("Displays the following logs and messages:")
-	@Comment("[Action Bar] Structure Discovery")
-	public boolean debugMode = false;
+	@Comment("Ignores chunk changes that don't affect the amount of air in the chunk")
+	@Comment("Saves on performance, a little inaccurate sometimes.")
+	public boolean lazyClientUpdating = true;
+
+	@Comment("Ignores known landmarks when syncing landmarks to the client")
+	@Comment("A temporary fix until landmarks have some kind of revision counter")
+	public boolean forceUpdateLandmarks = true;
 
 	public Networking networking = new Networking();
 
-	public static final class Networking implements Section {
+    public static final class Networking implements Section {
 		@Comment("[Server] Whether to place every player in a single share group")
 		@Comment("Disables /surveyor share and /surveyor unshare")
 		public boolean globalSharing = false;
@@ -61,5 +70,22 @@ public class SurveyorConfig extends WrappedConfig {
 		@Comment("[Server] Ticks per position update - lower is more frequent")
 		@IntegerRange(min = 1, max = 200)
 		public int positionTicks = 1;
+	}
+
+	public Builtins builtins = new Builtins();
+
+	public static final class Builtins implements Section {
+		@Comment("Which block entities to preserve data for when creating block landmarks.")
+		public List<String> allowedBlockEntities = ValueList.create("", "minecraft:banner");
+
+		@Comment("Which points of interest to automatically add block landmarks for.")
+		public List<String> poiLandmarks = ValueList.create("", "minecraft:lodestone");
+
+		@Comment("Whether to automatically add specialised nether portal POI landmarks.")
+		@Comment("Creates one landmark for each nether portal, instead of one per portal block.")
+		public boolean netherPortalLandmarks = true;
+
+		@Comment("Whether to automatically add player death waypoints")
+		public boolean playerDeathWaypoints = true;
 	}
 }

@@ -4,7 +4,6 @@ import com.google.common.collect.Multimap;
 import com.mojang.serialization.Codec;
 import folk.sisby.surveyor.PlayerSummary;
 import folk.sisby.surveyor.landmark.Landmark;
-import folk.sisby.surveyor.landmark.LandmarkType;
 import folk.sisby.surveyor.landmark.Landmarks;
 import folk.sisby.surveyor.structure.RegionStructureSummary;
 import folk.sisby.surveyor.structure.StructurePieceSummary;
@@ -20,9 +19,9 @@ import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.tag.TagKey;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.Uuids;
 import net.minecraft.util.dynamic.Codecs;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.gen.structure.Structure;
 import net.minecraft.world.gen.structure.StructureType;
@@ -49,9 +48,9 @@ public interface SurveyorPacketCodecs {
 		PacketCodecs.codec(Codec.LONG_STREAM).xmap(LongOpenHashSet::toSet, LongSet::longStream)
 	);
 
-	PacketCodec<PacketByteBuf, Multimap<LandmarkType<?>, BlockPos>> LANDMARK_KEYS = PacketCodecs.<PacketByteBuf, LandmarkType<?>, List<BlockPos>, Map<LandmarkType<?>, List<BlockPos>>>map(HashMap::new,
-		PacketCodecs.codec(LandmarkType.CODEC),
-		BlockPos.PACKET_CODEC.collect(PacketCodecs.toList())
+	PacketCodec<PacketByteBuf, Multimap<UUID, Identifier>> LANDMARK_KEYS = PacketCodecs.<PacketByteBuf, UUID, List<Identifier>, Map<UUID, List<Identifier>>>map(HashMap::new,
+		Uuids.PACKET_CODEC,
+		Identifier.PACKET_CODEC.collect(PacketCodecs.toList())
 	).xmap(MapUtil::asMultiMap, MapUtil::asListMap);
 
 	PacketCodec<RegistryByteBuf, Map<UUID, PlayerSummary>> GROUP_SUMMARIES = PacketCodecs.map(HashMap::new,
@@ -77,5 +76,5 @@ public interface SurveyorPacketCodecs {
 		PacketCodecs.codec(TagKey.codec(RegistryKeys.STRUCTURE)).collect(PacketCodecs.toList())
 	).xmap(MapUtil::asMultiMap, MapUtil::asListMap);
 
-	PacketCodec<ByteBuf, Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>>> LANDMARK_SUMMARIES = PacketCodecs.codec(Landmarks.CODEC);
+	PacketCodec<ByteBuf, Map<UUID, Map<Identifier, Landmark>>> LANDMARK_SUMMARIES = PacketCodecs.codec(Landmarks.CODEC);
 }

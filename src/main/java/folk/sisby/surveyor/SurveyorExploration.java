@@ -5,8 +5,8 @@ import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.client.SurveyorClientEvents;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.landmark.Landmark;
-import folk.sisby.surveyor.landmark.LandmarkType;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.terrain.RegionSummary;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
@@ -18,7 +18,6 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.Structure;
@@ -74,8 +73,8 @@ public interface SurveyorExploration {
 		return (!personal() && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SERVER)) || structures != null && structures.containsKey(structure) && structures.get(structure).contains(pos.toLong());
 	}
 
-	default boolean exploredLandmark(RegistryKey<World> worldKey, Landmark<?> landmark) {
-		return landmark.owner() == null ? exploredChunk(worldKey, new ChunkPos(landmark.pos())) : sharedPlayers().contains(landmark.owner());
+	default boolean exploredLandmark(RegistryKey<World> worldKey, Landmark landmark) {
+		return landmark.owner().equals(WorldLandmarks.GLOBAL) ? !landmark.components().contains(LandmarkComponentTypes.POS) || exploredChunk(worldKey, new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) : sharedPlayers().contains(landmark.owner());
 	}
 
 	default int chunkCount() {
@@ -119,22 +118,22 @@ public interface SurveyorExploration {
 		return keySet;
 	}
 
-	default Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> limitLandmarkMap(RegistryKey<World> worldKey, Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> asMap) {
-		Multimap<LandmarkType<?>, BlockPos> toRemove = HashMultimap.create();
-		asMap.forEach((type, map) -> map.forEach((pos, landmark) -> {
-			if (!exploredLandmark(worldKey, landmark)) toRemove.put(type, pos);
+	default Map<UUID, Map<Identifier, Landmark>> limitLandmarkMap(RegistryKey<World> worldKey, Map<UUID, Map<Identifier, Landmark>> asMap) {
+		Multimap<UUID, Identifier> toRemove = HashMultimap.create();
+		asMap.forEach((uuid, map) -> map.forEach((id, landmark) -> {
+			if (!exploredLandmark(worldKey, landmark)) toRemove.put(uuid, id);
 		}));
-		toRemove.forEach((type, pos) -> {
-			asMap.get(type).remove(pos);
-			if (asMap.get(type).isEmpty()) asMap.remove(type);
+		toRemove.forEach((uuid, id) -> {
+			asMap.get(uuid).remove(id);
+			if (asMap.get(uuid).isEmpty()) asMap.remove(uuid);
 		});
 		return asMap;
 	}
 
-	default Multimap<LandmarkType<?>, BlockPos> limitLandmarkKeySet(RegistryKey<World> worldKey, WorldLandmarks worldLandmarks, Multimap<LandmarkType<?>, BlockPos> keySet) {
-		Multimap<LandmarkType<?>, BlockPos> toRemove = HashMultimap.create();
-		keySet.forEach((type, pos) -> {
-			if (!worldLandmarks.contains(type, pos) || !exploredLandmark(worldKey, worldLandmarks.get(type, pos))) toRemove.put(type, pos);
+	default Multimap<UUID, Identifier> limitLandmarkKeySet(RegistryKey<World> worldKey, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> keySet) {
+		Multimap<UUID, Identifier> toRemove = HashMultimap.create();
+		keySet.forEach((uuid, id) -> {
+			if (!worldLandmarks.contains(uuid, id) || !exploredLandmark(worldKey, worldLandmarks.get(uuid, id))) toRemove.put(uuid, id);
 		});
 		toRemove.forEach(keySet::remove);
 		return keySet;
@@ -143,11 +142,11 @@ public interface SurveyorExploration {
 	default void updateClientForMergeRegion(World world, ChunkPos regionPos, BitSet bitSet) {
 		Set<ChunkPos> terrainKeys = bitSet.stream().mapToObj(i -> RegionSummary.chunkForBit(regionPos, i)).collect(Collectors.toSet());
 		SurveyorClientEvents.Invoke.terrainUpdated(world, terrainKeys);
-		Multimap<LandmarkType<?>, BlockPos> landmarkKeys = HashMultimap.create();
+		Multimap<UUID, Identifier> landmarkKeys = HashMultimap.create();
 		WorldLandmarks summary = WorldSummary.of(world).landmarks();
 		if (summary == null) return;
-		summary.asMap(this).forEach((type, map) -> map.forEach((pos, mark) -> {
-			if (terrainKeys.contains(new ChunkPos(pos)) && mark.owner() == null) landmarkKeys.put(type, pos);
+		summary.asMap(this).forEach((uuid, map) -> map.forEach((id, landmark) -> {
+			if (landmark.components().contains(LandmarkComponentTypes.POS) && terrainKeys.contains(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(uuid, id);
 		}));
 		SurveyorClientEvents.Invoke.landmarksAdded(world, landmarkKeys);
 	}
@@ -155,8 +154,8 @@ public interface SurveyorExploration {
 	default void updateClientForLandmarks(World world) {
 		WorldLandmarks summary = WorldSummary.of(world).landmarks();
 		if (summary == null) return;
-		Multimap<LandmarkType<?>, BlockPos> unexploredLandmarks = summary.keySet(null);
-		Multimap<LandmarkType<?>, BlockPos> exploredLandmarks = summary.keySet(this);
+		Multimap<UUID, Identifier> unexploredLandmarks = summary.keySet(null);
+		Multimap<UUID, Identifier> exploredLandmarks = summary.keySet(this);
 		exploredLandmarks.forEach(unexploredLandmarks::remove);
 		SurveyorClientEvents.Invoke.landmarksAdded(world, exploredLandmarks);
 		SurveyorClientEvents.Invoke.landmarksRemoved(world, unexploredLandmarks);
@@ -174,11 +173,11 @@ public interface SurveyorExploration {
 
 	default void updateClientForAddChunk(World world, ChunkPos chunkPos) {
 		SurveyorClientEvents.Invoke.terrainUpdated(world, chunkPos);
-		Multimap<LandmarkType<?>, BlockPos> landmarkKeys = HashMultimap.create();
+		Multimap<UUID, Identifier> landmarkKeys = HashMultimap.create();
 		WorldLandmarks summary = WorldSummary.of(world).landmarks();
 		if (summary == null) return;
-		summary.asMap(this).forEach((type, map) -> map.forEach((pos, mark) -> {
-			if (chunkPos.equals(new ChunkPos(pos)) && mark.owner() == null) landmarkKeys.put(type, pos);
+		summary.asMap(this).forEach((uuid, map) -> map.forEach((id, landmark) -> {
+			if (landmark.components().contains(LandmarkComponentTypes.POS) && chunkPos.equals(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(uuid, id);
 		}));
 		SurveyorClientEvents.Invoke.landmarksAdded(world, landmarkKeys);
 	}

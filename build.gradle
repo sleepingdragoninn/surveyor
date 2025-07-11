@@ -12,6 +12,7 @@ archivesBaseName = project.slug
 
 repositories {
 	maven { url "https://repo.sleeping.town/" }
+	mavenLocal()
 }
 
 dependencies {
@@ -101,6 +102,7 @@ modrinth {
 	token = "$System.env.MODRINTH_TOKEN"
 	projectId = slug
 	versionNumber = project.version
+	versionType = "alpha"
 	uploadFile = remapJar
 	gameVersions = compatibleVersions.split(", ").toList()
 	loaders = compatibleLoaders.split(", ").toList()

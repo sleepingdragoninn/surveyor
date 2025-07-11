@@ -6,7 +6,8 @@ import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.client.NetworkHandlerSummary;
 import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.client.SurveyorNetworkHandler;
-import folk.sisby.surveyor.landmark.PlayerDeathLandmark;
+import folk.sisby.surveyor.landmark.Landmark;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.TextUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientConnectionState;
@@ -42,7 +43,7 @@ public abstract class MixinClientPlayNetworkHandler implements SurveyorNetworkHa
 
 	@Inject(method = "onDeathMessage", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerEntity;showsDeathScreen()Z"))
 	private void onDeathScreen(DeathMessageS2CPacket packet, CallbackInfo ci) {
-		if (!Surveyor.CONFIG.playerDeathLandmarks) return;
+		if (!Surveyor.CONFIG.builtins.playerDeathWaypoints) return;
 		ClientPlayerEntity player = MinecraftClient.getInstance().player;
 		if (player == null || player.getWorld() == null) return;
 		WorldSummary summary = WorldSummary.of(player.getWorld());
@@ -50,7 +51,12 @@ public abstract class MixinClientPlayNetworkHandler implements SurveyorNetworkHa
 			if (summary.landmarks() == null) return;
 			summary.landmarks().put(
 				player.getWorld(),
-				new PlayerDeathLandmark(player.getBlockPos(), SurveyorClient.getClientUuid(), TextUtil.stripInteraction(packet.message()), player.getWorld().getTimeOfDay(), player.getRandom().nextInt())
+				Landmark.createIncremental(summary.landmarks(), SurveyorClient.getClientUuid(), Surveyor.id("grave"), builder -> builder
+					.add(LandmarkComponentTypes.POS, player.getBlockPos())
+					.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(packet.message()))
+					.add(LandmarkComponentTypes.TIME, player.getWorld().getTimeOfDay())
+					.add(LandmarkComponentTypes.SEED, player.getRandom().nextInt())
+				)
 			);
 		}
 	}

@@ -1,41 +1,58 @@
 package folk.sisby.surveyor.landmark;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentHolder;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentMap;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentType;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.text.Text;
-import net.minecraft.util.DyeColor;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 
-public interface Landmark<T extends Landmark<T>> {
-	LandmarkType<T> type();
-
-	BlockPos pos();
-
-	default @Nullable UUID owner() {
-		return null;
+public record Landmark(UUID owner, Identifier id, LandmarkComponentMap components) implements LandmarkComponentHolder {
+	public static Codec<Landmark> createCodec(UUID uuid, Identifier id) {
+		return RecordCodecBuilder.create(instance -> instance.group(
+			LandmarkComponentMap.CODEC.fieldOf("components").forGetter(Landmark::components)
+		).apply(instance, (components) -> new Landmark(uuid, id, components)));
 	}
 
-	default @Nullable DyeColor color() {
-		return null;
+	public static Landmark create(UUID owner, Identifier id, UnaryOperator<LandmarkComponentMap.Builder> componentChanges) {
+		return new Landmark(owner, id, componentChanges.apply(LandmarkComponentMap.builder()).build());
 	}
 
-	default @Nullable Text name() {
-		return null;
+	public static Landmark global(Identifier id, UnaryOperator<LandmarkComponentMap.Builder> componentChanges) {
+		return create(WorldLandmarks.GLOBAL, id, componentChanges);
 	}
 
-	default @Nullable Identifier texture() {
-		return null;
+	public static Landmark createIncremental(WorldLandmarks landmarks, UUID uuid, Identifier prefix, UnaryOperator<LandmarkComponentMap.Builder> componentChanges) {
+		int i = 1;
+		while (landmarks.contains(uuid, Identifier.of(prefix.getNamespace(), prefix.getPath() + "/" + i))) {
+			i++;
+		}
+		return create(uuid, Identifier.of(prefix.getNamespace(), prefix.getPath() + "/" + i), componentChanges);
 	}
 
-	default Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> put(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, World world, WorldLandmarks landmarks) {
-		return landmarks.putForBatch(changed, this);
+	public static Landmark globalIncremental(WorldLandmarks landmarks, Identifier prefix, UnaryOperator<LandmarkComponentMap.Builder> componentChanges) {
+		return createIncremental(landmarks, WorldLandmarks.GLOBAL, prefix, componentChanges);
 	}
 
-	default Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> remove(Map<LandmarkType<?>, Map<BlockPos, Landmark<?>>> changed, World world, WorldLandmarks landmarks) {
-		return landmarks.removeForBatch(changed, this.type(), this.pos());
+	public List<Text> toText() {
+		List<Text> outList = new ArrayList<>();
+		for (LandmarkComponentType<?> type : components.keySet().stream().sorted(Comparator.comparing(LandmarkComponentType::id)).toList()) {
+			outList.add(Text.literal("").append(Text.literal(type.id().toString().replace("surveyor:", "")).formatted(Formatting.AQUA)).append(Text.literal(": ").append(getView(type))));
+		}
+		return outList;
+	}
+
+	public NbtElement toNbt() {
+		return createCodec(owner, id).encodeStart(NbtOps.INSTANCE, this).getOrThrow();
 	}
 }
