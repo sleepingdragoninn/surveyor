@@ -198,7 +198,7 @@ public interface PlayerSummary {
 		}
 
 		public void read(ReadView view) {
-			exploration.read(view.read(KEY_DATA, NbtCompound.CODEC).orElseThrow());
+			exploration.read(view.read(KEY_DATA, NbtCompound.CODEC).orElse(new NbtCompound()));
 		}
 
 		public void writeNbt(WriteView view) {
