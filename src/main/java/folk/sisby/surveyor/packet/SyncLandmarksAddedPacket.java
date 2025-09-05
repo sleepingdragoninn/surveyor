@@ -9,7 +9,9 @@ import folk.sisby.surveyor.util.MapUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
@@ -26,9 +28,9 @@ public record SyncLandmarksAddedPacket(Map<UUID, Map<Identifier, Landmark>> land
 	}
 
 	@Override
-	public List<SurveyorPacket> toPayloads() {
+	public List<SurveyorPacket> toPayloads(DynamicRegistryManager registryManager) {
 		List<SurveyorPacket> payloads = new ArrayList<>();
-		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+		PacketByteBuf buf = new RegistryByteBuf(new PacketByteBuf(Unpooled.buffer()), registryManager);
 		CODEC.encode(buf, this);
 		if (buf.readableBytes() < MAX_PAYLOAD_SIZE) {
 			payloads.add(this);
@@ -47,8 +49,8 @@ public record SyncLandmarksAddedPacket(Map<UUID, Map<Identifier, Landmark>> land
 					secondHalf.put(key, pos);
 				}
 			});
-			payloads.addAll(new SyncLandmarksAddedPacket(MapUtil.splitByKeyMap(landmarks, firstHalf)).toPayloads());
-			payloads.addAll(new SyncLandmarksAddedPacket(MapUtil.splitByKeyMap(landmarks, secondHalf)).toPayloads());
+			payloads.addAll(new SyncLandmarksAddedPacket(MapUtil.splitByKeyMap(landmarks, firstHalf)).toPayloads(registryManager));
+			payloads.addAll(new SyncLandmarksAddedPacket(MapUtil.splitByKeyMap(landmarks, secondHalf)).toPayloads(registryManager));
 		}
 		return payloads;
 	}

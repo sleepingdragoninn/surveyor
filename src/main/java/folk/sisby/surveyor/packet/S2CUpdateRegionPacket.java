@@ -7,9 +7,10 @@ import folk.sisby.surveyor.util.BitSetUtil;
 import folk.sisby.surveyor.util.ListUtil;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
-import net.minecraft.util.Identifier;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.util.dynamic.Codecs;
 import net.minecraft.util.math.ChunkPos;
 
@@ -19,7 +20,7 @@ import java.util.List;
 
 public record S2CUpdateRegionPacket(boolean shared, ChunkPos regionPos, List<Integer> biomePalette, List<Integer> blockPalette, BitSet set, List<ChunkSummary> chunks) implements S2CPacket {
 	public static final Id<S2CUpdateRegionPacket> ID = new Id<>(Surveyor.id("s2c_update_region"));
-	public static final PacketCodec<PacketByteBuf, S2CUpdateRegionPacket> CODEC = PacketCodec.tuple(
+	public static final PacketCodec<RegistryByteBuf, S2CUpdateRegionPacket> CODEC = PacketCodec.tuple(
 		PacketCodecs.BOOLEAN, S2CUpdateRegionPacket::shared,
 		PacketCodecs.VAR_LONG.xmap(ChunkPos::new, ChunkPos::toLong), S2CUpdateRegionPacket::regionPos,
 		PacketCodecs.INTEGER.collect(PacketCodecs.toList()), S2CUpdateRegionPacket::biomePalette,
@@ -34,9 +35,9 @@ public record S2CUpdateRegionPacket(boolean shared, ChunkPos regionPos, List<Int
 	}
 
 	@Override
-	public List<SurveyorPacket> toPayloads() {
+	public List<SurveyorPacket> toPayloads(DynamicRegistryManager registryManager) {
 		List<SurveyorPacket> payloads = new ArrayList<>();
-		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+		RegistryByteBuf buf = new RegistryByteBuf(new PacketByteBuf(Unpooled.buffer()), registryManager);
 		CODEC.encode(buf, this);
 		if (buf.readableBytes() < MAX_PAYLOAD_SIZE) {
 			payloads.add(this);
@@ -47,7 +48,7 @@ public record S2CUpdateRegionPacket(boolean shared, ChunkPos regionPos, List<Int
 				return List.of();
 			}
 			for (BitSet splitChunks : BitSetUtil.half(set)) {
-				payloads.addAll(new S2CUpdateRegionPacket(shared, regionPos, biomePalette, blockPalette, splitChunks, ListUtil.splitSet(chunks, splitChunks, set)).toPayloads());
+				payloads.addAll(new S2CUpdateRegionPacket(shared, regionPos, biomePalette, blockPalette, splitChunks, ListUtil.splitSet(chunks, splitChunks, set)).toPayloads(registryManager));
 			}
 		}
 		return payloads;

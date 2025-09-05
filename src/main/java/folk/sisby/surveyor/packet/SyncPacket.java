@@ -11,7 +11,7 @@ public interface SyncPacket extends C2SPacket, S2CPacket {
 		if (world instanceof ServerWorld sw) {
 			send(sender, sw, mode);
 		} else {
-			send();
+			send(world.getRegistryManager());
 		}
 	}
 }

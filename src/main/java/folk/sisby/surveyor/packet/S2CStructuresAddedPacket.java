@@ -8,11 +8,12 @@ import folk.sisby.surveyor.structure.WorldStructureSummary;
 import folk.sisby.surveyor.util.MapUtil;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.tag.TagKey;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.gen.structure.Structure;
 import net.minecraft.world.gen.structure.StructureType;
@@ -23,7 +24,7 @@ import java.util.Map;
 
 public record S2CStructuresAddedPacket(boolean shared, Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> structures, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> types, Multimap<RegistryKey<Structure>, TagKey<Structure>> tags) implements S2CPacket {
 	public static final Id<S2CStructuresAddedPacket> ID = new Id<>(Surveyor.id("s2c_structures_added"));
-	public static final PacketCodec<PacketByteBuf, S2CStructuresAddedPacket> CODEC = PacketCodec.tuple(
+	public static final PacketCodec<RegistryByteBuf, S2CStructuresAddedPacket> CODEC = PacketCodec.tuple(
 		PacketCodecs.BOOLEAN, S2CStructuresAddedPacket::shared,
 		SurveyorPacketCodecs.STRUCTURE_SUMMARIES, S2CStructuresAddedPacket::structures,
 		SurveyorPacketCodecs.STRUCTURE_TYPES, S2CStructuresAddedPacket::types,
@@ -40,9 +41,9 @@ public record S2CStructuresAddedPacket(boolean shared, Map<RegistryKey<Structure
 	}
 
 	@Override
-	public List<SurveyorPacket> toPayloads() {
+	public List<SurveyorPacket> toPayloads(DynamicRegistryManager registryManager) {
 		List<SurveyorPacket> payloads = new ArrayList<>();
-		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+		RegistryByteBuf buf = new RegistryByteBuf(new PacketByteBuf(Unpooled.buffer()), registryManager);
 		CODEC.encode(buf, this);
 		if (buf.readableBytes() < MAX_PAYLOAD_SIZE) {
 			payloads.add(this);
@@ -61,8 +62,8 @@ public record S2CStructuresAddedPacket(boolean shared, Map<RegistryKey<Structure
 					secondHalf.put(key, pos);
 				}
 			});
-			payloads.addAll(new S2CStructuresAddedPacket(shared, MapUtil.splitByKeyMap(structures, firstHalf), MapUtil.splitByKeySet(types, firstHalf.keySet()), MapUtil.asMultiMap(MapUtil.splitByKeySet(tags.asMap(), firstHalf.keySet()))).toPayloads());
-			payloads.addAll(new S2CStructuresAddedPacket(shared, MapUtil.splitByKeyMap(structures, secondHalf), MapUtil.splitByKeySet(types, secondHalf.keySet()), MapUtil.asMultiMap(MapUtil.splitByKeySet(tags.asMap(), secondHalf.keySet()))).toPayloads());
+			payloads.addAll(new S2CStructuresAddedPacket(shared, MapUtil.splitByKeyMap(structures, firstHalf), MapUtil.splitByKeySet(types, firstHalf.keySet()), MapUtil.asMultiMap(MapUtil.splitByKeySet(tags.asMap(), firstHalf.keySet()))).toPayloads(registryManager));
+			payloads.addAll(new S2CStructuresAddedPacket(shared, MapUtil.splitByKeyMap(structures, secondHalf), MapUtil.splitByKeySet(types, secondHalf.keySet()), MapUtil.asMultiMap(MapUtil.splitByKeySet(tags.asMap(), secondHalf.keySet()))).toPayloads(registryManager));
 		}
 		return payloads;
 	}
