@@ -50,7 +50,7 @@ public class WorldLandmarks {
 				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", world.getRegistryKey().getValue(), e);
 			}
 		}
-		var landmarks = Landmarks.fromNbt(landmarkNbt);
+		var landmarks = Landmarks.fromNbt(landmarkNbt, landmarksFile);
 		return new WorldLandmarks(world.getRegistryKey(), landmarks);
 	}
 
