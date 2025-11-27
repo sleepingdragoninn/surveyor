@@ -50,18 +50,20 @@ public class Landmarks {
 				Map<UUID, Map<Identifier, Landmark>> outMap = new HashMap<>();
 				for (String key : landmarks.getKeys()) {
 					NbtCompound type = landmarks.getCompound(key);
+					Identifier typeId = Identifier.tryParse(key);
 					for (String coords : type.getKeys()) {
 						NbtCompound landmark = type.getCompound(coords);
 						UUID owner = landmark.contains("owner") ? Uuids.CODEC.decode(NbtOps.INSTANCE, landmark.get("owner")).getOrThrow(false, Surveyor.LOGGER::error).getFirst() : WorldLandmarks.GLOBAL;
-						Identifier id = Identifier.of(key.split(":")[0], key.split(":")[1] + "/" + coords.replace(",", "/"));
+						BlockPos pos = new BlockPos(Integer.parseInt(coords.split(",")[0]), Integer.parseInt(coords.split(",")[1]), Integer.parseInt(coords.split(",")[2]));
+						DyeColor dye = !landmark.contains("color") ? null : DyeColor.CODEC.decode(NbtOps.INSTANCE, landmark.get("color")).resultOrPartial(Surveyor.LOGGER::error).map(Pair::getFirst).orElse(null);
+						Identifier id = (landmark.contains("texture") ? Identifier.tryParse(landmark.getString("texture")) : typeId).withSuffixedPath((dye == null ? "" : "/" + dye.getName()) + "/" + pos.getX() + (pos.getY() == 0 ? "" : "/" + pos.getY()) + "/" + pos.getZ());
 						outMap.computeIfAbsent(owner, u -> new HashMap<>()).put(id, Landmark.create(owner, id, b -> b
-							.add(LandmarkComponentTypes.POS, new BlockPos(Integer.parseInt(coords.split(",")[0]), Integer.parseInt(coords.split(",")[1]), Integer.parseInt(coords.split(",")[2])))
+							.add(LandmarkComponentTypes.POS, pos)
 							.add(LandmarkComponentTypes.BOX, !landmark.contains("box") ? null : BlockBox.CODEC.decode(NbtOps.INSTANCE, landmark.get("box")).resultOrPartial(Surveyor.LOGGER::error).map(Pair::getFirst).orElse(null))
-							.add(LandmarkComponentTypes.COLOR, !landmark.contains("color") ? null : DyeColor.CODEC.decode(NbtOps.INSTANCE, landmark.get("color")).resultOrPartial(Surveyor.LOGGER::error).map(Pair::getFirst).map(DyeColor::getFireworkColor).orElse(null))
+							.add(LandmarkComponentTypes.COLOR, dye == null ? null : dye.getFireworkColor())
 							.add(LandmarkComponentTypes.NAME, !landmark.contains("name") ? null : Codecs.TEXT.decode(NbtOps.INSTANCE, landmark.get("name")).resultOrPartial(Surveyor.LOGGER::error).map(Pair::getFirst).orElse(null))
 							.add(LandmarkComponentTypes.SEED, !landmark.contains("seed") ? null : landmark.getInt("seed"))
 							.add(LandmarkComponentTypes.TIME, !landmark.contains("created") ? null : landmark.getLong("created"))
-							.add(LandmarkComponentTypes.TEXTURE, !landmark.contains("texture") ? null : Identifier.tryParse(landmark.getString("texture")))
 						));
 					}
 				}

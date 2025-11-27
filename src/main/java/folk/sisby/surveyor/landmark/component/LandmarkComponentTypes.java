@@ -30,7 +30,6 @@ public class LandmarkComponentTypes {
 	public static final LandmarkComponentType<Integer> SEED = register("seed", Codec.INT, i -> Text.literal(String.valueOf(i)).formatted(Formatting.GOLD));
 	public static final LandmarkComponentType<BlockBox> BOX = register("box", BlockBox.CODEC, b -> Text.literal("[").append(Text.literal(new BlockPos(b.getMinX(), b.getMinY(), b.getMinZ()).toShortString()).formatted(Formatting.GOLD)).append(Text.literal("]->[")).append(Text.literal(new BlockPos(b.getMaxX(), b.getMaxY(), b.getMaxZ()).toShortString()).formatted(Formatting.GOLD)).append(Text.literal("]")));
 	public static final LandmarkComponentType<ItemStack> STACK = register("stack", ItemStack.CODEC, s -> Text.literal("").append(Text.literal("[")).append(s.getItem().getName().copy().formatted(s.getRarity().formatting)).append(Text.literal("]")).append(s.hasCustomName() ? Text.literal(" - \"").append(s.getName().copy().formatted(Formatting.GREEN)).append(Text.literal("\"")) : Text.literal("")));
-	public static final LandmarkComponentType<Identifier> TEXTURE = register("texture", Identifier.CODEC, t -> Text.literal(t.toString()).formatted(Formatting.GREEN));
 
 	public static LandmarkComponentMap.Builder forBlock(LandmarkComponentMap.Builder builder, WorldAccess world, BlockPos pos) {
 		BlockState state = world.getBlockState(pos);
