@@ -7,10 +7,10 @@ import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.DispatchMapCodec;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.text.TextCodecs;
 import net.minecraft.util.DyeColor;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Uuids;
-import net.minecraft.util.dynamic.Codecs;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 
@@ -33,7 +33,7 @@ public class Landmarks {
 	);
 
 	public static NbtCompound writeNbt(Map<UUID, Map<Identifier, Landmark>> landmarks, NbtCompound nbt) {
-		nbt.put(KEY_LANDMARKS, CODEC.encodeStart(NbtOps.INSTANCE, landmarks).getOrThrow());
+		nbt.put(KEY_LANDMARKS, CODEC.encodeStart(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow());
 		return nbt;
 	}
 
@@ -53,7 +53,7 @@ public class Landmarks {
 					Identifier typeId = Identifier.tryParse(key);
 					for (String coords : type.getKeys()) {
 						NbtCompound landmark = type.getCompound(coords);
-						UUID owner = landmark.contains("owner") ? Uuids.CODEC.decode(NbtOps.INSTANCE, landmark.get("owner")).getOrThrow(false, Surveyor.LOGGER::error).getFirst() : WorldLandmarks.GLOBAL;
+						UUID owner = landmark.contains("owner") ? Uuids.CODEC.decode(NbtOps.INSTANCE, landmark.get("owner")).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst() : WorldLandmarks.GLOBAL;
 						BlockPos pos = new BlockPos(Integer.parseInt(coords.split(",")[0]), Integer.parseInt(coords.split(",")[1]), Integer.parseInt(coords.split(",")[2]));
 						DyeColor dye = !landmark.contains("color") ? null : DyeColor.CODEC.decode(NbtOps.INSTANCE, landmark.get("color")).resultOrPartial(Surveyor.LOGGER::error).map(Pair::getFirst).orElse(null);
 						Identifier id = (landmark.contains("texture") ? Identifier.tryParse(landmark.getString("texture")) : typeId).withSuffixedPath((dye == null ? "" : "/" + dye.getName()) + "/" + pos.getX() + (pos.getY() == 0 ? "" : "/" + pos.getY()) + "/" + pos.getZ());
@@ -61,7 +61,7 @@ public class Landmarks {
 							.add(LandmarkComponentTypes.POS, pos)
 							.add(LandmarkComponentTypes.BOX, !landmark.contains("box") ? null : BlockBox.CODEC.decode(NbtOps.INSTANCE, landmark.get("box")).resultOrPartial(Surveyor.LOGGER::error).map(Pair::getFirst).orElse(null))
 							.add(LandmarkComponentTypes.COLOR, dye == null ? null : dye.getFireworkColor())
-							.add(LandmarkComponentTypes.NAME, !landmark.contains("name") ? null : Codecs.TEXT.decode(NbtOps.INSTANCE, landmark.get("name")).resultOrPartial(Surveyor.LOGGER::error).map(Pair::getFirst).orElse(null))
+							.add(LandmarkComponentTypes.NAME, !landmark.contains("name") ? null : TextCodecs.CODEC.decode(NbtOps.INSTANCE, landmark.get("name")).resultOrPartial(Surveyor.LOGGER::error).map(Pair::getFirst).orElse(null))
 							.add(LandmarkComponentTypes.SEED, !landmark.contains("seed") ? null : landmark.getInt("seed"))
 							.add(LandmarkComponentTypes.TIME, !landmark.contains("created") ? null : landmark.getLong("created"))
 						));
@@ -74,6 +74,6 @@ public class Landmarks {
 				return new HashMap<>();
 			}
 		}
-		return CODEC.decode(NbtOps.INSTANCE, landmarks).getOrThrow().getFirst();
+		return CODEC.decode(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst();
 	}
 }

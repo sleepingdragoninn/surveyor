@@ -1,5 +1,6 @@
 package folk.sisby.surveyor.util;
 
+import folk.sisby.surveyor.Surveyor;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.text.MutableText;
@@ -17,9 +18,9 @@ import java.util.function.Function;
 public class TextUtil {
 	public static Text stripInteraction(Text text) {
 		try {
-			NbtCompound nbt = (NbtCompound) TextCodecs.CODEC.encodeStart(NbtOps.INSTANCE, text).getOrThrow();
+			NbtCompound nbt = (NbtCompound) TextCodecs.CODEC.encodeStart(NbtOps.INSTANCE, text).resultOrPartial(Surveyor.LOGGER::error).orElseThrow();
 			NbtUtil.removeRecursive(nbt, List.of("hoverEvent", "clickEvent", "insertion"));
-			return TextCodecs.CODEC.decode(NbtOps.INSTANCE, nbt).getOrThrow().getFirst();
+			return TextCodecs.CODEC.decode(NbtOps.INSTANCE, nbt).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst();
 		} catch (Exception e) {
 			return Text.literal(text.getString());
 		}
