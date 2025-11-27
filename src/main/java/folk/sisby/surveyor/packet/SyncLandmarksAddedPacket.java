@@ -27,18 +27,12 @@ public record SyncLandmarksAddedPacket(Map<UUID, Map<Identifier, Landmark>> land
 	}
 
 	public static SyncLandmarksAddedPacket read(PacketByteBuf buf) {
-		return new SyncLandmarksAddedPacket(buf.readMap(
-			PacketByteBuf::readUuid,
-			b -> b.readMap(PacketByteBuf::readIdentifier, b2 -> Landmarks.CODEC.decode(NbtOps.INSTANCE, b2.readNbt()).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst().values().stream().findFirst().orElseThrow().values().stream().findFirst().orElseThrow())
-		));
+		return new SyncLandmarksAddedPacket(Landmarks.CODEC.decode(NbtOps.INSTANCE, buf.readNbt()).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst());
 	}
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
-		buf.writeMap(landmarks,
-			PacketByteBuf::writeUuid,
-			(b, m) -> b.writeMap(m, PacketByteBuf::writeIdentifier, (b2, landmark) -> b2.writeNbt((NbtCompound) Landmarks.CODEC.encodeStart(NbtOps.INSTANCE, Map.of(landmark.owner(), Map.of(landmark.id(), landmark))).resultOrPartial(Surveyor.LOGGER::error).orElseThrow()))
-		);
+		buf.writeNbt((NbtCompound) Landmarks.CODEC.encodeStart(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow());
 	}
 
 	@Override
