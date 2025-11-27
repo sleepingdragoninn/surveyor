@@ -2,6 +2,7 @@ package folk.sisby.surveyor.landmark;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentHolder;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentMap;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentType;
@@ -53,6 +54,6 @@ public record Landmark(UUID owner, Identifier id, LandmarkComponentMap component
 	}
 
 	public NbtElement toNbt() {
-		return createCodec(owner, id).encodeStart(NbtOps.INSTANCE, this).getOrThrow();
+		return createCodec(owner, id).encodeStart(NbtOps.INSTANCE, this).resultOrPartial(Surveyor.LOGGER::error).orElseThrow();
 	}
 }
