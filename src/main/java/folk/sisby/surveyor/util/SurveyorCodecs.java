@@ -2,11 +2,17 @@ package folk.sisby.surveyor.util;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-import net.minecraft.util.math.BlockPos;
+import com.mojang.serialization.Dynamic;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtOps;
 
 public class SurveyorCodecs {
-	public static final Codec<BlockPos> STRINGIFIED_BLOCKPOS = Codec.STRING.comapFlatMap(
-		string -> DataResult.success(new BlockPos(Integer.parseInt(string.split(",")[0]), Integer.parseInt(string.split(",")[1]), Integer.parseInt(string.split(",")[2]))),
-		pos -> "%s,%s,%s".formatted(pos.getX(), pos.getY(), pos.getZ())
-	).stable();
+	public static final Codec<NbtElement> NBT_ELEMENT = Codec.PASSTHROUGH
+		.comapFlatMap(
+			dynamic -> {
+				NbtElement nbtElement = dynamic.convert(NbtOps.INSTANCE).getValue();
+				return DataResult.success(nbtElement == dynamic.getValue() ? nbtElement.copy() : nbtElement);
+			},
+			nbt -> new Dynamic<>(NbtOps.INSTANCE, nbt.copy())
+		);
 }
