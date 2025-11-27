@@ -33,7 +33,7 @@ public class Landmarks {
 	);
 
 	public static NbtCompound writeNbt(Map<UUID, Map<Identifier, Landmark>> landmarks, NbtCompound nbt) {
-		nbt.put(KEY_LANDMARKS, CODEC.encodeStart(NbtOps.INSTANCE, landmarks).getOrThrow(false, Surveyor.LOGGER::error));
+		nbt.put(KEY_LANDMARKS, CODEC.encodeStart(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow());
 		return nbt;
 	}
 
@@ -53,7 +53,7 @@ public class Landmarks {
 					Identifier typeId = Identifier.tryParse(key);
 					for (String coords : type.getKeys()) {
 						NbtCompound landmark = type.getCompound(coords);
-						UUID owner = landmark.contains("owner") ? Uuids.CODEC.decode(NbtOps.INSTANCE, landmark.get("owner")).getOrThrow(false, Surveyor.LOGGER::error).getFirst() : WorldLandmarks.GLOBAL;
+						UUID owner = landmark.contains("owner") ? Uuids.CODEC.decode(NbtOps.INSTANCE, landmark.get("owner")).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst() : WorldLandmarks.GLOBAL;
 						BlockPos pos = new BlockPos(Integer.parseInt(coords.split(",")[0]), Integer.parseInt(coords.split(",")[1]), Integer.parseInt(coords.split(",")[2]));
 						DyeColor dye = !landmark.contains("color") ? null : DyeColor.CODEC.decode(NbtOps.INSTANCE, landmark.get("color")).resultOrPartial(Surveyor.LOGGER::error).map(Pair::getFirst).orElse(null);
 						Identifier id = (landmark.contains("texture") ? Identifier.tryParse(landmark.getString("texture")) : typeId).withSuffixedPath((dye == null ? "" : "/" + dye.getName()) + "/" + pos.getX() + (pos.getY() == 0 ? "" : "/" + pos.getY()) + "/" + pos.getZ());
@@ -74,6 +74,6 @@ public class Landmarks {
 				return new HashMap<>();
 			}
 		}
-		return CODEC.decode(NbtOps.INSTANCE, landmarks).getOrThrow(false, Surveyor.LOGGER::error).getFirst();
+		return CODEC.decode(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst();
 	}
 }
