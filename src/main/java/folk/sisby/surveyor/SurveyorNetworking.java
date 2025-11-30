@@ -68,9 +68,9 @@ public class SurveyorNetworking {
 			if (!set.isEmpty()) {
 				SurveyorExploration personalExploration = SurveyorExploration.of(player);
 				BitSet personalSet = personalExploration.limitTerrainBitset(world.getRegistryKey(), rPos, (BitSet) set.clone());
-				if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(false, rPos, summary.terrain().getRegion(rPos), personalSet).send(player);
+				if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(false, rPos, summary.terrain().getRegion(rPos), personalSet, world.getRegistryManager()).send(player);
 				set.andNot(personalSet);
-				if (!set.isEmpty()) S2CUpdateRegionPacket.of(true, rPos, summary.terrain().getRegion(rPos), set).send(player);
+				if (!set.isEmpty()) S2CUpdateRegionPacket.of(true, rPos, summary.terrain().getRegion(rPos), set, world.getRegistryManager()).send(player);
 			}
 		});
 	}

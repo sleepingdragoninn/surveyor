@@ -8,20 +8,27 @@ import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtCrashException;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.nbt.NbtString;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
 import net.minecraft.world.chunk.WorldChunk;
+import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -42,13 +49,20 @@ public class RegionSummary {
 
 	protected final RegistryPalette<Biome> biomePalette;
 	protected final RegistryPalette<Block> blockPalette;
-	protected final ChunkSummary[][] chunks = new ChunkSummary[REGION_SIZE][REGION_SIZE];
+	protected final ChunkPos regionPos;
+	protected final File saveFile;
+	protected @Nullable ChunkSummary[][] chunks;
+	protected @Nullable BitSet bitSet;
 
 	protected boolean dirty = false;
 
-	public RegionSummary(DynamicRegistryManager manager) {
-		biomePalette = new RegistryPalette<>(manager.get(RegistryKeys.BIOME));
-		blockPalette = new RegistryPalette<>(manager.get(RegistryKeys.BLOCK));
+	private RegionSummary(DynamicRegistryManager manager, File saveFile, ChunkPos regionPos, ChunkSummary[][] chunks, BitSet bitSet) {
+		this.biomePalette = new RegistryPalette<>(manager.get(RegistryKeys.BIOME));
+		this.blockPalette = new RegistryPalette<>(manager.get(RegistryKeys.BLOCK));
+		this.saveFile = saveFile;
+		this.regionPos = regionPos;
+		this.chunks = chunks;
+		this.bitSet = bitSet;
 	}
 
 	public static <T, O> List<O> mapIterable(Iterable<T> palette, Function<T, O> mapper) {
@@ -91,21 +105,34 @@ public class RegionSummary {
 		return new ChunkPos(regionToChunk(rPos.x) + xForBit(i), regionToChunk(rPos.z) + zForBit(i));
 	}
 
-	public static RegionSummary readNbt(NbtCompound nbt, DynamicRegistryManager manager, ChunkPos pos) {
-		RegionSummary summary = new RegionSummary(manager);
+	public static RegionSummary fromEmpty(File folder, ChunkPos pos, DynamicRegistryManager registryManager) {
+		return new RegionSummary(registryManager, new File(folder, "c.%d.%d.dat".formatted(pos.x, pos.z)), pos, new ChunkSummary[REGION_SIZE][REGION_SIZE], new BitSet(BITSET_SIZE));
+	}
+
+	public static RegionSummary fromFile(File file, DynamicRegistryManager registryManager, ChunkPos pos) {
+		return new RegionSummary(registryManager, file, pos, null, null);
+	}
+
+	protected void readNbt(DynamicRegistryManager manager, ChunkPos pos, boolean bitsOnly) {
 		Registry<Biome> biomeRegistry = manager.get(RegistryKeys.BIOME);
 		Registry<Block> blockRegistry = manager.get(RegistryKeys.BLOCK);
+		NbtCompound nbt = new NbtCompound();
+		try {
+			nbt = NbtIo.readCompressed(saveFile.toPath(), NbtSizeTracker.ofUnlimitedBytes());
+		} catch (IOException | NbtCrashException e) {
+			Surveyor.LOGGER.error("[Surveyor] Error reading region summary file {}.", saveFile.getName(), e);
+		}
 		NbtList biomeList = nbt.getList(KEY_BIOMES, NbtElement.STRING_TYPE);
 		Map<Integer, Integer> biomeRemap = new Int2IntArrayMap(biomeList.size());
 		for (int i = 0; i < biomeList.size(); i++) {
 			Identifier biomeId = Identifier.tryParse(biomeList.get(i).asString());
 			Biome biome = biomeRegistry.get(biomeId);
 			Biome newBiome = biome == null ? biomeRegistry.get(BiomeKeys.THE_VOID) : biome;
-			int newIndex = summary.biomePalette.findOrAdd(newBiome);
+			int newIndex = biomePalette.findOrAdd(newBiome);
 			if (biome == null || newIndex != i) {
-				Surveyor.LOGGER.warn("[Surveyor] Remapping biome palette in region {}: {} (#{}) is now {} (#{})", pos, biomeId, i, biomeRegistry.getId(newBiome), newIndex);
+				if (biome == null) Surveyor.LOGGER.warn("[Surveyor] Remapping biome palette in region {}: {} (#{}) is now {} (#{})", pos, biomeId, i, biomeRegistry.getId(newBiome), newIndex);
 				biomeRemap.put(i, newIndex);
-				summary.dirty();
+				dirty();
 			}
 		}
 		NbtList blockList = nbt.getList(KEY_BLOCKS, NbtElement.STRING_TYPE);
@@ -114,49 +141,71 @@ public class RegionSummary {
 			Identifier blockId = Identifier.tryParse(blockList.get(i).asString());
 			Block block = blockRegistry.get(blockId);
 			Block newBlock = block == null ? Blocks.AIR : block;
-			int newIndex = summary.blockPalette.findOrAdd(newBlock);
+			int newIndex = blockPalette.findOrAdd(newBlock);
 			if (block == null || newIndex != i) {
-				Surveyor.LOGGER.warn("[Surveyor] Remapping block palette in region {}: {} (#{}) is now {} (#{})", pos, blockList.get(i).asString(), i, blockRegistry.getId(newBlock), newIndex);
+				if (block == null) Surveyor.LOGGER.warn("[Surveyor] Remapping block palette in region {}: {} (#{}) is now {} (#{})", pos, blockList.get(i).asString(), i, blockRegistry.getId(newBlock), newIndex);
 				blockRemap.put(i, newIndex);
-				summary.dirty();
+				dirty();
 			}
 		}
 		NbtCompound chunksCompound = nbt.getCompound(KEY_CHUNKS);
+		chunks = new ChunkSummary[REGION_SIZE][REGION_SIZE];
+		bitSet = new BitSet(BITSET_SIZE);
 		for (String posKey : chunksCompound.getKeys()) {
 			int x = regionRelative(Integer.parseInt(posKey.split(",")[0]));
 			int z = regionRelative(Integer.parseInt(posKey.split(",")[1]));
-			summary.chunks[x][z] = new ChunkSummary(chunksCompound.getCompound(posKey));
-			if (!biomeRemap.isEmpty() || !blockRemap.isEmpty()) summary.chunks[x][z].remap(biomeRemap, blockRemap);
+			set(x, z, bitsOnly ? null : new ChunkSummary(chunksCompound.getCompound(posKey)), manager);
+			if (!bitsOnly && (!biomeRemap.isEmpty() || !blockRemap.isEmpty())) get(x, z, manager).remap(biomeRemap, blockRemap);
 		}
-		return summary;
+		if (bitsOnly) chunks = null;
 	}
 
-	public boolean contains(ChunkPos pos) {
-		return chunks[regionRelative(pos.x)][regionRelative(pos.z)] != null;
+	public boolean contains(ChunkPos pos, DynamicRegistryManager manager) {
+		return bitSet(manager).get(bitForXZ(regionRelative(pos.x), regionRelative(pos.z)));
 	}
 
-	public ChunkSummary get(ChunkPos pos) {
-		return chunks[regionRelative(pos.x)][regionRelative(pos.z)];
+	public ChunkSummary get(ChunkPos pos, DynamicRegistryManager manager) {
+		return get(regionRelative(pos.x), regionRelative(pos.z), manager);
 	}
 
-	public BitSet bitSet() {
-		BitSet bitSet = new BitSet(BITSET_SIZE);
-		for (int x = 0; x < REGION_SIZE; x++) {
-			for (int z = 0; z < REGION_SIZE; z++) {
-				if (chunks[x][z] != null) bitSet.set(bitForXZ(x, z));
-			}
-		}
+	protected @Nullable ChunkSummary get(int x, int z, DynamicRegistryManager manager) {
+		if (chunks == null) readNbt(manager, regionPos, false);
+		return chunks[x][z];
+	}
+
+	protected void set(int x, int z, ChunkSummary summary, DynamicRegistryManager manager) {
+		if (chunks == null || bitSet == null) readNbt(manager, regionPos, false);
+		chunks[x][z] = summary;
+		bitSet.set(bitForXZ(x, z), summary != null);
+	}
+
+	public BitSet bitSet(DynamicRegistryManager manager) {
+		if (bitSet == null) readNbt(manager, regionPos, true);
 		return bitSet;
 	}
 
 	public void putChunk(World world, WorldChunk chunk) {
 		if (Surveyor.CONFIG.terrain == SystemMode.FROZEN) return;
 		if (world.getHeight() == 0) return;
-		chunks[regionRelative(chunk.getPos().x)][regionRelative(chunk.getPos().z)] = new ChunkSummary(world, chunk, DimensionSupport.getSummaryLayers(world), biomePalette, blockPalette, !(world instanceof ServerWorld));
+		set(regionRelative(chunk.getPos().x), regionRelative(chunk.getPos().z), new ChunkSummary(world, chunk, DimensionSupport.getSummaryLayers(world), biomePalette, blockPalette, !(world instanceof ServerWorld)), world.getRegistryManager());
 		dirty();
 	}
 
-	public NbtCompound writeNbt(DynamicRegistryManager manager, NbtCompound nbt, ChunkPos regionPos) {
+	public boolean isUnloaded(World world) {
+		for (int x = 0; x < REGION_SIZE; x++) {
+			for (int z = 0; z < REGION_SIZE; z++) {
+				if (world.isChunkLoaded(regionToChunk(regionPos.x + x), regionToChunk(regionPos.z + z))) return false;
+			}
+		}
+		return true;
+	}
+
+	public void save(DynamicRegistryManager manager, boolean unload) {
+		if (!isDirty()) {
+			if (unload) chunks = null;
+			return;
+		}
+		NbtCompound nbt = new NbtCompound();
 		Registry<Biome> biomeRegistry = manager.get(RegistryKeys.BIOME);
 		Registry<Block> blockRegistry = manager.get(RegistryKeys.BLOCK);
 		nbt.put(KEY_BIOMES, new NbtList(mapIterable(biomePalette.view(), b -> NbtString.of(biomeRegistry.getId(b).toString())), NbtElement.STRING_TYPE));
@@ -168,11 +217,22 @@ public class RegionSummary {
 		NbtCompound chunksCompound = new NbtCompound();
 		for (int x = 0; x < REGION_SIZE; x++) {
 			for (int z = 0; z < REGION_SIZE; z++) {
-				if (chunks[x][z] != null) chunksCompound.put("%s,%s".formatted((regionPos.x << REGION_POWER) + x, (regionPos.z << REGION_POWER) + z), chunks[x][z].writeNbt(new NbtCompound()));
+				ChunkSummary chunk = get(x, z, manager);
+				if (chunk != null) chunksCompound.put("%s,%s".formatted((regionPos.x << REGION_POWER) + x, (regionPos.z << REGION_POWER) + z), chunk.writeNbt(new NbtCompound()));
 			}
 		}
 		nbt.put(KEY_CHUNKS, chunksCompound);
-		return nbt;
+		dirty = false;
+		Util.getIoWorkerExecutor().execute(() -> {
+			try {
+				NbtIo.writeCompressed(nbt, saveFile.toPath());
+				if (unload && !dirty) {
+					chunks = null;
+				}
+			} catch (IOException e) {
+				Surveyor.LOGGER.error("[Surveyor] Error writing region summary file {}.", saveFile.getName(), e);
+			}
+		});
 	}
 
 	public BitSet readUpdatePacket(DynamicRegistryManager manager, S2CUpdateRegionPacket packet) {
@@ -190,14 +250,14 @@ public class RegionSummary {
 		for (int i = 0; i < packet.chunks().size(); i++) {
 			ChunkSummary summary = packet.chunks().get(i);
 			summary.remap(biomeRemap, blockRemap);
-			this.chunks[xForBit(indices[i])][zForBit(indices[i])] = summary;
+			set(xForBit(indices[i]), zForBit(indices[i]), summary, manager);
 		}
 		dirty();
 		return packet.set();
 	}
 
-	public S2CUpdateRegionPacket createUpdatePacket(boolean shared, ChunkPos rPos, BitSet set) {
-		return new S2CUpdateRegionPacket(shared, rPos, mapIterable(biomePalette, i -> i), mapIterable(blockPalette, i -> i), set, set.stream().mapToObj(i -> chunks[xForBit(i)][zForBit(i)]).toList());
+	public S2CUpdateRegionPacket createUpdatePacket(boolean shared, ChunkPos rPos, BitSet set, DynamicRegistryManager manager) {
+		return new S2CUpdateRegionPacket(shared, rPos, mapIterable(biomePalette, i -> i), mapIterable(blockPalette, i -> i), set, set.stream().mapToObj(i -> get(xForBit(i), zForBit(i), manager)).toList());
 	}
 
 	public RegistryPalette<Biome>.ValueView getBiomePalette() {
@@ -206,6 +266,10 @@ public class RegionSummary {
 
 	public RegistryPalette<Block>.ValueView getBlockPalette() {
 		return blockPalette.view();
+	}
+
+	public boolean isLoaded() {
+		return chunks != null;
 	}
 
 	public boolean isDirty() {

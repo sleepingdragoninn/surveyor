@@ -10,7 +10,7 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.util.dynamic.Codecs;
 import net.minecraft.util.math.ChunkPos;
 
@@ -30,8 +30,8 @@ public record S2CUpdateRegionPacket(boolean shared, ChunkPos regionPos, List<Int
 		S2CUpdateRegionPacket::new
 	);
 
-	public static S2CUpdateRegionPacket of(boolean shared, ChunkPos regionPos, RegionSummary summary, BitSet keys) {
-		return summary.createUpdatePacket(shared, regionPos, keys);
+	public static S2CUpdateRegionPacket of(boolean shared, ChunkPos regionPos, RegionSummary summary, BitSet keys, DynamicRegistryManager manager) {
+		return summary.createUpdatePacket(shared, regionPos, keys, manager);
 	}
 
 	@Override
