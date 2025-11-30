@@ -103,7 +103,7 @@ public class RegionSummary {
 			Biome newBiome = biome == null ? biomeRegistry.get(BiomeKeys.THE_VOID) : biome;
 			int newIndex = summary.biomePalette.findOrAdd(newBiome);
 			if (biome == null || newIndex != i) {
-				Surveyor.LOGGER.warn("[Surveyor] Remapping biome palette in region {}: {} (#{}) is now {} (#{})", pos, biomeId, i, biomeRegistry.getId(newBiome), newIndex);
+				if (biome == null) Surveyor.LOGGER.warn("[Surveyor] Remapping biome palette in region {}: {} (#{}) is now {} (#{})", pos, biomeId, i, biomeRegistry.getId(newBiome), newIndex);
 				biomeRemap.put(i, newIndex);
 				summary.dirty();
 			}
@@ -116,7 +116,7 @@ public class RegionSummary {
 			Block newBlock = block == null ? Blocks.AIR : block;
 			int newIndex = summary.blockPalette.findOrAdd(newBlock);
 			if (block == null || newIndex != i) {
-				Surveyor.LOGGER.warn("[Surveyor] Remapping block palette in region {}: {} (#{}) is now {} (#{})", pos, blockList.get(i).asString(), i, blockRegistry.getId(newBlock), newIndex);
+				if (block == null) Surveyor.LOGGER.warn("[Surveyor] Remapping block palette in region {}: {} (#{}) is now {} (#{})", pos, blockList.get(i).asString(), i, blockRegistry.getId(newBlock), newIndex);
 				blockRemap.put(i, newIndex);
 				summary.dirty();
 			}
