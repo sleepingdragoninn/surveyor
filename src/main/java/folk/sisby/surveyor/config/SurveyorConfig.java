@@ -45,7 +45,8 @@ public class SurveyorConfig extends WrappedConfig {
 
 		@Comment("How much terrain data to send to clients")
 		@Comment("SERVER sends server-known data, GROUP sends group-known data, SOLO sends player-known data, NONE sends no data")
-		public NetworkMode terrain = NetworkMode.GROUP;
+		@Comment("This is a performance heavy feature, and may cause memory spikes when syncing to clients. Test with caution!")
+		public NetworkMode terrain = NetworkMode.NONE;
 
 		@Comment("How much structure data to send to clients")
 		@Comment("SERVER sends server-known data, GROUP sends group-known data, SOLO sends player-known data, NONE sends no data")
