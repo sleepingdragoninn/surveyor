@@ -12,41 +12,38 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class ChunkUtil {
 	public static Integer airCount(Chunk chunk) {
 		return Arrays.stream(chunk.getSectionArray()).mapToInt(s -> 4096 - s.nonEmptyBlockCount).sum();
 	}
 
-	public static File[] getRegionFiles(File folder, String prefix) {
-		return folder.listFiles((file, name) -> {
-			String[] split = name.split("\\.");
-			if (split.length == 4 && split[0].equals(prefix) && split[3].equals("dat")) {
-				try {
-					Integer.parseInt(split[1]);
-					Integer.parseInt(split[2]);
-					return true;
-				} catch (NumberFormatException ignored) {
+	public static Map<ChunkPos, File> getRegionFiles(File folder, String prefix) {
+		Map<ChunkPos, File> files = new HashMap<>();
+		for (File file : Objects.requireNonNullElse(folder.listFiles(), new File[0])) {
+				String[] split = file.getName().split("\\.");
+				if (split.length == 4 && split[0].equals(prefix) && split[3].equals("dat")) {
+					try {
+						files.put(new ChunkPos(Integer.parseInt(split[1]), Integer.parseInt(split[2])), file);
+					} catch (NumberFormatException ignored) {
+					}
 				}
 			}
-			return false;
-		});
+		return files;
 	}
 
 	public static Map<ChunkPos, NbtCompound> getRegionNbt(File folder, String prefix) {
-		File[] regionFiles = getRegionFiles(folder, prefix);
+		Map<ChunkPos, File> regionFiles = getRegionFiles(folder, prefix);
 		Map<ChunkPos, NbtCompound> regions = new HashMap<>();
-		if (regionFiles != null) {
-			for (File regionFile : regionFiles) {
-				ChunkPos regionPos = new ChunkPos(Integer.parseInt(regionFile.getName().split("\\.")[1]), Integer.parseInt(regionFile.getName().split("\\.")[2]));
-				NbtCompound regionCompound = null;
-				try {
-					regionCompound = NbtIo.readCompressed(regionFile);
-				} catch (IOException | CrashException e) {
-					Surveyor.LOGGER.error("[Surveyor] Error loading region nbt file {}.", regionFile.getName(), e);
-				}
-				if (regionCompound != null) regions.put(regionPos, regionCompound);
+		for (ChunkPos regionPos : regionFiles.keySet()) {
+			NbtCompound regionCompound = null;
+			try {
+				regionCompound = NbtIo.readCompressed(regionFiles.get(regionPos));
+			} catch (IOException | CrashException e) {
+				Surveyor.LOGGER.error("[Surveyor] Error loading region nbt file {}.", regionFiles.get(regionPos).getName(), e);
 			}
+			if (regionCompound != null) regions.put(regionPos, regionCompound);
 		}
 		return regions;
 	}

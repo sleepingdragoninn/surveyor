@@ -7,6 +7,7 @@ import folk.sisby.surveyor.util.BitSetUtil;
 import folk.sisby.surveyor.util.ListUtil;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
 
@@ -18,8 +19,8 @@ import java.util.List;
 public record S2CUpdateRegionPacket(boolean shared, ChunkPos regionPos, List<Integer> biomePalette, List<Integer> blockPalette, BitSet set, List<ChunkSummary> chunks) implements S2CPacket {
 	public static final Identifier ID = Surveyor.id("s2c_update_region");
 
-	public static S2CUpdateRegionPacket of(boolean shared, ChunkPos regionPos, RegionSummary summary, BitSet keys) {
-		return summary.createUpdatePacket(shared, regionPos, keys);
+	public static S2CUpdateRegionPacket of(boolean shared, ChunkPos regionPos, RegionSummary summary, BitSet keys, DynamicRegistryManager manager) {
+		return summary.createUpdatePacket(shared, regionPos, keys, manager);
 	}
 
 	public static S2CUpdateRegionPacket read(PacketByteBuf buf) {

@@ -8,18 +8,14 @@ import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.util.ChunkUtil;
 import folk.sisby.surveyor.util.RegistryPalette;
 import net.minecraft.block.Block;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtIo;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
-import net.minecraft.util.Util;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.WorldChunk;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Comparator;
@@ -34,11 +30,13 @@ public class WorldTerrainSummary {
 	protected final RegistryKey<World> worldKey;
 	protected final DynamicRegistryManager registryManager;
 	protected final Map<ChunkPos, RegionSummary> regions = new ConcurrentHashMap<>();
+	protected final File folder;
 
-	public WorldTerrainSummary(RegistryKey<World> worldKey, DynamicRegistryManager registryManager, Map<ChunkPos, RegionSummary> regions) {
+	public WorldTerrainSummary(RegistryKey<World> worldKey, DynamicRegistryManager registryManager, Map<ChunkPos, RegionSummary> regions, File folder) {
 		this.worldKey = worldKey;
 		this.registryManager = registryManager;
 		this.regions.putAll(regions);
+		this.folder = folder;
 	}
 
 	protected static ChunkPos regionPosOf(ChunkPos pos) {
@@ -62,8 +60,8 @@ public class WorldTerrainSummary {
 
 	public static WorldTerrainSummary load(World world, File folder) {
 		Map<ChunkPos, RegionSummary> regions = new HashMap<>();
-		ChunkUtil.getRegionNbt(folder, "c").forEach((pos, nbt) -> regions.put(pos, RegionSummary.readNbt(nbt, world.getRegistryManager(), pos)));
-		return new WorldTerrainSummary(world.getRegistryKey(), world.getRegistryManager(), regions);
+		ChunkUtil.getRegionFiles(folder, "c").forEach((pos, file) -> regions.put(pos, RegionSummary.fromFile(file, world.getRegistryManager(), pos)));
+		return new WorldTerrainSummary(world.getRegistryKey(), world.getRegistryManager(), regions, folder);
 	}
 
 	public static void onChunkLoad(World world, WorldChunk chunk) {
@@ -82,16 +80,16 @@ public class WorldTerrainSummary {
 
 	public boolean contains(ChunkPos pos) {
 		ChunkPos regionPos = regionPosOf(pos);
-		return regions.containsKey(regionPos) && regions.get(regionPos).contains(pos);
+		return regions.containsKey(regionPos) && regions.get(regionPos).contains(pos, registryManager);
 	}
 
 	public ChunkSummary get(ChunkPos pos) {
 		ChunkPos regionPos = regionPosOf(pos);
-		return regions.containsKey(regionPos) ? regions.get(regionPos).get(pos) : null;
+		return regions.containsKey(regionPos) ? regions.get(regionPos).get(pos, registryManager) : null;
 	}
 
 	public RegionSummary getRegion(ChunkPos regionPos) {
-		return regions.computeIfAbsent(regionPos, k -> new RegionSummary(registryManager));
+		return regions.computeIfAbsent(regionPos, k -> RegionSummary.fromEmpty(folder, regionPos, registryManager));
 	}
 
 	public RegistryPalette<Biome>.ValueView getBiomePalette(ChunkPos pos) {
@@ -106,31 +104,23 @@ public class WorldTerrainSummary {
 
 	public Map<ChunkPos, BitSet> bitSet(SurveyorExploration exploration) {
 		Map<ChunkPos, BitSet> map = new HashMap<>();
-		regions.forEach((p, r) -> map.put(p, r.bitSet()));
+		regions.forEach((p, r) -> map.put(p, r.bitSet(registryManager)));
 		return exploration == null ? map : exploration.limitTerrainBitset(worldKey, map);
 	}
 
 	public void put(World world, WorldChunk chunk) {
 		if (Surveyor.CONFIG.terrain == SystemMode.FROZEN) return;
-		regions.computeIfAbsent(regionPosOf(chunk.getPos()), k -> new RegionSummary(registryManager)).putChunk(world, chunk);
+		regions.computeIfAbsent(regionPosOf(chunk.getPos()), k -> RegionSummary.fromEmpty(folder, regionPosOf(chunk.getPos()), registryManager)).putChunk(world, chunk);
 		SurveyorEvents.Invoke.terrainUpdated(world, chunk.getPos());
 	}
 
-	public int save(World world, File folder) {
+	public int save(World world) {
 		List<ChunkPos> savedRegions = new ArrayList<>();
 		regions.forEach((pos, summary) -> {
-			if (!summary.isDirty()) return;
-			savedRegions.add(pos);
-			NbtCompound regionCompound = summary.writeNbt(world.getRegistryManager(), new NbtCompound(), pos);
-			File regionFile = new File(folder, "c.%d.%d.dat".formatted(pos.x, pos.z));
-			Util.getIoWorkerExecutor().execute(() -> {
-				try {
-					NbtIo.writeCompressed(regionCompound, regionFile);
-				} catch (IOException e) {
-					Surveyor.LOGGER.error("[Surveyor] Error writing region summary file {}.", regionFile.getName(), e);
-				}
-			});
-			summary.dirty = false;
+			if (summary.isLoaded()) {
+				summary.save(world.getRegistryManager(), summary.isUnloaded(world));
+				if (summary.isDirty()) savedRegions.add(pos);
+			}
 		});
 		return savedRegions.size();
 	}

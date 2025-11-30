@@ -236,7 +236,7 @@ public interface PlayerSummary {
 						BitSet sendSet = (BitSet) bitSet.clone();
 						if (friendExploration.terrain().containsKey(worldKey) && friendExploration.terrain().get(worldKey).containsKey(regionPos)) sendSet.andNot(friendExploration.terrain().get(worldKey).get(regionPos));
 						WorldTerrainSummary summary = WorldSummary.of(player.getWorld()).terrain();
-						if (!sendSet.isEmpty() && summary != null) S2CUpdateRegionPacket.of(true, regionPos, summary.getRegion(regionPos), sendSet).send(friend);
+						if (!sendSet.isEmpty() && summary != null) S2CUpdateRegionPacket.of(true, regionPos, summary.getRegion(regionPos), sendSet, player.getServerWorld().getRegistryManager()).send(friend);
 					}
 				}
 			}
@@ -254,7 +254,7 @@ public interface PlayerSummary {
 						RegionSummary region = summary.getRegion(regionPos);
 						BitSet sendSet = new BitSet();
 						sendSet.set(RegionSummary.bitForChunk(pos));
-						S2CUpdateRegionPacket.of(true, regionPos, region, sendSet).send(friend);
+						S2CUpdateRegionPacket.of(true, regionPos, region, sendSet, player.getServer().getRegistryManager()).send(friend);
 					}
 				}
 			}
