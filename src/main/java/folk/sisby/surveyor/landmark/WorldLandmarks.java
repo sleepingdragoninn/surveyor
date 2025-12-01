@@ -167,9 +167,8 @@ public class WorldLandmarks {
 		handleChanged(world, removeForBatch(new HashMap<>(), uuid, id), false, sender);
 	}
 
-	public Map<UUID, Map<Identifier, Landmark>> removeAllForBatch(Predicate<Landmark> predicate) {
+	public Map<UUID, Map<Identifier, Landmark>> removeAllForBatch(Map<UUID, Map<Identifier, Landmark>> changed, Predicate<Landmark> predicate) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return null;
-		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
 		Multimap<UUID, Identifier> toRemove = HashMultimap.create();
 		landmarks.forEach((uuid, map) -> map.forEach((id, landmark) -> {
 			if (predicate.test(landmark)) toRemove.put(uuid, id);
@@ -179,7 +178,7 @@ public class WorldLandmarks {
 	}
 
 	public void removeAll(World world, Predicate<Landmark> predicate) {
-		handleChanged(world, removeAllForBatch(predicate), false, null);
+		handleChanged(world, removeAllForBatch(new HashMap<>(), predicate), false, null);
 	}
 
 	public int save(World world, File folder) {
