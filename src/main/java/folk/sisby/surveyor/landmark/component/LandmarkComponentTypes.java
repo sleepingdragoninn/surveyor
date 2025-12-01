@@ -26,7 +26,6 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.WorldAccess;
 
 import java.util.BitSet;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -41,7 +40,7 @@ public class LandmarkComponentTypes {
 	public static final LandmarkComponentType<Integer> SEED = register("seed", Codec.INT, i -> Text.literal(String.valueOf(i)).formatted(Formatting.GOLD));
 	public static final LandmarkComponentType<BlockBox> BOX = register("box", BlockBox.CODEC, b -> Text.literal("[").append(Text.literal(new BlockPos(b.getMinX(), b.getMinY(), b.getMinZ()).toShortString()).formatted(Formatting.GOLD)).append(Text.literal("]->[")).append(Text.literal(new BlockPos(b.getMaxX(), b.getMaxY(), b.getMaxZ()).toShortString()).formatted(Formatting.GOLD)).append(Text.literal("]")));
 	public static final LandmarkComponentType<ItemStack> STACK = register("stack", ItemStack.CODEC, s -> Text.literal("").append(Text.literal("[")).append(s.getItem().getName().copy().formatted(s.getRarity().getFormatting())).append(Text.literal("]")).append(s.contains(DataComponentTypes.CUSTOM_NAME) ? Text.literal(" - \"").append(s.getName().copy().formatted(Formatting.GREEN)).append(Text.literal("\"")) : Text.literal("")));
-	public static final LandmarkComponentType<Map<RegionPos, BitSet>> CHUNKS = register("chunks", Codec.unboundedMap(RegionPos.CODEC, Codecs.BIT_SET), m -> Text.literal("%d chunks".formatted(m.values().stream().mapToInt(BitSet::cardinality).sum())).styled(s -> s.withHoverEvent(new HoverEvent.ShowText(Text.literal(m.entrySet().stream().flatMap(e -> e.getKey().toChunks(e.getValue()).stream()).sorted(Comparator.<ChunkPos, Integer>comparing(c -> c.x).thenComparing(c -> c.z)).map(ChunkPos::toString).collect(Collectors.joining("\n")))))));
+	public static final LandmarkComponentType<Map<RegionPos, BitSet>> CHUNKS = register("chunks", Codec.unboundedMap(RegionPos.CODEC, Codecs.BIT_SET), m -> Text.literal("%d chunks".formatted(m.values().stream().mapToInt(BitSet::cardinality).sum())).styled(s -> s.withHoverEvent(new HoverEvent.ShowText(Text.literal(RegionPos.regionsToChunks(m).stream().map(ChunkPos::toString).collect(Collectors.joining(", ")))))));
 
 	public static LandmarkComponentMap.Builder forBlock(LandmarkComponentMap.Builder builder, WorldAccess world, BlockPos pos) {
 		BlockState state = world.getBlockState(pos);
