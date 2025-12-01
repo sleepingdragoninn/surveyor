@@ -7,6 +7,7 @@ import folk.sisby.surveyor.structure.WorldStructureSummary;
 import folk.sisby.surveyor.terrain.RegionSummary;
 import folk.sisby.surveyor.terrain.WorldTerrainSummary;
 import folk.sisby.surveyor.util.ArrayUtil;
+import folk.sisby.surveyor.util.RegionPos;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -105,14 +106,14 @@ public interface PlayerSummary {
 			return 0;
 		}
 
-		public record OfflinePlayerExploration(Set<UUID> sharedPlayers, Map<RegistryKey<World>, Map<ChunkPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures, boolean personal) implements SurveyorExploration {
+		public record OfflinePlayerExploration(Set<UUID> sharedPlayers, Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures, boolean personal) implements SurveyorExploration {
 			public static OfflinePlayerExploration empty(UUID uuid) {
 				return new OfflinePlayerExploration(Set.of(uuid), new HashMap<>(), new HashMap<>(), true);
 			}
 
 			public static OfflinePlayerExploration ofMerged(Set<SurveyorExploration> explorations) {
 				Set<UUID> sharedPlayers = new HashSet<>();
-				Map<RegistryKey<World>, Map<ChunkPos, BitSet>> terrain = new HashMap<>();
+				Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain = new HashMap<>();
 				Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures = new HashMap<>();
 				OfflinePlayerExploration outExploration = new OfflinePlayerExploration(sharedPlayers, terrain, structures, false);
 				for (SurveyorExploration exploration : explorations) {
@@ -207,7 +208,7 @@ public interface PlayerSummary {
 			nbt.put(PlayerSummary.KEY_DATA, surveyorNbt);
 		}
 
-		public record ServerPlayerExploration(ServerPlayerEntity player, Map<RegistryKey<World>, Map<ChunkPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures) implements SurveyorExploration {
+		public record ServerPlayerExploration(ServerPlayerEntity player, Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures) implements SurveyorExploration {
 			@Override
 			public Set<UUID> sharedPlayers() {
 				return Set.of(Surveyor.getUuid(player));
@@ -219,7 +220,7 @@ public interface PlayerSummary {
 			}
 
 			@Override
-			public void mergeRegion(RegistryKey<World> worldKey, ChunkPos regionPos, BitSet bitSet) { // This method is currently unused for server players, but its implemented anyway
+			public void mergeRegion(RegistryKey<World> worldKey, RegionPos regionPos, BitSet bitSet) { // This method is currently unused for server players, but its implemented anyway
 				SurveyorExploration.super.mergeRegion(worldKey, regionPos, bitSet);
 				if (player.getServer().isHost(player.getGameProfile())) updateClientForMergeRegion(player.getServerWorld(), regionPos, bitSet);
 				if (Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.SOLO)) return;
@@ -241,12 +242,12 @@ public interface PlayerSummary {
 				if (Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.SOLO)) return;
 				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
 					if (friend.getWorld().getRegistryKey().equals(worldKey) && !SurveyorExploration.of(friend).exploredChunk(worldKey, pos)) {
-						ChunkPos regionPos = new ChunkPos(pos.getRegionX(), pos.getRegionZ());
+						RegionPos regionPos = RegionPos.of(pos);
 						WorldTerrainSummary summary = WorldSummary.of(player.getServer().getWorld(worldKey)).terrain();
 						if (summary == null) continue;
 						RegionSummary region = summary.getRegion(regionPos);
 						BitSet sendSet = new BitSet();
-						sendSet.set(RegionSummary.bitForChunk(pos));
+						sendSet.set(RegionPos.chunkToBit(pos));
 						S2CUpdateRegionPacket.of(true, regionPos, region, sendSet, player.getServer().getRegistryManager()).send(friend);
 					}
 				}

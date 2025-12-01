@@ -14,6 +14,7 @@ import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
 import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
+import folk.sisby.surveyor.util.RegionPos;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.registry.RegistryKey;
@@ -61,8 +62,8 @@ public class SurveyorNetworking {
 
 	private static void handleKnownTerrain(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, C2SKnownTerrainPacket packet) {
 		if (summary.terrain() == null || Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.NONE)) return;
-		Map<ChunkPos, BitSet> serverBits = summary.terrain().bitSet(explorationForMode(Surveyor.CONFIG.networking.terrain, player));
-		Map<ChunkPos, BitSet> clientBits = packet.regionBits();
+		Map<RegionPos, BitSet> serverBits = summary.terrain().bitSet(explorationForMode(Surveyor.CONFIG.networking.terrain, player));
+		Map<RegionPos, BitSet> clientBits = packet.regionBits();
 		serverBits.forEach((rPos, set) -> {
 			if (clientBits.containsKey(rPos)) set.andNot(clientBits.get(rPos));
 			if (!set.isEmpty()) {

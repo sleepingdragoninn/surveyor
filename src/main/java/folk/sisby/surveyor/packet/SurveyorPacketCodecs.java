@@ -9,6 +9,7 @@ import folk.sisby.surveyor.structure.RegionStructureSummary;
 import folk.sisby.surveyor.structure.StructurePieceSummary;
 import folk.sisby.surveyor.structure.StructureStartSummary;
 import folk.sisby.surveyor.util.MapUtil;
+import folk.sisby.surveyor.util.RegionPos;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -33,8 +34,8 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface SurveyorPacketCodecs {
-	PacketCodec<PacketByteBuf, Map<ChunkPos, BitSet>> TERRAIN_KEYS = PacketCodecs.map(HashMap::new,
-		PacketCodecs.VAR_LONG.xmap(ChunkPos::new, ChunkPos::toLong),
+	PacketCodec<PacketByteBuf, Map<RegionPos, BitSet>> TERRAIN_KEYS = PacketCodecs.map(HashMap::new,
+		PacketCodecs.VAR_LONG.xmap(RegionPos::of, RegionPos::toLong),
 		PacketCodecs.codec(Codecs.BIT_SET)
 	);
 

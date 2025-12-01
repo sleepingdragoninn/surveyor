@@ -5,7 +5,6 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtCrashException;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtSizeTracker;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.Chunk;
 
 import java.io.File;
@@ -20,13 +19,13 @@ public class ChunkUtil {
 		return Arrays.stream(chunk.getSectionArray()).mapToInt(s -> 4096 - s.nonEmptyBlockCount).sum();
 	}
 
-	public static Map<ChunkPos, File> getRegionFiles(File folder, String prefix) {
-		Map<ChunkPos, File> files = new HashMap<>();
+	public static Map<RegionPos, File> getRegionFiles(File folder, String prefix) {
+		Map<RegionPos, File> files = new HashMap<>();
 		for (File file : Objects.requireNonNullElse(folder.listFiles(), new File[0])) {
 				String[] split = file.getName().split("\\.");
 				if (split.length == 4 && split[0].equals(prefix) && split[3].equals("dat")) {
 					try {
-						files.put(new ChunkPos(Integer.parseInt(split[1]), Integer.parseInt(split[2])), file);
+						files.put(new RegionPos(Integer.parseInt(split[1]), Integer.parseInt(split[2])), file);
 					} catch (NumberFormatException ignored) {
 					}
 				}
@@ -34,10 +33,10 @@ public class ChunkUtil {
 		return files;
 	}
 
-	public static Map<ChunkPos, NbtCompound> getRegionNbt(File folder, String prefix) {
-		Map<ChunkPos, File> regionFiles = getRegionFiles(folder, prefix);
-		Map<ChunkPos, NbtCompound> regions = new HashMap<>();
-		for (ChunkPos regionPos : regionFiles.keySet()) {
+	public static Map<RegionPos, NbtCompound> getRegionNbt(File folder, String prefix) {
+		Map<RegionPos, File> regionFiles = getRegionFiles(folder, prefix);
+		Map<RegionPos, NbtCompound> regions = new HashMap<>();
+		for (RegionPos regionPos : regionFiles.keySet()) {
 			NbtCompound regionCompound = null;
 			try {
 				regionCompound = NbtIo.readCompressed(regionFiles.get(regionPos).toPath(), NbtSizeTracker.ofUnlimitedBytes());

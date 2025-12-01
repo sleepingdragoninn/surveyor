@@ -9,9 +9,9 @@ import folk.sisby.surveyor.SurveyorExploration;
 import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
-import folk.sisby.surveyor.terrain.RegionSummary;
 import folk.sisby.surveyor.util.ChunkUtil;
 import folk.sisby.surveyor.util.MapUtil;
+import folk.sisby.surveyor.util.RegionPos;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
@@ -50,20 +50,16 @@ public class WorldStructureSummary {
 	public static final String KEY_TAGS = "tags";
 
 	protected final RegistryKey<World> worldKey;
-	protected final Map<ChunkPos, RegionStructureSummary> regions = new ConcurrentHashMap<>();
+	protected final Map<RegionPos, RegionStructureSummary> regions = new ConcurrentHashMap<>();
 	protected final Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> structureTypes = new ConcurrentHashMap<>();
 	protected final Multimap<RegistryKey<Structure>, TagKey<Structure>> structureTags = Multimaps.synchronizedSetMultimap(HashMultimap.create());
 	protected boolean dirty = false;
 
-	public WorldStructureSummary(RegistryKey<World> worldKey, Map<ChunkPos, RegionStructureSummary> regions, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> structureTypes, Multimap<RegistryKey<Structure>, TagKey<Structure>> structureTags) {
+	public WorldStructureSummary(RegistryKey<World> worldKey, Map<RegionPos, RegionStructureSummary> regions, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> structureTypes, Multimap<RegistryKey<Structure>, TagKey<Structure>> structureTags) {
 		this.worldKey = worldKey;
 		this.regions.putAll(regions);
 		this.structureTypes.putAll(structureTypes);
 		this.structureTags.putAll(structureTags);
-	}
-
-	protected static ChunkPos regionPosOf(ChunkPos pos) {
-		return new ChunkPos(pos.x >> RegionSummary.REGION_POWER, pos.z >> RegionSummary.REGION_POWER);
 	}
 
 	public static StructurePieceSummary readStructurePieceNbt(NbtCompound nbt) {
@@ -74,7 +70,7 @@ public class WorldStructureSummary {
 		}
 	}
 
-	protected static WorldStructureSummary readNbt(RegistryKey<World> worldKey, NbtCompound nbt, Map<ChunkPos, RegionStructureSummary> regions) {
+	protected static WorldStructureSummary readNbt(RegistryKey<World> worldKey, NbtCompound nbt, Map<RegionPos, RegionStructureSummary> regions) {
 		Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> structureTypes = new ConcurrentHashMap<>();
 		Multimap<RegistryKey<Structure>, TagKey<Structure>> structureTags = HashMultimap.create();
 		NbtCompound structuresCompound = nbt.getCompound(KEY_STRUCTURES);
@@ -102,12 +98,12 @@ public class WorldStructureSummary {
 				Surveyor.LOGGER.error("[Surveyor] Error loading structure summary file for {}.", world.getRegistryKey().getValue(), e);
 			}
 		}
-		Map<ChunkPos, RegionStructureSummary> regions = new HashMap<>();
+		Map<RegionPos, RegionStructureSummary> regions = new HashMap<>();
 		ChunkUtil.getRegionNbt(folder, "s").forEach((pos, nbt) -> regions.put(pos, RegionStructureSummary.readNbt(nbt)));
 		if (regions.isEmpty()) { // Try load legacy data
 			RegionStructureSummary worldSummary = RegionStructureSummary.readNbt(worldNbt);
 			worldSummary.structures.forEach((key, map) -> map.forEach((pos, start) -> {
-				ChunkPos rPos = regionPosOf(pos);
+				RegionPos rPos = RegionPos.of(pos);
 				regions.computeIfAbsent(rPos, k -> new RegionStructureSummary()).put(key, pos, start);
 			}));
 		}
@@ -135,17 +131,17 @@ public class WorldStructureSummary {
 	}
 
 	public boolean contains(World world, StructureStart start) {
-		ChunkPos rPos = regionPosOf(start.getPos());
+		RegionPos rPos = RegionPos.of(start.getPos());
 		return regions.containsKey(rPos) && regions.get(rPos).contains(world, start);
 	}
 
 	public boolean contains(RegistryKey<Structure> key, ChunkPos pos) {
-		ChunkPos rPos = regionPosOf(pos);
+		RegionPos rPos = RegionPos.of(pos);
 		return regions.containsKey(rPos) && regions.get(rPos).contains(key, pos);
 	}
 
 	public StructureStartSummary get(RegistryKey<Structure> key, ChunkPos pos) {
-		ChunkPos rPos = regionPosOf(pos);
+		RegionPos rPos = RegionPos.of(pos);
 		return regions.containsKey(rPos) ? regions.get(rPos).get(key, pos) : null;
 	}
 
@@ -165,7 +161,7 @@ public class WorldStructureSummary {
 
 	public void put(ServerWorld world, StructureStart start) {
 		if (Surveyor.CONFIG.structures == SystemMode.FROZEN) return;
-		ChunkPos rPos = regionPosOf(start.getPos());
+		RegionPos rPos = RegionPos.of(start.getPos());
 		RegistryKey<Structure> key = world.getRegistryManager().get(RegistryKeys.STRUCTURE).getKey(start.getStructure()).orElseThrow();
 		Optional<RegistryKey<StructureType<?>>> type = world.getRegistryManager().get(RegistryKeys.STRUCTURE_TYPE).getKey(start.getStructure().getType());
 		if (!start.hasChildren()) {
@@ -186,7 +182,7 @@ public class WorldStructureSummary {
 
 	public void put(World world, RegistryKey<Structure> key, ChunkPos pos, StructureStartSummary summary, RegistryKey<StructureType<?>> type, Collection<TagKey<Structure>> tagKeys) {
 		if (Surveyor.CONFIG.structures == SystemMode.FROZEN) return;
-		ChunkPos rPos = regionPosOf(pos);
+		RegionPos rPos = RegionPos.of(pos);
 		regions.computeIfAbsent(rPos, k -> new RegionStructureSummary()).put(key, pos, summary);
 		structureTypes.put(key, type);
 		structureTags.putAll(key, tagKeys);
@@ -207,7 +203,7 @@ public class WorldStructureSummary {
 	}
 
 	public int save(World world, File folder) {
-		List<ChunkPos> savedRegions = new ArrayList<>();
+		List<RegionPos> savedRegions = new ArrayList<>();
 		if (isDirty()) {
 			File structureFile = new File(folder, "structures.dat");
 			NbtCompound structureCompound = writeNbt(new NbtCompound());
@@ -223,7 +219,7 @@ public class WorldStructureSummary {
 				if (!summary.isDirty()) return;
 				savedRegions.add(pos);
 				NbtCompound regionCompound = summary.writeNbt(new NbtCompound());
-				File regionFile = new File(folder, "s.%d.%d.dat".formatted(pos.x, pos.z));
+				File regionFile = new File(folder, "s.%d.%d.dat".formatted(pos.x(), pos.z()));
 				Util.getIoWorkerExecutor().execute(() -> {
 					try {
 						NbtIo.writeCompressed(regionCompound, regionFile.toPath());
