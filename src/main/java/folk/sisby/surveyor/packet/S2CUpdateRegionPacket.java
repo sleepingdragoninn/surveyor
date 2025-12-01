@@ -22,7 +22,7 @@ public record S2CUpdateRegionPacket(boolean shared, RegionPos regionPos, List<In
 	public static final Id<S2CUpdateRegionPacket> ID = new Id<>(Surveyor.id("s2c_update_region"));
 	public static final PacketCodec<RegistryByteBuf, S2CUpdateRegionPacket> CODEC = PacketCodec.tuple(
 		PacketCodecs.BOOLEAN, S2CUpdateRegionPacket::shared,
-		PacketCodecs.VAR_LONG.xmap(RegionPos::of, RegionPos::toLong), S2CUpdateRegionPacket::regionPos,
+		RegionPos.PACKET_CODEC, S2CUpdateRegionPacket::regionPos,
 		PacketCodecs.INTEGER.collect(PacketCodecs.toList()), S2CUpdateRegionPacket::biomePalette,
 		PacketCodecs.INTEGER.collect(PacketCodecs.toList()), S2CUpdateRegionPacket::blockPalette,
 		PacketCodecs.codec(Codecs.BIT_SET), S2CUpdateRegionPacket::set,
