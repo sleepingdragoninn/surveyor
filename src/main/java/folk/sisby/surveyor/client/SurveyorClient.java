@@ -14,6 +14,7 @@ import folk.sisby.surveyor.packet.C2SKnownLandmarksPacket;
 import folk.sisby.surveyor.packet.C2SKnownStructuresPacket;
 import folk.sisby.surveyor.packet.C2SKnownTerrainPacket;
 import folk.sisby.surveyor.terrain.WorldTerrainSummary;
+import folk.sisby.surveyor.util.RegionPos;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -177,7 +178,7 @@ public class SurveyorClient implements ClientModInitializer {
 		Surveyor.LOGGER.info("[Surveyor Client] is not a map mod either");
 	}
 
-	public record ClientExploration(Set<UUID> groupPlayers, Map<RegistryKey<World>, Map<ChunkPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures) implements SurveyorExploration {
+	public record ClientExploration(Set<UUID> groupPlayers, Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures) implements SurveyorExploration {
 		public static final String KEY_SHARED = "shared";
 		public static final ClientExploration INSTANCE = new ClientExploration(new HashSet<>(), new HashMap<>(), new HashMap<>());
 		public static final ClientExploration SHARED = new ClientExploration(new HashSet<>(), new HashMap<>(), new HashMap<>());
@@ -239,7 +240,7 @@ public class SurveyorClient implements ClientModInitializer {
 		}
 
 		@Override
-		public void mergeRegion(RegistryKey<World> worldKey, ChunkPos regionPos, BitSet bitSet) {
+		public void mergeRegion(RegistryKey<World> worldKey, RegionPos regionPos, BitSet bitSet) {
 			SurveyorExploration.super.mergeRegion(worldKey, regionPos, bitSet);
 			updateClientForMergeRegion(MinecraftClient.getInstance().world, regionPos, bitSet);
 		}
