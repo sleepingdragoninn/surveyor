@@ -9,13 +9,16 @@ import net.minecraft.util.math.ChunkPos;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.BitSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public record RegionPos(int x, int z) {
-	public static final Codec<RegionPos> CODEC = Codec.LONG.xmap(RegionPos::of, RegionPos::toLong);
+	public static final Codec<RegionPos> CODEC = Codec.STRING.xmap(RegionPos::of, RegionPos::toString);
 	public static final PacketCodec<ByteBuf, RegionPos> PACKET_CODEC = PacketCodecs.VAR_LONG.xmap(RegionPos::of, RegionPos::toLong);
 
 	public static final int CHUNK_POWER = 5;
@@ -133,5 +136,17 @@ public record RegionPos(int x, int z) {
 				action.accept(x, z);
 			}
 		}
+	}
+
+	public static Map<RegionPos, BitSet> chunksToRegions(Iterable<ChunkPos> chunks) {
+		Map<RegionPos, BitSet> map = new LinkedHashMap<>();
+		chunks.forEach(chunk -> map.computeIfAbsent(RegionPos.of(chunk), r -> new BitSet(RegionPos.CHUNK_AREA)).set(RegionPos.chunkToBit(chunk)));
+		return map;
+	}
+
+	public static Set<ChunkPos> regionsToChunks(Map<RegionPos, BitSet> chunks) {
+		Set<ChunkPos> outSet = new LinkedHashSet<>();
+		chunks.entrySet().stream().flatMap(e -> e.getKey().toChunks(e.getValue()).stream()).forEach(outSet::add);
+		return outSet;
 	}
 }
