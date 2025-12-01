@@ -8,6 +8,7 @@ import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.structure.WorldStructureSummary;
 import folk.sisby.surveyor.terrain.WorldTerrainSummary;
 import folk.sisby.surveyor.util.MapUtil;
+import folk.sisby.surveyor.util.RegionPos;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.registry.RegistryKey;
@@ -33,7 +34,7 @@ public class SurveyorClientEvents {
 
 	@FunctionalInterface
 	public interface WorldLoad {
-		void onWorldLoad(ClientWorld world, WorldSummary summary, ClientPlayerEntity player, Map<ChunkPos, BitSet> terrain, Multimap<RegistryKey<Structure>, ChunkPos> structures, Multimap<UUID, Identifier> landmarks);
+		void onWorldLoad(ClientWorld world, WorldSummary summary, ClientPlayerEntity player, Map<RegionPos, BitSet> terrain, Multimap<RegistryKey<Structure>, ChunkPos> structures, Multimap<UUID, Identifier> landmarks);
 	}
 
 	@FunctionalInterface
@@ -61,7 +62,7 @@ public class SurveyorClientEvents {
 			if (worldLoad.isEmpty()) return;
 			SurveyorExploration exploration = SurveyorClient.getExploration();
 			WorldSummary summary = WorldSummary.of(world);
-			Map<ChunkPos, BitSet> terrain = summary.terrain() == null ? new HashMap<>() : summary.terrain().bitSet(exploration);
+			Map<RegionPos, BitSet> terrain = summary.terrain() == null ? new HashMap<>() : summary.terrain().bitSet(exploration);
 			Multimap<RegistryKey<Structure>, ChunkPos> structures = summary.structures() == null ? HashMultimap.create() : summary.structures().keySet(exploration);
 			Multimap<UUID, Identifier> landmarks = summary.landmarks() == null ? HashMultimap.create() : summary.landmarks().keySet(exploration);
 			worldLoad.forEach((id, handler) -> handler.onWorldLoad(world, summary, player, terrain, structures, landmarks));

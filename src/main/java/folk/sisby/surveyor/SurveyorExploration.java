@@ -7,7 +7,7 @@ import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
-import folk.sisby.surveyor.terrain.RegionSummary;
+import folk.sisby.surveyor.util.RegionPos;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -49,7 +49,7 @@ public interface SurveyorExploration {
 		return ServerSummary.of(server).groupExploration(player, server);
 	}
 
-	Map<RegistryKey<World>, Map<ChunkPos, BitSet>> terrain();
+	Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain();
 
 	Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures();
 
@@ -63,9 +63,9 @@ public interface SurveyorExploration {
 	boolean personal();
 
 	default boolean exploredChunk(RegistryKey<World> worldKey, ChunkPos pos) {
-		ChunkPos regionPos = new ChunkPos(pos.getRegionX(), pos.getRegionZ());
-		Map<ChunkPos, BitSet> regions = terrain().get(worldKey);
-		return (!personal() && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SERVER)) || regions != null && regions.containsKey(regionPos) && regions.get(regionPos).get(RegionSummary.bitForChunk(pos));
+		RegionPos regionPos = RegionPos.of(pos);
+		Map<RegionPos, BitSet> regions = terrain().get(worldKey);
+		return (!personal() && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SERVER)) || regions != null && regions.containsKey(regionPos) && regions.get(regionPos).get(RegionPos.chunkToBit(pos));
 	}
 
 	default boolean exploredStructure(RegistryKey<World> worldKey, RegistryKey<Structure> structure, ChunkPos pos) {
@@ -85,7 +85,7 @@ public interface SurveyorExploration {
 		return structures().values().stream().flatMap(m -> m.values().stream()).mapToInt(LongSet::size).sum();
 	}
 
-	default BitSet limitTerrainBitset(RegistryKey<World> worldKey, ChunkPos rPos, BitSet bitSet) {
+	default BitSet limitTerrainBitset(RegistryKey<World> worldKey, RegionPos rPos, BitSet bitSet) {
 		if (!personal() && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SERVER)) return bitSet;
 		if (terrain().get(worldKey) == null || !terrain().get(worldKey).containsKey(rPos)) {
 			bitSet.clear();
@@ -95,9 +95,9 @@ public interface SurveyorExploration {
 		return bitSet;
 	}
 
-	default Map<ChunkPos, BitSet> limitTerrainBitset(RegistryKey<World> worldKey, Map<ChunkPos, BitSet> bitSet) {
+	default Map<RegionPos, BitSet> limitTerrainBitset(RegistryKey<World> worldKey, Map<RegionPos, BitSet> bitSet) {
 		if (!personal() && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SERVER)) return bitSet;
-		Map<ChunkPos, BitSet> regions = terrain().get(worldKey);
+		Map<RegionPos, BitSet> regions = terrain().get(worldKey);
 		if (regions == null) {
 			bitSet.clear();
 		} else {
@@ -139,8 +139,8 @@ public interface SurveyorExploration {
 		return keySet;
 	}
 
-	default void updateClientForMergeRegion(World world, ChunkPos regionPos, BitSet bitSet) {
-		Set<ChunkPos> terrainKeys = bitSet.stream().mapToObj(i -> RegionSummary.chunkForBit(regionPos, i)).collect(Collectors.toSet());
+	default void updateClientForMergeRegion(World world, RegionPos regionPos, BitSet bitSet) {
+		Set<ChunkPos> terrainKeys = bitSet.stream().mapToObj(regionPos::toChunk).collect(Collectors.toSet());
 		SurveyorClientEvents.Invoke.terrainUpdated(world, terrainKeys);
 		Multimap<UUID, Identifier> landmarkKeys = HashMultimap.create();
 		WorldLandmarks summary = WorldSummary.of(world).landmarks();
@@ -161,12 +161,12 @@ public interface SurveyorExploration {
 		SurveyorClientEvents.Invoke.landmarksRemoved(world, unexploredLandmarks);
 	}
 
-	default void mergeRegion(RegistryKey<World> worldKey, ChunkPos regionPos, BitSet bitSet) {
-		terrain().computeIfAbsent(worldKey, k -> new HashMap<>()).computeIfAbsent(regionPos, p -> new BitSet(RegionSummary.REGION_SIZE)).or(bitSet);
+	default void mergeRegion(RegistryKey<World> worldKey, RegionPos regionPos, BitSet bitSet) {
+		terrain().computeIfAbsent(worldKey, k -> new HashMap<>()).computeIfAbsent(regionPos, p -> new BitSet(RegionPos.CHUNK_SIZE)).or(bitSet);
 	}
 
-	default void replaceTerrain(RegistryKey<World> worldKey, Map<ChunkPos, BitSet> bitSet) {
-		Map<ChunkPos, BitSet> oldSet = terrain().get(worldKey);
+	default void replaceTerrain(RegistryKey<World> worldKey, Map<RegionPos, BitSet> bitSet) {
+		Map<RegionPos, BitSet> oldSet = terrain().get(worldKey);
 		if (oldSet != null) oldSet.clear();
 		bitSet.forEach((pos, set) -> mergeRegion(worldKey, pos, set));
 	}
@@ -183,7 +183,7 @@ public interface SurveyorExploration {
 	}
 
 	default void addChunk(RegistryKey<World> worldKey, ChunkPos pos) {
-		terrain().computeIfAbsent(worldKey, k -> new HashMap<>()).computeIfAbsent(new ChunkPos(pos.getRegionX(), pos.getRegionZ()), k -> new BitSet(RegionSummary.BITSET_SIZE)).set(RegionSummary.bitForChunk(pos));
+		terrain().computeIfAbsent(worldKey, k -> new HashMap<>()).computeIfAbsent(RegionPos.of(pos), k -> new BitSet(RegionPos.CHUNK_AREA)).set(RegionPos.chunkToBit(pos));
 	}
 
 	default void updateClientForAddStructure(World world, RegistryKey<Structure> structureKey, ChunkPos pos) {
@@ -208,9 +208,9 @@ public interface SurveyorExploration {
 		NbtCompound terrainCompound = new NbtCompound();
 		terrain().forEach((worldKey, map) -> {
 			LongList regionLongs = new LongArrayList();
-			for (Map.Entry<ChunkPos, BitSet> entry : map.entrySet()) {
+			for (Map.Entry<RegionPos, BitSet> entry : map.entrySet()) {
 				regionLongs.add(entry.getKey().toLong());
-				if (entry.getValue().cardinality() == RegionSummary.BITSET_SIZE) {
+				if (entry.getValue().cardinality() == RegionPos.CHUNK_AREA) {
 					regionLongs.add(-1);
 				} else {
 					long[] regionBits = entry.getValue().toLongArray();
@@ -238,13 +238,13 @@ public interface SurveyorExploration {
 		NbtCompound terrainCompound = nbt.getCompound(KEY_EXPLORED_TERRAIN).orElse(new NbtCompound());
 		for (String worldKeyString : terrainCompound.getKeys()) {
 			long[] regionArray = terrainCompound.getLongArray(worldKeyString).orElse(new long[0]);
-			Map<ChunkPos, BitSet> regionMap = new HashMap<>();
+			Map<RegionPos, BitSet> regionMap = new HashMap<>();
 			for (int i = 0; i + 1 < regionArray.length; i += 2) {
-				ChunkPos rPos = new ChunkPos(regionArray[i]);
+				RegionPos rPos = RegionPos.of(regionArray[i]);
 				int bitLength = (int) regionArray[i + 1];
 				if (bitLength == -1) {
-					BitSet set = new BitSet(RegionSummary.BITSET_SIZE);
-					set.set(0, RegionSummary.BITSET_SIZE);
+					BitSet set = new BitSet(RegionPos.CHUNK_AREA);
+					set.set(0, RegionPos.CHUNK_AREA);
 					regionMap.put(rPos, set);
 				} else {
 					long[] bitArray = new long[bitLength];
