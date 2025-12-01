@@ -35,7 +35,7 @@ import java.util.UUID;
 
 public interface SurveyorPacketCodecs {
 	PacketCodec<PacketByteBuf, Map<RegionPos, BitSet>> TERRAIN_KEYS = PacketCodecs.map(HashMap::new,
-		PacketCodecs.VAR_LONG.xmap(RegionPos::of, RegionPos::toLong),
+		RegionPos.PACKET_CODEC,
 		PacketCodecs.codec(Codecs.BIT_SET)
 	);
 

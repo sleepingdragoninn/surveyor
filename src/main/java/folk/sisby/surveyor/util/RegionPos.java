@@ -1,5 +1,9 @@
 package folk.sisby.surveyor.util;
 
+import com.mojang.serialization.Codec;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.PacketCodec;
+import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import org.jetbrains.annotations.NotNull;
@@ -11,6 +15,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public record RegionPos(int x, int z) {
+	public static final Codec<RegionPos> CODEC = Codec.LONG.xmap(RegionPos::of, RegionPos::toLong);
+	public static final PacketCodec<ByteBuf, RegionPos> PACKET_CODEC = PacketCodecs.VAR_LONG.xmap(RegionPos::of, RegionPos::toLong);
+
 	public static final int CHUNK_POWER = 5;
 	public static final int CHUNK_SIZE = 1 << CHUNK_POWER;
 	public static final int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
