@@ -88,6 +88,7 @@ public class WorldLandmarks {
 	}
 
 	public void handleChanged(World world, Map<UUID, Map<Identifier, Landmark>> changed, boolean local, @Nullable ServerPlayerEntity sender) {
+		if (changed.isEmpty()) return;
 		Map<UUID, Map<Identifier, Landmark>> landmarksAddedChanged = new HashMap<>();
 		Map<UUID, Map<Identifier, Landmark>> landmarksRemoved = new HashMap<>();
 		changed.forEach((uuid, map) -> map.forEach((id, landmark) -> {
@@ -133,21 +134,15 @@ public class WorldLandmarks {
 	}
 
 	public void putLocal(World world, Landmark landmark) {
-		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = putForBatch(new HashMap<>(), landmark);
-		handleChanged(world, changed, true, null);
+		handleChanged(world, putForBatch(new HashMap<>(), landmark), true, null);
 	}
 
 	public void put(World world, Landmark landmark) {
-		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = putForBatch(new HashMap<>(), landmark);
-		handleChanged(world, changed, false, null);
+		handleChanged(world, putForBatch(new HashMap<>(), landmark), false, null);
 	}
 
 	public void put(ServerPlayerEntity sender, ServerWorld world, Landmark landmark) {
-		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = putForBatch(new HashMap<>(), landmark);
-		handleChanged(world, changed, false, sender);
+		handleChanged(world, putForBatch(new HashMap<>(), landmark), false, sender);
 	}
 
 	public Map<UUID, Map<Identifier, Landmark>> removeForBatch(Map<UUID, Map<Identifier, Landmark>> changed, UUID uuid, Identifier id) {
@@ -161,38 +156,30 @@ public class WorldLandmarks {
 	}
 
 	public void removeLocal(World world, UUID uuid, Identifier id) {
-		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return;
-		Landmark landmark = landmarks.get(uuid).get(id);
-		Map<UUID, Map<Identifier, Landmark>> changed = removeForBatch(new HashMap<>(), landmark.owner(), landmark.id());
-		handleChanged(world, changed, true, null);
+		handleChanged(world, removeForBatch(new HashMap<>(), uuid, id), true, null);
 	}
 
 	public void remove(World world, UUID uuid, Identifier id) {
-		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return;
-		Landmark landmark = landmarks.get(uuid).get(id);
-		Map<UUID, Map<Identifier, Landmark>> changed = removeForBatch(new HashMap<>(), landmark.owner(), landmark.id());
-		handleChanged(world, changed, false, null);
+		handleChanged(world, removeForBatch(new HashMap<>(), uuid, id), false, null);
 	}
 
 	public void remove(ServerPlayerEntity sender, ServerWorld world, UUID uuid, Identifier id) {
-		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
-		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return;
-		Landmark landmark = landmarks.get(uuid).get(id);
-		Map<UUID, Map<Identifier, Landmark>> changed = removeForBatch(new HashMap<>(), landmark.owner(), landmark.id());
-		handleChanged(world, changed, false, sender);
+		handleChanged(world, removeForBatch(new HashMap<>(), uuid, id), false, sender);
 	}
 
-	public void removeAll(World world, Predicate<Landmark> predicate) {
-		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return;
+	public Map<UUID, Map<Identifier, Landmark>> removeAllForBatch(Predicate<Landmark> predicate) {
+		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return null;
 		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
 		Multimap<UUID, Identifier> toRemove = HashMultimap.create();
 		landmarks.forEach((uuid, map) -> map.forEach((id, landmark) -> {
 			if (predicate.test(landmark)) toRemove.put(uuid, id);
 		}));
 		toRemove.forEach((uuid, id) -> removeForBatch(changed, uuid, id));
-		handleChanged(world, changed, false, null);
+		return changed;
+	}
+
+	public void removeAll(World world, Predicate<Landmark> predicate) {
+		handleChanged(world, removeAllForBatch(predicate), false, null);
 	}
 
 	public int save(World world, File folder) {
