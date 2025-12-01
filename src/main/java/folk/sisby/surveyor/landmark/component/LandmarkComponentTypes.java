@@ -2,12 +2,14 @@ package folk.sisby.surveyor.landmark.component;
 
 import com.mojang.serialization.Codec;
 import folk.sisby.surveyor.Surveyor;
+import folk.sisby.surveyor.util.RegionPos;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.MapColor;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
+import net.minecraft.text.HoverEvent;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.text.Texts;
@@ -16,10 +18,15 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.dynamic.Codecs;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.WorldAccess;
 
+import java.util.BitSet;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class LandmarkComponentTypes {
 	public static final LandmarkComponentType<BlockPos> POS = register("pos", BlockPos.CODEC, p -> Text.literal("[").append(Text.literal(p.toShortString()).formatted(Formatting.GOLD)).append(Text.literal("]")));
@@ -30,6 +37,7 @@ public class LandmarkComponentTypes {
 	public static final LandmarkComponentType<Integer> SEED = register("seed", Codec.INT, i -> Text.literal(String.valueOf(i)).formatted(Formatting.GOLD));
 	public static final LandmarkComponentType<BlockBox> BOX = register("box", BlockBox.CODEC, b -> Text.literal("[").append(Text.literal(new BlockPos(b.getMinX(), b.getMinY(), b.getMinZ()).toShortString()).formatted(Formatting.GOLD)).append(Text.literal("]->[")).append(Text.literal(new BlockPos(b.getMaxX(), b.getMaxY(), b.getMaxZ()).toShortString()).formatted(Formatting.GOLD)).append(Text.literal("]")));
 	public static final LandmarkComponentType<ItemStack> STACK = register("stack", ItemStack.CODEC, s -> Text.literal("").append(Text.literal("[")).append(s.getItem().getName().copy().formatted(s.getRarity().formatting)).append(Text.literal("]")).append(s.hasCustomName() ? Text.literal(" - \"").append(s.getName().copy().formatted(Formatting.GREEN)).append(Text.literal("\"")) : Text.literal("")));
+	public static final LandmarkComponentType<Map<RegionPos, BitSet>> CHUNKS = register("chunks", Codec.unboundedMap(RegionPos.CODEC, Codecs.BIT_SET), m -> Text.literal("%d chunks".formatted(m.values().stream().mapToInt(BitSet::cardinality).sum())).styled(s -> s.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal(m.entrySet().stream().flatMap(e -> e.getKey().toChunks(e.getValue()).stream()).sorted(Comparator.<ChunkPos, Integer>comparing(c -> c.x).thenComparing(c -> c.z)).map(ChunkPos::toString).collect(Collectors.joining("\n")))))));
 
 	public static LandmarkComponentMap.Builder forBlock(LandmarkComponentMap.Builder builder, WorldAccess world, BlockPos pos) {
 		BlockState state = world.getBlockState(pos);
