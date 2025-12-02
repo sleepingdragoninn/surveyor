@@ -58,8 +58,8 @@ public class WorldLandmarks {
 		return landmarks.containsKey(uuid) && landmarks.get(uuid).containsKey(id);
 	}
 
-	public Landmark get(UUID uuid, Identifier id) {
-		return landmarks.get(uuid).get(id);
+	public @Nullable Landmark get(UUID uuid, Identifier id) {
+		return contains(uuid, id) ? landmarks.get(uuid).get(id) : null;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -213,8 +213,8 @@ public class WorldLandmarks {
 	public void readUpdatePacket(World world, SyncLandmarksRemovedPacket packet, @Nullable ServerPlayerEntity sender) {
 		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
 		packet.landmarks().forEach((uuid, id) -> {
-			if (!contains(uuid, id)) return;
 			Landmark landmark = get(uuid, id);
+			if (landmark == null) return;
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
 			boolean owned = sender == null || Surveyor.getUuid(sender).equals(landmark.owner());
 			if (owned && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
