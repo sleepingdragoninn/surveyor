@@ -5,11 +5,14 @@ import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.SurveyorEvents;
 import folk.sisby.surveyor.SurveyorExploration;
+import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
 import folk.sisby.surveyor.util.MapUtil;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.registry.RegistryKey;
@@ -50,8 +53,9 @@ public class WorldLandmarks {
 				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", world.getRegistryKey().getValue(), e);
 			}
 		}
-		var landmarks = Landmarks.fromNbt(landmarkNbt, landmarksFile);
-		return new WorldLandmarks(world.getRegistryKey(), landmarks);
+		WorldLandmarks landmarks = new WorldLandmarks(world.getRegistryKey(), new HashMap<>());
+		landmarks.landmarks.putAll(Landmarks.fromNbt(landmarkNbt, landmarksFile, FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT ? SurveyorClient.getXaerosSavePath(world) : null, landmarks::dirty));
+		return landmarks;
 	}
 
 	public boolean contains(UUID uuid, Identifier id) {
