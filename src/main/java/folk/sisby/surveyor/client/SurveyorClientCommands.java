@@ -54,7 +54,7 @@ public class SurveyorClientCommands {
 					.append(Text.literal(landmark.id().getPath()))
 					.append(!landmark.components().contains(LandmarkComponentTypes.NAME) ? Text.of("") :
 						Text.literal(": \"")
-							.append(landmark.components().get(LandmarkComponentTypes.NAME).copy().styled(s -> s.withColor(landmark.components().contains(LandmarkComponentTypes.COLOR) ? landmark.components().get(LandmarkComponentTypes.COLOR) : Formatting.GREEN.getColorValue())))
+							.append(landmark.components().get(LandmarkComponentTypes.NAME).copy().styled(s -> s.withColor(landmark.components().contains(LandmarkComponentTypes.COLOR) ? 0x00FFFFFF & landmark.components().get(LandmarkComponentTypes.COLOR) : Formatting.GREEN.getColorValue())))
 							.append(Text.literal("\""))
 					)
 			);
@@ -103,7 +103,7 @@ public class SurveyorClientCommands {
 		}
 		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), type);
 		summary.landmarks().remove(world, global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), type);
-		feedback.accept(prefix().append(Text.literal("%s removed successfully!".formatted(landmark.owner().equals(WorldLandmarks.GLOBAL) ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
+		feedback.accept(prefix().append(Text.literal("%s %s removed successfully!".formatted(landmark.owner().equals(WorldLandmarks.GLOBAL) ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
 		return 1;
 	}
 

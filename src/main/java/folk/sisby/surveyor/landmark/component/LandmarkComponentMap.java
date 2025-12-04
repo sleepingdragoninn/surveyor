@@ -90,7 +90,7 @@ public class LandmarkComponentMap {
 			return this;
 		}
 
-		<T> void put(LandmarkComponentType<T> type, @Nullable Object value) {
+		public <T> void put(LandmarkComponentType<T> type, @Nullable Object value) {
 			if (value != null) {
 				this.components.put(type, value);
 			} else {
