@@ -33,11 +33,13 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.nbt.NbtCrashException;
+import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.WorldChunk;
 import net.minecraft.world.gen.structure.Structure;
 import org.apache.commons.io.FileUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -75,6 +77,25 @@ public class SurveyorClient implements ClientModInitializer {
 		String dimNamespace = world.getRegistryKey().getValue().getNamespace();
 		String dimPath = world.getRegistryKey().getValue().getPath();
 		return getSavePath(world).toPath().resolve(dimNamespace).resolve(dimPath).toFile();
+	}
+
+	public static @Nullable File getXaerosSavePath(World world) {
+		File baseFolder = FabricLoader.getInstance().getGameDir().resolve("xaero").resolve("minimap").toFile();
+		if (!baseFolder.exists()) return null;
+		String id = null;
+		try {
+			id = MinecraftClient.getInstance().getCurrentServerEntry() != null ? MinecraftClient.getInstance().getCurrentServerEntry().address : MinecraftClient.getInstance().getServer().getSavePath(WorldSavePath.ROOT).getParent().toFile().getName();
+			String sanitized = (MinecraftClient.getInstance().getCurrentServerEntry() != null ? "Multiplayer_" : "") + (id.contains(":") ? id.substring(0, id.indexOf(":")) : id).replace("_", "%us%").replace("\\", "%bs%").replace("/", "%fs%").replace(":", "§").replace("[", "%lb%").replace("]", "%rb%");
+			File saveFolder = baseFolder.toPath().resolve(sanitized).toFile();
+			if (!saveFolder.exists()) return null;
+			String sanitizedDim = world.getRegistryKey() == World.OVERWORLD ? "dim%0" : world.getRegistryKey() == World.NETHER ? "dim%-1" : world.getRegistryKey() == World.END ? "dim%1" : "dim%" + world.getRegistryKey().toString().replace(":", "$").replace('/', '%');
+			File dimFolder = saveFolder.toPath().resolve(sanitizedDim).toFile();
+			if (!dimFolder.exists() || dimFolder.toPath().resolve(".surveyor_migrated").toFile().exists()) return null;
+			return dimFolder;
+		} catch (Exception e) {
+			Surveyor.LOGGER.error("[Surveyor] Error fetching xaeros data for {} {}", id,  world.getRegistryKey(), e);
+		}
+		return null;
 	}
 
 	public static boolean serverSupported() {

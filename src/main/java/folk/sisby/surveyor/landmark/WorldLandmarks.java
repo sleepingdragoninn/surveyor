@@ -5,11 +5,14 @@ import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.SurveyorEvents;
 import folk.sisby.surveyor.SurveyorExploration;
+import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
 import folk.sisby.surveyor.util.MapUtil;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtSizeTracker;
@@ -51,16 +54,17 @@ public class WorldLandmarks {
 				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", world.getRegistryKey().getValue(), e);
 			}
 		}
-		var landmarks = Landmarks.fromNbt(landmarkNbt, landmarksFile);
-		return new WorldLandmarks(world.getRegistryKey(), landmarks);
+		WorldLandmarks landmarks = new WorldLandmarks(world.getRegistryKey(), new HashMap<>());
+		landmarks.landmarks.putAll(Landmarks.fromNbt(landmarkNbt, landmarksFile, FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT ? SurveyorClient.getXaerosSavePath(world) : null, landmarks::dirty));
+		return landmarks;
 	}
 
 	public boolean contains(UUID uuid, Identifier id) {
 		return landmarks.containsKey(uuid) && landmarks.get(uuid).containsKey(id);
 	}
 
-	public Landmark get(UUID uuid, Identifier id) {
-		return landmarks.get(uuid).get(id);
+	public @Nullable Landmark get(UUID uuid, Identifier id) {
+		return contains(uuid, id) ? landmarks.get(uuid).get(id) : null;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -214,8 +218,8 @@ public class WorldLandmarks {
 	public void readUpdatePacket(World world, SyncLandmarksRemovedPacket packet, @Nullable ServerPlayerEntity sender) {
 		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
 		packet.landmarks().forEach((uuid, id) -> {
-			if (!contains(uuid, id)) return;
 			Landmark landmark = get(uuid, id);
+			if (landmark == null) return;
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
 			boolean owned = sender == null || Surveyor.getUuid(sender).equals(landmark.owner());
 			if (owned && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
