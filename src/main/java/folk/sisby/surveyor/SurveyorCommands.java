@@ -278,8 +278,8 @@ public class SurveyorCommands {
 						.append(player == null && landmark.contains(LandmarkComponentTypes.NAME) ? idText.copy().append(" ") : Text.empty())
 						.append((landmark.contains(LandmarkComponentTypes.NAME) ? Text.literal("\"").append(landmark.get(LandmarkComponentTypes.NAME)).append("\"") : idText).copy().styled(s -> s
 							.withColor(color == null ? 0xFFFFFF : 0x00FFFFFF & color)
-							.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.empty().append(Text.literal("id: ").formatted(Formatting.AQUA)).append(idText).append("\n").append(Texts.join(landmark.toText(), Text.of("\n"))).append("\n").append(Text.literal(command).formatted(Formatting.AQUA))))
-							.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command)))
+							.withHoverEvent(new HoverEvent.ShowText(Text.empty().append(Text.literal("id: ").formatted(Formatting.AQUA)).append(idText).append("\n").append(Texts.join(landmark.toText(), Text.of("\n"))).append("\n").append(Text.literal(command).formatted(Formatting.AQUA))))
+							.withClickEvent(new ClickEvent.RunCommand(command)))
 						)
 				);
 			}
@@ -307,8 +307,8 @@ public class SurveyorCommands {
 			.append(cantModify ? Text.empty() : Text.empty()
 				.append(Text.literal("<").formatted(Formatting.GRAY))
 				.append(Text.literal("remove").formatted(Formatting.AQUA).styled(s -> s
-					.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal(command).formatted(Formatting.AQUA)))
-					.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+					.withHoverEvent(new HoverEvent.ShowText(Text.literal(command).formatted(Formatting.AQUA)))
+					.withClickEvent(new ClickEvent.RunCommand(command))
 				))
 				.append(Text.literal(">").formatted(Formatting.GRAY))
 			)
@@ -552,7 +552,7 @@ public class SurveyorCommands {
 									f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 									return 0;
 								}
-								return addBlockLandmark(s, p, e, f, p.getServerWorld(), WorldLandmarks.GLOBAL, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
+								return addBlockLandmark(s, p, e, f, p.getWorld(), WorldLandmarks.GLOBAL, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
 							}))
 						)
 					)
@@ -691,7 +691,7 @@ public class SurveyorCommands {
 									f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 									return 0;
 								}
-								return addBlockLandmark(s, p, e, f, p.getServerWorld(), Surveyor.getUuid(p), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
+								return addBlockLandmark(s, p, e, f, p.getWorld(), Surveyor.getUuid(p), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
 							}))
 						)
 					)
@@ -777,7 +777,7 @@ public class SurveyorCommands {
 										f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 										return 0;
 									}
-									return appendColor(s, p, e, f, p.getServerWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
+									return appendColor(s, p, e, f, p.getWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
 								}))
 							)
 						)
@@ -817,7 +817,7 @@ public class SurveyorCommands {
 									f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 									return 0;
 								}
-								return trimLandmark(s, p, e, f, p.getServerWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
+								return trimLandmark(s, p, e, f, p.getWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
 							}))
 						)
 					)
