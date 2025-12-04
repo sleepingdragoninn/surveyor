@@ -50,7 +50,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -703,7 +702,7 @@ public class SurveyorCommands {
 									.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
 										.then(CommandManager.argument("icon", ItemStackArgumentType.itemStack(registryAccess))
 											.then(CommandManager.argument("name", StringArgumentType.string())
-												.then(CommandManager.argument("lore", TextArgumentType.text())
+												.then(CommandManager.argument("lore", TextArgumentType.text(registryAccess))
 													.executes(c -> execute(c, (s, p, e, f) -> {
 														try {
 															return addIdLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "uuid"), c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), ItemStackArgumentType.getItemStackArgument(c, "icon"), Text.of(c.getArgument("name", String.class)), c.getArgument("lore", Text.class));
@@ -723,7 +722,7 @@ public class SurveyorCommands {
 								.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
 									.then(CommandManager.argument("icon", ItemStackArgumentType.itemStack(registryAccess))
 										.then(CommandManager.argument("name", StringArgumentType.string())
-											.then(CommandManager.argument("lore", TextArgumentType.text())
+											.then(CommandManager.argument("lore", TextArgumentType.text(registryAccess))
 												.executes(c -> execute(c, (s, p, e, f) -> {
 													try {
 														if (p == null) {
