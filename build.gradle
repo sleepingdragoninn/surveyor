@@ -8,7 +8,7 @@ plugins {
 }
 
 version = "$baseVersion+$branch"
-archivesBaseName = project.slug
+base.archivesName = project.slug
 
 repositories {
 	maven { url "https://repo.sleeping.town/" }
