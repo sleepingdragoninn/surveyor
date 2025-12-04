@@ -6,7 +6,6 @@ import folk.sisby.surveyor.ServerSummary;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.SurveyorPlayer;
 import folk.sisby.surveyor.WorldSummary;
-import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
@@ -56,7 +55,7 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 		if (summary == null) return;
 		summary.put(
 			self.getWorld(),
-			Landmark.createIncremental(summary, SurveyorClient.getClientUuid(), Surveyor.id("grave"), builder -> builder
+			Landmark.createIncremental(summary, Surveyor.getUuid(self), Surveyor.id("grave"), builder -> builder
 				.add(LandmarkComponentTypes.POS, self.getBlockPos())
 				.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()))
 				.add(LandmarkComponentTypes.TIME, self.getWorld().getTimeOfDay())

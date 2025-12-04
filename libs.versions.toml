@@ -1,5 +1,5 @@
 [versions]
-loom = "1.10.+"
+loom = "1.13.+"
 githubRelease = "2.4.1"
 minotaur = "2.+"
 
@@ -9,8 +9,6 @@ mc = "1.21.8"
 fl = "0.16.14"
 yarn = "1.21.8+build.1"
 fapi = "0.136.1+1.21.8"
-
-hoofprint = "0.8.0-alpha.5+1.21"
 
 [plugins]
 loom = { id = "fabric-loom", version.ref = "loom" }
@@ -24,5 +22,3 @@ mc = { group = "mojang", name = "minecraft", version.ref = "mc" }
 fl = { group = "net.fabricmc", name = "fabric-loader", version.ref = "fl" }
 yarn = { group = "net.fabricmc", name = "yarn", version.ref = "yarn" }
 fapi = { group = "net.fabricmc.fabric-api", name = "fabric-api", version.ref = "fapi" }
-
-hoofprint = { group = "garden.hestia", name = "hoofprint", version.ref = "hoofprint" }
