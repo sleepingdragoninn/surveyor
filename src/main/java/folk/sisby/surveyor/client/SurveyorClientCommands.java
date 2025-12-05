@@ -54,7 +54,7 @@ public class SurveyorClientCommands {
 					.append(Text.literal(landmark.id().getPath()))
 					.append(!landmark.components().contains(LandmarkComponentTypes.NAME) ? Text.of("") :
 						Text.literal(": \"")
-							.append(landmark.components().get(LandmarkComponentTypes.NAME).copy().styled(s -> s.withColor(landmark.components().contains(LandmarkComponentTypes.COLOR) ? 0x00FFFFFF & landmark.components().get(LandmarkComponentTypes.COLOR) : Formatting.GREEN.getColorValue())))
+							.append(landmark.components().get(LandmarkComponentTypes.NAME).copy().styled(s -> s.withColor(landmark.components().contains(LandmarkComponentTypes.COLOR) ? 0xFFFFFF & landmark.components().get(LandmarkComponentTypes.COLOR) : Formatting.GREEN.getColorValue())))
 							.append(Text.literal("\""))
 					)
 			);

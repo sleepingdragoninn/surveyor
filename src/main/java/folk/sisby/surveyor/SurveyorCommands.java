@@ -276,7 +276,7 @@ public class SurveyorCommands {
 						.append(!op || global ? Text.empty() : Text.literal("%s | ".formatted(player == null ? landmark.owner() : Optional.ofNullable(ServerSummary.of(server).getPlayer(landmark.owner(), server)).map(PlayerSummary::username).orElse(landmark.owner().toString()))).formatted(Formatting.GRAY))
 						.append(player == null && landmark.contains(LandmarkComponentTypes.NAME) ? idText.copy().append(" ") : Text.empty())
 						.append((landmark.contains(LandmarkComponentTypes.NAME) ? Text.literal("\"").append(landmark.get(LandmarkComponentTypes.NAME)).append("\"") : idText).copy().styled(s -> s
-							.withColor(color == null ? 0xFFFFFF : 0x00FFFFFF & color)
+							.withColor(color == null ? 0xFFFFFF : 0xFFFFFF & color)
 							.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.empty().append(Text.literal("id: ").formatted(Formatting.AQUA)).append(idText).append("\n").append(Texts.join(landmark.toText(), Text.of("\n"))).append("\n").append(Text.literal(command).formatted(Formatting.AQUA))))
 							.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command)))
 						)
