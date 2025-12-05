@@ -37,7 +37,7 @@ public class SurveyorClientNetworking {
 		ClientPlayNetworking.registerGlobalReceiver(S2CGroupUpdatedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleGroupUpdated));
 		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksAddedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleLandmarksAdded));
 		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksRemovedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleLandmarksRemoved));
-		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksRequestedPacket.ID, (c, h, b, s) -> handleClient(b, SyncLandmarksRequestedPacket::read, SurveyorClientNetworking::handleLandmarksRequested));
+		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksRequestedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleLandmarksRequested));
 	}
 
 	private static void handleTerrainAdded(ClientWorld world, WorldSummary summary, S2CUpdateRegionPacket packet) {
