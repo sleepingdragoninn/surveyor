@@ -2,6 +2,7 @@ package folk.sisby.surveyor.landmark;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import folk.sisby.surveyor.Surveyor;
@@ -11,6 +12,7 @@ import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
+import folk.sisby.surveyor.packet.C2SKnownLandmarksPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
 import folk.sisby.surveyor.util.DispatchMapCodec;
@@ -40,7 +42,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -50,6 +54,7 @@ import java.util.function.Predicate;
 public class WorldLandmarks {
 	public static final UUID GLOBAL = UUID.fromString("99999999-9999-9999-9999-999999999999");
 	public static final String KEY_LANDMARKS = "landmarks";
+	public static final String KEY_REMOVED = "removed";
 	public static final Codec<Map<UUID, Map<Identifier, Landmark>>> CODEC = DispatchMapCodec.of(
 		Uuids.STRING_CODEC,
 		uuid -> DispatchMapCodec.of(
@@ -57,19 +62,27 @@ public class WorldLandmarks {
 			id -> Landmark.createCodec(uuid, id)
 		)
 	);
+	public static final Codec<Multimap<UUID, Identifier>> REMOVED_CODEC = Codec.unboundedMap(
+		Uuids.STRING_CODEC,
+		Codec.list(Identifier.CODEC).xmap(s -> (Collection<Identifier>) s, List::copyOf)
+	).xmap(MapUtil::asMultiMap, Multimap::asMap);
 	public static final int[] XAERO_COLORS = new int[]{
 		0xFF_000000, 0xFF_0000AA, 0xFF_00AA00, 0xFF_00AAAA, 0xFF_AA0000, 0xFF_AA00AA, 0xFF_ffAA00, 0xFF_AAAAAA, 0xFF_555555, 0xFF_5555FF, 0xFF_55FF55, 0xFF_55FFFF, 0xFF_FF0000, 0xFF_FF55FF, 0xFF_FFFF55, 0xFF_FFFFFF
 	};
 	protected final RegistryKey<World> worldKey;
 	protected final Map<UUID, Map<Identifier, Landmark>> landmarks = new ConcurrentHashMap<>();
-	protected boolean dirty = false;
+	protected final @Nullable Multimap<UUID, Identifier> removed;
+	protected boolean dirty;
 
-	public WorldLandmarks(RegistryKey<World> worldKey, Map<UUID, Map<Identifier, Landmark>> landmarks) {
+	public WorldLandmarks(RegistryKey<World> worldKey, Map<UUID, Map<Identifier, Landmark>> landmarks, Multimap<UUID, Identifier> removed, boolean dirty) {
 		this.worldKey = worldKey;
 		this.landmarks.putAll(landmarks);
+		this.removed = removed == null ? null : Multimaps.synchronizedSetMultimap(HashMultimap.create(removed));
+		if (this.removed != null) this.landmarks.forEach((uuid, map) -> map.keySet().forEach(id -> removed.remove(uuid, id)));
+		this.dirty = dirty;
 	}
 
-	public static WorldLandmarks load(World world, File folder) {
+	public static WorldLandmarks load(World world, File folder, boolean isClient) {
 		NbtCompound landmarkNbt = new NbtCompound();
 		File landmarksFile = new File(folder, "landmarks.dat");
 		if (landmarksFile.exists()) {
@@ -79,47 +92,22 @@ public class WorldLandmarks {
 				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", world.getRegistryKey().getValue(), e);
 			}
 		}
-		WorldLandmarks landmarks = new WorldLandmarks(world.getRegistryKey(), new HashMap<>());
-		landmarks.landmarks.putAll(fromNbt(landmarkNbt, landmarksFile, FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT ? SurveyorClient.getXaerosSavePath(world) : null, landmarks::dirty));
-		return landmarks;
+		WorldLandmarks worldLandmarks = fromNbt(world, landmarkNbt, landmarksFile, isClient);
+		if (!isClient) worldLandmarks.tryMigrateXaeros(world, false); // for singleplayer
+		return worldLandmarks;
 	}
 
-	public static NbtCompound writeNbt(Map<UUID, Map<Identifier, Landmark>> landmarks, NbtCompound nbt) {
+	public NbtCompound writeNbt(NbtCompound nbt) {
 		nbt.put(KEY_LANDMARKS, CODEC.encodeStart(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow());
+		if (removed != null) nbt.put(KEY_REMOVED, REMOVED_CODEC.encodeStart(NbtOps.INSTANCE, removed).resultOrPartial(Surveyor.LOGGER::error).orElseThrow());
 		return nbt;
 	}
 
-	public static Map<UUID, Map<Identifier, Landmark>> fromNbt(NbtCompound nbt, File landmarksFile, File xaerosSaveFolder, Runnable dirty) {
+	public static WorldLandmarks fromNbt(World world, NbtCompound nbt, File landmarksFile, boolean isClient) {
 		NbtCompound landmarks = nbt.getCompound(KEY_LANDMARKS).orElse(new NbtCompound());
+		boolean dirty = false;
 		Map<UUID, Map<Identifier, Landmark>> outMap = new HashMap<>();
-		if (xaerosSaveFolder != null) {
-			Surveyor.LOGGER.info("[Surveyor] Attempting to parse xaero's waypoints from {}/{}", xaerosSaveFolder.getParentFile().getName(), xaerosSaveFolder.getName());
-			try {
-				Files.createFile(xaerosSaveFolder.toPath().resolve(".surveyor_migrated"));
-				for (File file : Objects.requireNonNullElse(xaerosSaveFolder.listFiles(f -> f.getName().endsWith(".txt")), new File[0])) {
-					for (String line : Files.readAllLines(file.toPath())) {
-						try {
-							if (line.startsWith("waypoint:")) {
-								String[] split = line.split(":");
-								BlockPos pos = new BlockPos(Integer.parseInt(split[3]), split[4].equals("~") ? 0 : Integer.parseInt(split[4]), Integer.parseInt(split[5]));
-								Identifier id = Identifier.of("xaeros", "waypoint/%d/%d/%d".formatted(pos.getX(), pos.getY(), pos.getZ()));
-								outMap.computeIfAbsent(SurveyorClient.getClientUuid(), u -> new HashMap<>()).put(id, Landmark.create(SurveyorClient.getClientUuid(), id, b -> b
-									.add(LandmarkComponentTypes.POS, pos)
-									.add(LandmarkComponentTypes.COLOR, XAERO_COLORS[Integer.parseInt(split[6])])
-									.add(LandmarkComponentTypes.NAME, Text.literal(split[1]))
-								));
-								dirty.run();
-							}
-						} catch (Exception e) {
-							Surveyor.LOGGER.error("[Surveyor] Error parsing xaeros waypoint: {}", line, e);
-						}
-					}
-				}
-			} catch (Exception e) {
-				Surveyor.LOGGER.error("[Surveyor] Error parsing xaeros data from {}", xaerosSaveFolder, e);
-			}
-			Surveyor.LOGGER.info("[Surveyor] Migrated {} waypoints from xaeros data.", outMap.values().stream().mapToInt(Map::size).sum());
-		}
+		Multimap<UUID, Identifier> removedMap = null;
 		if (landmarks.getKeys().stream().anyMatch(k -> k.contains(":"))) { // 0.X
 			Surveyor.LOGGER.warn("[Surveyor] Partially recovering landmarks from 0.X");
 			try {
@@ -145,7 +133,7 @@ public class WorldLandmarks {
 							.add(LandmarkComponentTypes.SEED, landmark.getInt("seed").orElse(null))
 							.add(LandmarkComponentTypes.TIME, landmark.getLong("created").orElse(null))
 						));
-						dirty.run();
+						dirty = true;
 					}
 				}
 				Surveyor.LOGGER.info("[Surveyor] Recovered {} landmarks from legacy data.", outMap.values().stream().mapToInt(Map::size).sum());
@@ -153,9 +141,13 @@ public class WorldLandmarks {
 				Surveyor.LOGGER.error("[Surveyor] Encountered an error during v0 landmark migration, skipping...", e);
 			}
 		} else {
-			CODEC.decode(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst().forEach((uuid, map) -> map.forEach((id, landmark) -> outMap.computeIfAbsent(uuid, u -> new HashMap<>()).put(id, landmark)));
+			if (!landmarks.isEmpty()) CODEC.decode(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst().forEach((uuid, map) -> map.forEach((id, landmark) -> outMap.computeIfAbsent(uuid, u -> new HashMap<>()).put(id, landmark)));
+			if (!isClient) {
+				NbtCompound removed = nbt.getCompound(KEY_REMOVED);
+				if (!removed.isEmpty()) removedMap = REMOVED_CODEC.decode(NbtOps.INSTANCE, removed).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst();
+			}
 		}
-		return outMap;
+		return new WorldLandmarks(world.getRegistryKey(), outMap, removedMap, dirty);
 	}
 
 	public boolean contains(UUID uuid, Identifier id) {
@@ -188,6 +180,12 @@ public class WorldLandmarks {
 		landmarks.forEach((uuid, map) -> map.forEach((id, landmark) -> {
 			if (exploration == null || exploration.exploredLandmark(worldKey, landmark)) outMap.put(uuid, id);
 		}));
+		return outMap;
+	}
+
+	public Multimap<UUID, Identifier> removed() {
+		Multimap<UUID, Identifier> outMap = HashMultimap.create();
+		if (removed != null) outMap.putAll(removed);
 		return outMap;
 	}
 
@@ -232,6 +230,7 @@ public class WorldLandmarks {
 	public Map<UUID, Map<Identifier, Landmark>> putForBatch(Map<UUID, Map<Identifier, Landmark>> changed, Landmark landmark) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return changed;
 		landmarks.computeIfAbsent(landmark.owner(), t -> new ConcurrentHashMap<>()).put(landmark.id(), landmark);
+		if (removed != null) removed.remove(landmark.owner(), landmark.id());
 		dirty();
 		changed.computeIfAbsent(landmark.owner(), t -> new HashMap<>()).put(landmark.id(), landmark);
 		return changed;
@@ -253,6 +252,7 @@ public class WorldLandmarks {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return changed;
 		if (!landmarks.containsKey(uuid) || !landmarks.get(uuid).containsKey(id)) return changed;
 		Landmark landmark = landmarks.get(uuid).remove(id);
+		if (removed != null) removed.put(uuid, id);
 		if (landmarks.get(uuid).isEmpty()) landmarks.remove(uuid);
 		dirty();
 		changed.computeIfAbsent(uuid, t -> new HashMap<>()).put(id, landmark);
@@ -288,7 +288,7 @@ public class WorldLandmarks {
 	public int save(World world, File folder) {
 		if (isDirty()) {
 			File landmarksFile = new File(folder, "landmarks.dat");
-			NbtCompound landmarksCompound = writeNbt(landmarks, new NbtCompound());
+			NbtCompound landmarksCompound = writeNbt(new NbtCompound());
 			Util.getIoWorkerExecutor().execute(() -> {
 				try {
 					NbtIo.writeCompressed(landmarksCompound, landmarksFile.toPath());
@@ -321,7 +321,7 @@ public class WorldLandmarks {
 			if (landmark == null) return;
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
 			boolean owned = sender == null || Surveyor.getUuid(sender).equals(landmark.owner());
-			if (owned && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
+			if (owned && ((waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO)) || (!waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)))) {
 				removeForBatch(changed, uuid, id);
 			}
 		});
@@ -340,5 +340,45 @@ public class WorldLandmarks {
 
 	private void dirty() {
 		dirty = true;
+	}
+
+	private void tryMigrateXaeros(World world, boolean handleChanged) {
+		if (FabricLoader.getInstance().getEnvironmentType() != EnvType.CLIENT) return;
+		File saveFolder = SurveyorClient.getXaerosSavePath(world);
+		if (saveFolder != null) {
+			Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
+			Surveyor.LOGGER.info("[Surveyor] Attempting to parse xaero's waypoints from {}/{}", saveFolder.getParentFile().getName(), saveFolder.getName());
+			try {
+				Files.createFile(saveFolder.toPath().resolve(".surveyor_migrated"));
+				for (File file : Objects.requireNonNullElse(saveFolder.listFiles(f -> f.getName().endsWith(".txt")), new File[0])) {
+					for (String line : Files.readAllLines(file.toPath())) {
+						try {
+							if (line.startsWith("waypoint:")) {
+								String[] split = line.split(":");
+								BlockPos pos = new BlockPos(Integer.parseInt(split[3]), split[4].equals("~") ? 0 : Integer.parseInt(split[4]), Integer.parseInt(split[5]));
+								Identifier id = Identifier.of("xaeros", "waypoint/%d/%d/%d".formatted(pos.getX(), pos.getY(), pos.getZ()));
+								putForBatch(changed, Landmark.create(SurveyorClient.getClientUuid(), id, b -> b
+									.add(LandmarkComponentTypes.POS, pos)
+									.add(LandmarkComponentTypes.COLOR, XAERO_COLORS[Integer.parseInt(split[6])])
+									.add(LandmarkComponentTypes.NAME, Text.literal(split[1]))
+								));
+								dirty = true;
+							}
+						} catch (Exception e) {
+							Surveyor.LOGGER.error("[Surveyor] Error parsing xaeros waypoint: {}", line, e);
+						}
+					}
+				}
+			} catch (Exception e) {
+				Surveyor.LOGGER.error("[Surveyor] Error parsing xaeros data from {}", saveFolder, e);
+			}
+			Surveyor.LOGGER.info("[Surveyor] Migrated {} waypoints from xaeros data.", changed.values().stream().mapToInt(Map::size).sum());
+			if (handleChanged) handleChanged(world, changed, Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO), null);
+		}
+	}
+
+	public void clientInitialized(World world) {
+		tryMigrateXaeros(world, true);
+		if (Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) new C2SKnownLandmarksPacket(keySet(null)).send(world.getRegistryManager());
 	}
 }
