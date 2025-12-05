@@ -118,10 +118,9 @@ public final class ServerSummary {
 		ServerSummary serverSummary = ServerSummary.of(server);
 		UUID uuid = Surveyor.getUuid(player);
 		boolean known = serverSummary.offlineSummaries.containsKey(uuid);
-		serverSummary.updatePlayer(uuid, handler.player.writeNbt(new NbtCompound()), true, server);
+		if (!known) serverSummary.createPlayer(player);
 		if (serverSummary.getGroup(uuid).size() > 1) {
 			// initial exploration
-			serverSummary.updatePlayer(uuid, player.writeNbt(new NbtCompound()), true, server);
 			SurveyorExploration groupExploration = serverSummary.groupExploration(uuid, server);
 			Map<UUID, PlayerSummary> groupSummaries = serverSummary.getGroupSummaries(uuid, server);
 			new S2CGroupChangedPacket(groupSummaries, groupExploration.terrain().getOrDefault(player.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(player.getWorld().getRegistryKey(), new HashMap<>())).send(player);
@@ -183,6 +182,10 @@ public final class ServerSummary {
 	public SurveyorExploration getExploration(UUID player, MinecraftServer server) {
 		PlayerSummary summary = getPlayer(player, server);
 		return summary == null ? null : summary.exploration();
+	}
+
+	public void createPlayer(ServerPlayerEntity player) {
+		offlineSummaries.put(Surveyor.getUuid(player), new PlayerSummary.OfflinePlayerSummary(player));
 	}
 
 	public void updatePlayer(UUID uuid, NbtCompound nbt, boolean online, MinecraftServer server) {
