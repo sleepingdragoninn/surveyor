@@ -61,7 +61,7 @@ public class SurveyorClientNetworking {
 			SurveyorClient.getSharedExploration().groupPlayers().clear();
 			SurveyorClient.getSharedExploration().groupPlayers().addAll(packet.players().keySet());
 		}
-		NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).mergeSummaries(packet.players());
+		NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).matchSummaries(packet.players());
 		SurveyorClient.getSharedExploration().replaceTerrain(world.getRegistryKey(), packet.regionBits());
 		SurveyorClient.getSharedExploration().replaceStructures(world.getRegistryKey(), packet.structureKeys());
 		SurveyorClient.getExploration().updateClientForLandmarks(world);

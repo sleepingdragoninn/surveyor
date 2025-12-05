@@ -50,7 +50,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class SurveyorClient implements ClientModInitializer {
 	public static final String SERVERS_FILE_NAME = "servers.txt";
@@ -108,8 +107,7 @@ public class SurveyorClient implements ClientModInitializer {
 		} else {
 			ClientPlayNetworkHandler handler = MinecraftClient.getInstance().getNetworkHandler();
 			if (handler == null) return new HashMap<>();
-			NetworkHandlerSummary handlerSummary = NetworkHandlerSummary.of(handler);
-			return ClientExploration.SHARED.sharedPlayers().stream().collect(Collectors.toMap(u -> u, handlerSummary::getPlayer));
+			return NetworkHandlerSummary.of(handler).players(ClientExploration.SHARED.sharedPlayers());
 		}
 	}
 
