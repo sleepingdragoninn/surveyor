@@ -4,7 +4,6 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.landmark.Landmark;
-import folk.sisby.surveyor.landmark.Landmarks;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.util.MapUtil;
 import io.netty.buffer.Unpooled;
@@ -27,12 +26,12 @@ public record SyncLandmarksAddedPacket(Map<UUID, Map<Identifier, Landmark>> land
 	}
 
 	public static SyncLandmarksAddedPacket read(PacketByteBuf buf) {
-		return new SyncLandmarksAddedPacket(Landmarks.CODEC.decode(NbtOps.INSTANCE, buf.readNbt()).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst());
+		return new SyncLandmarksAddedPacket(WorldLandmarks.CODEC.decode(NbtOps.INSTANCE, buf.readNbt()).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst());
 	}
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
-		buf.writeNbt((NbtCompound) Landmarks.CODEC.encodeStart(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow());
+		buf.writeNbt((NbtCompound) WorldLandmarks.CODEC.encodeStart(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow());
 	}
 
 	@Override
