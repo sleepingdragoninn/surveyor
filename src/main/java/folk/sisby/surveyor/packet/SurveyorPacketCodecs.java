@@ -4,7 +4,7 @@ import com.google.common.collect.Multimap;
 import com.mojang.serialization.Codec;
 import folk.sisby.surveyor.PlayerSummary;
 import folk.sisby.surveyor.landmark.Landmark;
-import folk.sisby.surveyor.landmark.Landmarks;
+import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.structure.RegionStructureSummary;
 import folk.sisby.surveyor.structure.StructurePieceSummary;
 import folk.sisby.surveyor.structure.StructureStartSummary;
@@ -76,5 +76,5 @@ public interface SurveyorPacketCodecs {
 		PacketCodecs.codec(TagKey.codec(RegistryKeys.STRUCTURE)).collect(PacketCodecs.toList())
 	).xmap(MapUtil::asMultiMap, MapUtil::asListMap);
 
-	PacketCodec<ByteBuf, Map<UUID, Map<Identifier, Landmark>>> LANDMARK_SUMMARIES = PacketCodecs.codec(Landmarks.CODEC);
+	PacketCodec<ByteBuf, Map<UUID, Map<Identifier, Landmark>>> LANDMARK_SUMMARIES = PacketCodecs.codec(WorldLandmarks.CODEC);
 }
