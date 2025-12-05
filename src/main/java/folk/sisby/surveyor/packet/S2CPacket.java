@@ -37,12 +37,16 @@ public interface S2CPacket extends SurveyorPacket {
 		send(players);
 	}
 
-	default void send(ServerPlayerEntity sender, ServerWorld world, NetworkMode mode) {
+	default void send(ServerPlayerEntity sender, MinecraftServer server, Collection<ServerPlayerEntity> allPlayers, NetworkMode mode) {
 		if (mode.atMost(NetworkMode.NONE) || (sender != null && mode.atMost(NetworkMode.SOLO))) return;
-		List<ServerPlayerEntity> players = new ArrayList<>(world.getPlayers());
+		List<ServerPlayerEntity> players = new ArrayList<>(allPlayers);
 		players.remove(sender);
-		if (sender != null && mode.atMost(NetworkMode.GROUP)) ServerSummary.of(world.getServer()).groupOtherServerPlayers(Surveyor.getUuid(sender), world.getServer()).forEach(players::remove);
+		if (sender != null && mode.atMost(NetworkMode.GROUP)) ServerSummary.of(server).groupOtherServerPlayers(Surveyor.getUuid(sender), server).forEach(players::remove);
 		send(players);
+	}
+
+	default void send(ServerPlayerEntity sender, ServerWorld world, NetworkMode mode) {
+		send(sender, world.getServer(), world.getPlayers(), mode);
 	}
 
 	default void send(MinecraftServer server) {

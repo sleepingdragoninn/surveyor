@@ -83,6 +83,17 @@ public interface PlayerSummary {
 			);
 		}
 
+		public OfflinePlayerSummary(ServerPlayerEntity player) {
+			this(
+				PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(Set.of(SurveyorExploration.of(player))),
+				player.getGameProfile().getName(),
+				player.getWorld().getRegistryKey(),
+				player.getPos(),
+				player.getYaw(),
+				true
+			);
+		}
+
 		public static void writeBuf(PlayerSummary summary, RegistryByteBuf buf) {
 			buf.writeString(summary.username());
 			buf.writeRegistryKey(summary.dimension());

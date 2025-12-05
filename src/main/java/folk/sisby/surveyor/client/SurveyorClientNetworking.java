@@ -10,6 +10,7 @@ import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.packet.C2SKnownLandmarksPacket;
 import folk.sisby.surveyor.packet.C2SKnownStructuresPacket;
 import folk.sisby.surveyor.packet.C2SKnownTerrainPacket;
+import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
 import folk.sisby.surveyor.packet.S2CPacket;
@@ -34,6 +35,7 @@ public class SurveyorClientNetworking {
 		ClientPlayNetworking.registerGlobalReceiver(S2CStructuresAddedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleStructuresAdded));
 		ClientPlayNetworking.registerGlobalReceiver(S2CUpdateRegionPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleTerrainAdded));
 		ClientPlayNetworking.registerGlobalReceiver(S2CGroupChangedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleGroupChanged));
+		ClientPlayNetworking.registerGlobalReceiver(S2CGroupAmendedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleGroupAmended));
 		ClientPlayNetworking.registerGlobalReceiver(S2CGroupUpdatedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleGroupUpdated));
 		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksAddedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleLandmarksAdded));
 		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksRemovedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleLandmarksRemoved));
@@ -61,7 +63,7 @@ public class SurveyorClientNetworking {
 			SurveyorClient.getSharedExploration().groupPlayers().clear();
 			SurveyorClient.getSharedExploration().groupPlayers().addAll(packet.players().keySet());
 		}
-		NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).mergeSummaries(packet.players());
+		NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).matchSummaries(packet.players());
 		SurveyorClient.getSharedExploration().replaceTerrain(world.getRegistryKey(), packet.regionBits());
 		SurveyorClient.getSharedExploration().replaceStructures(world.getRegistryKey(), packet.structureKeys());
 		SurveyorClient.getExploration().updateClientForLandmarks(world);
@@ -70,6 +72,10 @@ public class SurveyorClientNetworking {
 			if (summary.structures() != null && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SOLO)) new C2SKnownStructuresPacket(summary.structures().keySet(null)).send(world.getRegistryManager());
 			if (summary.landmarks() != null && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) new C2SKnownLandmarksPacket(summary.landmarks().keySet(null)).send(world.getRegistryManager());
 		}
+	}
+
+	private static void handleGroupAmended(ClientWorld world, WorldSummary summary, S2CGroupAmendedPacket packet) {
+		SurveyorClient.getSharedExploration().groupPlayers().add(packet.player());
 	}
 
 	private static void handleGroupUpdated(ClientWorld world, WorldSummary summary, S2CGroupUpdatedPacket packet) {

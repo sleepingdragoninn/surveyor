@@ -66,6 +66,7 @@ public class SurveyorConfig extends WrappedConfig {
 
 		@Comment("[Server] How much player position data to send to clients")
 		@Comment("SERVER sends all players positions, GROUP sends just group players, SOLO sends nothing, NONE sends nothing")
+		@Comment("Players will only see the offline positions of their group members, or players who disconnected while they were online.")
 		public NetworkMode positions = NetworkMode.SERVER;
 
 		@Comment("[Server] Ticks per position update - lower is more frequent")
