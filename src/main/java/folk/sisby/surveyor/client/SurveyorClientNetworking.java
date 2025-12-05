@@ -10,6 +10,7 @@ import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.packet.C2SKnownLandmarksPacket;
 import folk.sisby.surveyor.packet.C2SKnownStructuresPacket;
 import folk.sisby.surveyor.packet.C2SKnownTerrainPacket;
+import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
 import folk.sisby.surveyor.packet.S2CPacket;
@@ -37,6 +38,7 @@ public class SurveyorClientNetworking {
 		ClientPlayNetworking.registerGlobalReceiver(S2CUpdateRegionPacket.ID, (c, h, b, s) -> handleClient(b, S2CUpdateRegionPacket::read, SurveyorClientNetworking::handleTerrainAdded));
 		ClientPlayNetworking.registerGlobalReceiver(S2CStructuresAddedPacket.ID, (c, h, b, s) -> handleClient(b, S2CStructuresAddedPacket::read, SurveyorClientNetworking::handleStructuresAdded));
 		ClientPlayNetworking.registerGlobalReceiver(S2CGroupChangedPacket.ID, (c, h, b, s) -> handleClient(b, S2CGroupChangedPacket::read, SurveyorClientNetworking::handleGroupChanged));
+		ClientPlayNetworking.registerGlobalReceiver(S2CGroupAmendedPacket.ID, (c, h, b, s) -> handleClient(b, S2CGroupAmendedPacket::read, SurveyorClientNetworking::handleGroupAmended));
 		ClientPlayNetworking.registerGlobalReceiver(S2CGroupUpdatedPacket.ID, (c, h, b, s) -> handleClient(b, S2CGroupUpdatedPacket::read, SurveyorClientNetworking::handleGroupUpdated));
 		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksAddedPacket.ID, (c, h, b, s) -> handleClient(b, SyncLandmarksAddedPacket::read, SurveyorClientNetworking::handleLandmarksAdded));
 		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksRemovedPacket.ID, (c, h, b, s) -> handleClient(b, SyncLandmarksRemovedPacket::read, SurveyorClientNetworking::handleLandmarksRemoved));
@@ -73,6 +75,10 @@ public class SurveyorClientNetworking {
 			if (summary.structures() != null && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SOLO)) new C2SKnownStructuresPacket(summary.structures().keySet(null)).send();
 			if (summary.landmarks() != null && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) new C2SKnownLandmarksPacket(summary.landmarks().keySet(null)).send();
 		}
+	}
+
+	private static void handleGroupAmended(ClientWorld world, WorldSummary summary, S2CGroupAmendedPacket packet) {
+		SurveyorClient.getSharedExploration().groupPlayers().add(packet.player());
 	}
 
 	private static void handleGroupUpdated(ClientWorld world, WorldSummary summary, S2CGroupUpdatedPacket packet) {

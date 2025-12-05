@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * for players new to the server with no data associated
  */
-public record S2CGroupAmendedPacket(UUID uuid) implements S2CPacket {
+public record S2CGroupAmendedPacket(UUID player) implements S2CPacket {
 	public static final Identifier ID = Surveyor.id("s2c_group_amended");
 
 	public static S2CGroupAmendedPacket read(PacketByteBuf buf) {
@@ -18,7 +18,7 @@ public record S2CGroupAmendedPacket(UUID uuid) implements S2CPacket {
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
-		buf.writeUuid(uuid);
+		buf.writeUuid(player);
 	}
 
 	@Override
