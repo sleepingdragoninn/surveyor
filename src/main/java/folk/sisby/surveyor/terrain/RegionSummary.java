@@ -61,6 +61,7 @@ public class RegionSummary {
 		this.regionPos = regionPos;
 		this.chunks = chunks;
 		this.bitSet = bitSet;
+		readNbt(manager, regionPos, true);
 	}
 
 	public static <T, O> List<O> mapIterable(Iterable<T> palette, Function<T, O> mapper) {
@@ -88,6 +89,16 @@ public class RegionSummary {
 		} catch (IOException | NbtCrashException e) {
 			Surveyor.LOGGER.error("[Surveyor] Error reading region summary file {}.", saveFile.getName(), e);
 		}
+		NbtCompound chunksCompound = nbt.getCompound(KEY_CHUNKS);
+		bitSet = new BitSet(RegionPos.CHUNK_AREA);
+		if (bitsOnly) {
+			for (String posKey : chunksCompound.getKeys()) {
+				int x = RegionPos.regionRelative(Integer.parseInt(posKey.split(",")[0]));
+				int z = RegionPos.regionRelative(Integer.parseInt(posKey.split(",")[1]));
+				bitSet.set(RegionPos.chunkToBit(x, z));
+			}
+			return;
+		}
 		NbtList biomeList = nbt.getList(KEY_BIOMES, NbtElement.STRING_TYPE);
 		Map<Integer, Integer> biomeRemap = new Int2IntArrayMap(biomeList.size());
 		for (int i = 0; i < biomeList.size(); i++) {
@@ -114,17 +125,14 @@ public class RegionSummary {
 				dirty();
 			}
 		}
-		NbtCompound chunksCompound = nbt.getCompound(KEY_CHUNKS);
 		chunks = new ChunkSummary[RegionPos.CHUNK_SIZE][RegionPos.CHUNK_SIZE];
-		bitSet = new BitSet(RegionPos.CHUNK_AREA);
 		for (String posKey : chunksCompound.getKeys()) {
 			int x = RegionPos.regionRelative(Integer.parseInt(posKey.split(",")[0]));
 			int z = RegionPos.regionRelative(Integer.parseInt(posKey.split(",")[1]));
-			ChunkSummary summary = bitsOnly ? null : new ChunkSummary(chunksCompound.getCompound(posKey));
+			ChunkSummary summary = new ChunkSummary(chunksCompound.getCompound(posKey));
 			set(x, z, summary, manager);
-			if (summary != null && (!biomeRemap.isEmpty() || !blockRemap.isEmpty())) summary.remap(biomeRemap, blockRemap);
+			if (!biomeRemap.isEmpty() || !blockRemap.isEmpty()) summary.remap(biomeRemap, blockRemap);
 		}
-		if (bitsOnly) chunks = null;
 	}
 
 	public boolean contains(ChunkPos pos, DynamicRegistryManager manager) {
