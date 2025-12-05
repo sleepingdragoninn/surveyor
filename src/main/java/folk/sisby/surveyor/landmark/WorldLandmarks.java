@@ -41,9 +41,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -63,8 +61,8 @@ public class WorldLandmarks {
 	);
 	public static final Codec<Multimap<UUID, Identifier>> REMOVED_CODEC = Codec.unboundedMap(
 		Uuids.STRING_CODEC,
-		Codec.list(Identifier.CODEC).xmap(s -> (Collection<Identifier>) s, List::copyOf)
-	).xmap(MapUtil::asMultiMap, Multimap::asMap);
+		Codec.list(Identifier.CODEC)
+	).xmap(MapUtil::asMultiMap, MapUtil::asListMap);
 	public static final int[] XAERO_COLORS = new int[]{
 		0xFF_000000, 0xFF_0000AA, 0xFF_00AA00, 0xFF_00AAAA, 0xFF_AA0000, 0xFF_AA00AA, 0xFF_ffAA00, 0xFF_AAAAAA, 0xFF_555555, 0xFF_5555FF, 0xFF_55FF55, 0xFF_55FFFF, 0xFF_FF0000, 0xFF_FF55FF, 0xFF_FFFF55, 0xFF_FFFFFF
 	};
