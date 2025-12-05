@@ -88,7 +88,7 @@ public class SurveyorClientNetworking {
 
 	private static void handleLandmarksRequested(ClientWorld world, WorldSummary summary, SyncLandmarksRequestedPacket packet) {
 		if (summary.landmarks() == null) return;
-		summary.landmarks().createUpdatePacket(packet.landmarks()).send();
+		summary.landmarks().createUpdatePacket(packet.landmarks()).send(world.getRegistryManager());
 	}
 
 	private static <T extends S2CPacket> void handleClient(T packet, ClientPlayNetworking.Context context, ClientPacketHandler<T> handler) {

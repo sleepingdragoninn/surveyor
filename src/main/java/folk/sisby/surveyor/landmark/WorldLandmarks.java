@@ -143,7 +143,7 @@ public class WorldLandmarks {
 		} else {
 			if (!landmarks.isEmpty()) CODEC.decode(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst().forEach((uuid, map) -> map.forEach((id, landmark) -> outMap.computeIfAbsent(uuid, u -> new HashMap<>()).put(id, landmark)));
 			if (!isClient) {
-				NbtCompound removed = nbt.getCompound(KEY_REMOVED);
+				NbtCompound removed = nbt.getCompound(KEY_REMOVED).orElse(new NbtCompound());
 				if (!removed.isEmpty()) removedMap = REMOVED_CODEC.decode(NbtOps.INSTANCE, removed).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst();
 			}
 		}
