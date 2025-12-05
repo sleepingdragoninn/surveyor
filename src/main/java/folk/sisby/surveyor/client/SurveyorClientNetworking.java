@@ -74,6 +74,10 @@ public class SurveyorClientNetworking {
 		}
 	}
 
+	private static void handleGroupAmended(ClientWorld world, WorldSummary summary, S2CGroupAmendedPacket packet) {
+		SurveyorClient.getSharedExploration().groupPlayers().add(packet.player());
+	}
+
 	private static void handleGroupUpdated(ClientWorld world, WorldSummary summary, S2CGroupUpdatedPacket packet) {
 		NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).mergeSummaries(packet.players());
 	}
