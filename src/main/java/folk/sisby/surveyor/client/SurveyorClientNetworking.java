@@ -13,6 +13,7 @@ import folk.sisby.surveyor.packet.C2SKnownTerrainPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
 import folk.sisby.surveyor.packet.S2CPacket;
+import folk.sisby.surveyor.packet.SyncLandmarksRequestedPacket;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
 import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
@@ -36,6 +37,7 @@ public class SurveyorClientNetworking {
 		ClientPlayNetworking.registerGlobalReceiver(S2CGroupUpdatedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleGroupUpdated));
 		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksAddedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleLandmarksAdded));
 		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksRemovedPacket.ID, (packet, context) -> handleClient(packet, context, SurveyorClientNetworking::handleLandmarksRemoved));
+		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksRequestedPacket.ID, (c, h, b, s) -> handleClient(b, SyncLandmarksRequestedPacket::read, SurveyorClientNetworking::handleLandmarksRequested));
 	}
 
 	private static void handleTerrainAdded(ClientWorld world, WorldSummary summary, S2CUpdateRegionPacket packet) {
@@ -82,6 +84,11 @@ public class SurveyorClientNetworking {
 	private static void handleLandmarksRemoved(ClientWorld world, WorldSummary summary, SyncLandmarksRemovedPacket packet) {
 		if (summary.landmarks() == null) return;
 		summary.landmarks().readUpdatePacket(world, packet, null);
+	}
+
+	private static void handleLandmarksRequested(ClientWorld world, WorldSummary summary, SyncLandmarksRequestedPacket packet) {
+		if (summary.landmarks() == null) return;
+		summary.landmarks().createUpdatePacket(packet.landmarks()).send();
 	}
 
 	private static <T extends S2CPacket> void handleClient(T packet, ClientPlayNetworking.Context context, ClientPacketHandler<T> handler) {

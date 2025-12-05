@@ -8,6 +8,7 @@ import folk.sisby.surveyor.packet.C2SKnownLandmarksPacket;
 import folk.sisby.surveyor.packet.C2SKnownStructuresPacket;
 import folk.sisby.surveyor.packet.C2SKnownTerrainPacket;
 import folk.sisby.surveyor.packet.C2SPacket;
+import folk.sisby.surveyor.packet.SyncLandmarksRequestedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
@@ -41,6 +42,7 @@ public class SurveyorNetworking {
 		PayloadTypeRegistry.playC2S().register(C2SKnownLandmarksPacket.ID, C2SKnownLandmarksPacket.CODEC);
 		PayloadTypeRegistry.playC2S().register(SyncLandmarksAddedPacket.ID, SyncLandmarksAddedPacket.CODEC);
 		PayloadTypeRegistry.playC2S().register(SyncLandmarksRemovedPacket.ID, SyncLandmarksRemovedPacket.CODEC);
+		PayloadTypeRegistry.playC2S().register(SyncLandmarksRequestedPacket.ID, SyncLandmarksRequestedPacket.CODEC);
 
 		PayloadTypeRegistry.playS2C().register(S2CUpdateRegionPacket.ID, S2CUpdateRegionPacket.CODEC);
 		PayloadTypeRegistry.playS2C().register(S2CStructuresAddedPacket.ID, S2CStructuresAddedPacket.CODEC);
@@ -48,12 +50,14 @@ public class SurveyorNetworking {
 		PayloadTypeRegistry.playS2C().register(S2CGroupUpdatedPacket.ID, S2CGroupUpdatedPacket.CODEC);
 		PayloadTypeRegistry.playS2C().register(SyncLandmarksAddedPacket.ID, SyncLandmarksAddedPacket.CODEC);
 		PayloadTypeRegistry.playS2C().register(SyncLandmarksRemovedPacket.ID, SyncLandmarksRemovedPacket.CODEC);
+		PayloadTypeRegistry.playS2C().register(SyncLandmarksRequestedPacket.ID, SyncLandmarksRequestedPacket.CODEC);
 
 		ServerPlayNetworking.registerGlobalReceiver(C2SKnownTerrainPacket.ID, (packet, context) -> handleServer(packet, context, SurveyorNetworking::handleKnownTerrain));
 		ServerPlayNetworking.registerGlobalReceiver(C2SKnownStructuresPacket.ID, (packet, context) -> handleServer(packet, context, SurveyorNetworking::handleKnownStructures));
 		ServerPlayNetworking.registerGlobalReceiver(C2SKnownLandmarksPacket.ID, (packet, context) -> handleServer(packet, context, SurveyorNetworking::handleKnownLandmarks));
 		ServerPlayNetworking.registerGlobalReceiver(SyncLandmarksAddedPacket.ID, (packet, context) -> handleServer(packet, context, SurveyorNetworking::handleLandmarksAdded));
 		ServerPlayNetworking.registerGlobalReceiver(SyncLandmarksRemovedPacket.ID, (packet, context) -> handleServer(packet, context, SurveyorNetworking::handleLandmarksRemoved));
+		ServerPlayNetworking.registerGlobalReceiver(SyncLandmarksRequestedPacket.ID, (packet, context) -> handleServer(packet, context, SurveyorNetworking::handleLandmarksRequested));
 	}
 
 	private static SurveyorExploration explorationForMode(NetworkMode mode, ServerPlayerEntity player) {
@@ -95,8 +99,15 @@ public class SurveyorNetworking {
 		if (!Surveyor.CONFIG.forceUpdateLandmarks) packet.landmarks().forEach(addLandmarks::remove);
 		if (!addLandmarks.isEmpty()) SyncLandmarksAddedPacket.of(addLandmarks, summary.landmarks()).send(player);
 		Multimap<UUID, Identifier> removeLandmarks = HashMultimap.create(packet.landmarks());
-		landmarks.forEach(removeLandmarks::remove);
+		Multimap<UUID, Identifier> removedLandmarks = summary.landmarks().removed();
+		removeLandmarks.entries().removeIf(e -> !removedLandmarks.containsEntry(e.getKey(), e.getValue()));
 		if (!removeLandmarks.isEmpty()) new SyncLandmarksRemovedPacket(removeLandmarks).send(player);
+		Multimap<UUID, Identifier> unknownWaypoints = HashMultimap.create();
+		UUID uuid = Surveyor.getUuid(player);
+		unknownWaypoints.putAll(uuid, packet.landmarks().get(uuid));
+		summary.landmarks().keySet(null).get(uuid).forEach(id -> unknownWaypoints.remove(uuid, id));
+		removedLandmarks.get(uuid).forEach(id -> unknownWaypoints.remove(uuid, id));
+		if (!unknownWaypoints.isEmpty()) new SyncLandmarksRequestedPacket(unknownWaypoints).send(player);
 	}
 
 	private static void handleLandmarksAdded(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, SyncLandmarksAddedPacket packet) {
@@ -111,6 +122,12 @@ public class SurveyorNetworking {
 			if (summary.landmarks().contains(uuid, id) && Surveyor.getUuid(player).equals(summary.landmarks().get(uuid, id).owner())) summary.landmarks().removeForBatch(changed, uuid, id);
 		});
 		if (!changed.isEmpty()) summary.landmarks().handleChanged(world, changed, false, player);
+	}
+
+	private static void handleLandmarksRequested(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, SyncLandmarksRequestedPacket packet) {
+		if (summary.landmarks() == null) return;
+		Multimap<UUID, Identifier> allowed = SurveyorExploration.ofShared(player).limitLandmarkKeySet(world.getRegistryKey(), summary.landmarks(), HashMultimap.create(packet.landmarks()));
+		summary.landmarks().createUpdatePacket(allowed).send(player);
 	}
 
 	private static <T extends C2SPacket> void handleServer(T packet, ServerPlayNetworking.Context context, ServerPacketHandler<T> handler) {

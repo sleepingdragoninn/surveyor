@@ -27,7 +27,7 @@ public record WorldSummary(@Nullable WorldTerrainSummary terrain, @Nullable Worl
 		folder.mkdirs();
 		WorldTerrainSummary terrain = disableTerrain ? null : WorldTerrainSummary.load(world, folder);
 		WorldStructureSummary structures = disableStructures ? null : WorldStructureSummary.load(world, folder);
-		WorldLandmarks landmarks = disableLandmarks ? null : WorldLandmarks.load(world, folder);
+		WorldLandmarks landmarks = disableLandmarks ? null : WorldLandmarks.load(world, folder, isClient);
 		Surveyor.LOGGER.info("[Surveyor] Finished loading data for {}", world.getRegistryKey().getValue());
 		return new WorldSummary(terrain, structures, landmarks, isClient);
 	}
