@@ -24,6 +24,8 @@ If you're a server admin or don't have a map frontend installed, surveyor comes 
 - `/waypoints` allows viewing and editing your recorded waypoints.
 - `/landmarks` allows viewing and (op 2 or above) editing global waypoints.
 
+Surveyor data is stored in plain NBT under `data/surveyor` (inside each dimension for singleplayer/servers, and in `.minecraft` for clients) - easy to inspect or delete for troubleshooting.
+
 ### Configuration
 
 Surveyor's configuration can be edited in `config/surveyor.toml`, or in-game using [McQoy](https://modrinth.com/mod/mcqoy). This includes:
