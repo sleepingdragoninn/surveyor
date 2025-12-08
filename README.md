@@ -43,10 +43,12 @@ Feel free to reach out if you'd like to develop something with surveyor! Or don'
 Check out the [frontend dev guide](https://github.com/sisby-folk/surveyor/blob/1.20/README.md) for a breakdown of the complicated parts of the internals. <br/>
 
 If you've made something, hit us up and we'll link it here! We'll also answer questions for any in-progress project.<br/>
-You can reach out to us through the [modfest discord](https://discord.gg/gn543Ee) (#projects->Surveyor) on [mastodon](https://tech.lgbt/@sleepingdragoninn), or hell, via [email](mailto:sleepingdragoninn@gmail.com).
+You can reach out to us through the [modfest discord](https://discord.gg/gn543Ee) (#projects->Surveyor), on [mastodon](https://tech.lgbt/@sleepingdragoninn), or hell, via [email](mailto:sleepingdragoninn@gmail.com).
 
 ## Afterword
 
 Surveyor was built on the thoughts, advice, opinions, and past works of many modders in the community.
+
+Thank you to everyone who's been involved, both directly and fluttering about the sidelines - trust me, that's a lot of you!
 
 We made this mod because it sounded cool - we hope it helps other artists and mod devs to make cool things too!
