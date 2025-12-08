@@ -80,8 +80,6 @@ public class WorldTerrainSummary {
 			if (chunk.needsSaving()) {
 				summary.terrain().put(world, chunk);
 			}
-			RegionSummary region = summary.terrain().getRegion(RegionPos.of(chunk.getPos()));
-			if (region.isUnloaded(world)) region.save(world.getRegistryManager(), true);
 		}
 	}
 
@@ -141,7 +139,7 @@ public class WorldTerrainSummary {
 				}
 			});
 			queuedUpdates.remove(rPos);
-			if (region.isUnloaded(world)) region.save(world.getRegistryManager(), true);
+			if (region.isLoaded() && region.isUnloaded(world)) region.save(world.getRegistryManager(), true);
 		});
 	}
 
