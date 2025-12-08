@@ -14,7 +14,7 @@ Along with handling the generation and saving of map data like terrain and waypo
 - Enables **live map sharing** with other players of your choosing - terrain, waypoints, the lot!
 - Allows swapping map frontends any time without losing your map data!
 - Imports waypoints from Xaero's Minimap, and has integration for mods like [Waystones](https://modrinth.com/mod/surveystones) and [OPAC](https://modrinth.com/mod/surveyalot).
-- Is fully modular - so mods like [Atlas HUD](https://modrinth.com/mod/antique-atlas-compass-hud) can utilize these waypoints without enabling terrain scanning.
+- Is fully modular - so mods like [Atlas HUD](https://modrinth.com/mod/antique-atlas-compass-hud) can utilize waypoints without enabling terrain scanning.
 
 ### Commands
 
