@@ -45,8 +45,7 @@ public class SurveyorConfig extends WrappedConfig {
 
 		@Comment("How much terrain data to send to clients")
 		@Comment("SERVER sends server-known data, GROUP sends group-known data, SOLO sends player-known data, NONE sends no data")
-		@Comment("This is a performance heavy feature, and may cause memory spikes when syncing to clients. Test with caution!")
-		public NetworkMode terrain = NetworkMode.NONE;
+		public NetworkMode terrain = NetworkMode.GROUP;
 
 		@Comment("How much structure data to send to clients")
 		@Comment("SERVER sends server-known data, GROUP sends group-known data, SOLO sends player-known data, NONE sends no data")
@@ -68,6 +67,10 @@ public class SurveyorConfig extends WrappedConfig {
 		@Comment("SERVER sends all players positions, GROUP sends just group players, SOLO sends nothing, NONE sends nothing")
 		@Comment("Players will only see the offline positions of their group members, or players who disconnected while they were online.")
 		public NetworkMode positions = NetworkMode.SERVER;
+
+	    @Comment("[Server] Ticks per terrain region load for batch update - lower is more frequent")
+	    @IntegerRange(min = 1, max = 200)
+	    public int terrainTicks = 20;
 
 		@Comment("[Server] Ticks per position update - lower is more frequent")
 		@IntegerRange(min = 1, max = 200)

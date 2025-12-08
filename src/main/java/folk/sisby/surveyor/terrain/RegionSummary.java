@@ -60,7 +60,7 @@ public class RegionSummary {
 		this.regionPos = regionPos;
 		this.chunks = chunks;
 		this.bitSet = bitSet;
-		readNbt(manager, regionPos, true);
+		if (bitSet == null) readNbt(manager, regionPos, true);
 	}
 
 	public static <T, O> List<O> mapIterable(Iterable<T> palette, Function<T, O> mapper) {
