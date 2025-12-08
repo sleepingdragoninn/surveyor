@@ -22,7 +22,7 @@ If you're a server admin or don't have a map frontend installed, surveyor comes 
 - `/surveyor` displays summary of how many chunks and structures you've explored, and waypoints recorded.
 - `/surveyor share [player]` and `/surveyor unshare` allows joining and leaving map sharing groups.
 - `/waypoints` allows viewing and editing your recorded waypoints.
-- `/landmarks` allows viewing and (op 2 or above) editing global waypoints
+- `/landmarks` allows viewing and (op 2 or above) editing global waypoints.
 
 ### Configuration
 
