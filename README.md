@@ -49,6 +49,6 @@ You can reach out to us through the [modfest discord](https://discord.gg/gn543Ee
 
 Surveyor was built on the thoughts, advice, opinions, and past works of many modders in the community.
 
-Thank you to everyone who's been involved and helped to make this project happen, both directly and by fluttering about the sidelines - trust me, that's a lot of you!
+Thank you to everyone who helped make this project happen, both directly and through fluttering on the sidelines - it genuinely means a lot!
 
 We made this mod because it sounded cool - we hope it helps other artists and mod devs to make cool things too. Enjoy!
