@@ -38,7 +38,7 @@ Surveyor's configuration can be edited in `config/surveyor.toml`, or in-game usi
 
 Feel free to reach out if you'd like to develop something with surveyor! Or don't, we don't mind! We appreciate:
 - PRs making shots at [surveyor enhancements and bugs](https://github.com/sisby-folk/surveyor/issues?q=is%3Aissue%20state%3Aopen%20(label%3Abug%20OR%20label%3Aenhancement)).
-- PRs containing ports to an older established versions (1.4.7, 1.17.10, 1.12.2, 1.16.5, 1.18.2) - [_or latest, i guess..._](https://github.com/sisby-folk/surveyor/issues/91)
+- PRs containing ports to an older established versions (1.4.7, 1.17.10, 1.12.2, 1.16.5, 1.18.2) - [or latest, per policy](https://github.com/sisby-folk/surveyor/issues/91)
 - PRs containing API features that you'd benefit from - ideally post an issue first, and we can workshop and label it!
 - Compat addons, world maps, minimaps, and waypoint frontends utilizing surveyor! Serverside, web map, minecraftless... Surveyor is all about cultivating fun new things in the map mod space.
 
