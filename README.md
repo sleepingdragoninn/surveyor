@@ -51,4 +51,4 @@ Surveyor was built on the thoughts, advice, opinions, and past works of many mod
 
 Thank you to everyone who's been involved and helped to make this project happen, both directly and by fluttering about the sidelines - trust me, that's a lot of you!
 
-We made this mod because it sounded cool - we hope it helps other artists and mod devs to make cool things too!
+We made this mod because it sounded cool - we hope it helps other artists and mod devs to make cool things too. Enjoy!
