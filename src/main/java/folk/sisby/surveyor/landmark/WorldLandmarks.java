@@ -5,6 +5,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
+import folk.sisby.surveyor.ServerSummary;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.SurveyorEvents;
 import folk.sisby.surveyor.SurveyorExploration;
@@ -300,12 +301,15 @@ public class WorldLandmarks {
 		return 0;
 	}
 
+	public static boolean canModify(UUID landmark, World world, @Nullable ServerPlayerEntity player) {
+		return player == null || player.hasPermissionLevel(2) || landmark.equals(Surveyor.getUuid(player)) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && ((world.isClient() && SurveyorClient.getSharedExploration().groupPlayers().contains(landmark)) || ServerSummary.of(world.getServer()).getGroup(Surveyor.getUuid(player)).contains(landmark)));
+	}
+
 	public void readUpdatePacket(World world, SyncLandmarksAddedPacket packet, @Nullable ServerPlayerEntity sender) {
 		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
 		packet.landmarks().forEach((uuid, map) -> map.forEach((id, landmark) -> {
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
-			boolean owned = sender == null || Surveyor.getUuid(sender).equals(landmark.owner());
-			if (owned && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
+			if (canModify(landmark.owner(), world, sender) && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
 				putForBatch(changed, landmark);
 			}
 		}));
@@ -318,8 +322,7 @@ public class WorldLandmarks {
 			Landmark landmark = get(uuid, id);
 			if (landmark == null) return;
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
-			boolean owned = sender == null || Surveyor.getUuid(sender).equals(landmark.owner());
-			if (owned && ((waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO)) || (!waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)))) {
+			if (canModify(landmark.owner(), world, sender) && ((waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO)) || (!waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)))) {
 				removeForBatch(changed, uuid, id);
 			}
 		});

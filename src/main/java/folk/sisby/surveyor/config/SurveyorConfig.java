@@ -61,7 +61,7 @@ public class SurveyorConfig extends WrappedConfig {
 		@Comment("When GROUP, players can see (but not edit) waypoints created by players in their share group")
 		@Comment("When SOLO, player-created waypoints will be stored on the server as a backup")
 		@Comment("When NONE, waypoint data will never be synced (e.g. for privacy)")
-		public NetworkMode waypoints = NetworkMode.SOLO;
+		public NetworkMode waypoints = NetworkMode.GROUP;
 
 		@Comment("[Server] How much player position data to send to clients")
 		@Comment("SERVER sends all players positions, GROUP sends just group players, SOLO sends nothing, NONE sends nothing")

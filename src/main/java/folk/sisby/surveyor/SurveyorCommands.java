@@ -252,7 +252,7 @@ public class SurveyorCommands {
 				feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 				return 0;
 			}
-			Map<UUID, Map<Identifier, Landmark>> landmarks = summary.landmarks().asMap(op ? null : exploration);
+			Map<UUID, Map<Identifier, Landmark>> landmarks = summary.landmarks().asMap(op ? null : SurveyorExploration.ofShared(player));
 			if (global) {
 				if (landmarks.containsKey(WorldLandmarks.GLOBAL)) {
 					dimensionLandmarks.put(world.getRegistryKey().getValue(), landmarks.get(WorldLandmarks.GLOBAL).values());
@@ -270,14 +270,17 @@ public class SurveyorCommands {
 			for (Landmark landmark : landmarks) {
 				Text idText = Text.empty().append(Text.literal("%s:".formatted(landmark.id().getNamespace())).formatted(Formatting.GRAY)).append(Text.literal(landmark.id().getPath()));
 				Integer color = landmark.get(LandmarkComponentTypes.COLOR);
-				String command = global ? "/landmarks view %s %s".formatted(dim, landmark.id()) : "/waypoints view %s %s%s".formatted(dim, landmark.id(), op ? " " + landmark.owner() : "");
+				String command = global ? "/landmarks view %s %s".formatted(dim, landmark.id()) : "/waypoints view %s %s%s".formatted(dim, landmark.id(), player != null && landmark.owner().equals(Surveyor.getUuid(player)) ? "" : " " + landmark.owner());
 				feedback.accept(
 					indent()
-						.append(!op || global ? Text.empty() : Text.literal("%s | ".formatted(player == null ? landmark.owner() : Optional.ofNullable(ServerSummary.of(server).getPlayer(landmark.owner(), server)).map(PlayerSummary::username).orElse(landmark.owner().toString()))).formatted(Formatting.GRAY))
+						.append(player == null || global ? Text.empty() : Text.literal("%s | ".formatted(Optional.ofNullable(ServerSummary.of(server).getPlayer(landmark.owner(), server)).map(PlayerSummary::username).orElse(landmark.owner().toString()))).formatted(Formatting.GRAY))
 						.append(player == null && landmark.contains(LandmarkComponentTypes.NAME) ? idText.copy().append(" ") : Text.empty())
 						.append((landmark.contains(LandmarkComponentTypes.NAME) ? Text.literal("\"").append(landmark.get(LandmarkComponentTypes.NAME)).append("\"") : idText).copy().styled(s -> s
 							.withColor(color == null ? 0xFFFFFF : 0xFFFFFF & color)
-							.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.empty().append(Text.literal("id: ").formatted(Formatting.AQUA)).append(idText).append("\n").append(Texts.join(landmark.toText(), Text.of("\n"))).append("\n").append(Text.literal(command).formatted(Formatting.AQUA))))
+							.withHoverEvent(player == null ? null : new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.empty()
+								.append(global || landmark.owner().equals(Surveyor.getUuid(player)) ? Text.empty() : Text.empty().append(Text.literal("owner: ").formatted(Formatting.AQUA)).append(landmark.owner().toString()).append("\n"))
+								.append(Text.literal("id: ").formatted(Formatting.AQUA)).append(idText).append("\n")
+								.append(Texts.join(landmark.toText(), Text.of("\n"))).append("\n").append(Text.literal(command).formatted(Formatting.AQUA))))
 							.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command)))
 						)
 				);
@@ -331,7 +334,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (player != null && !player.hasPermissionLevel(2) && !landmark.owner().equals(Surveyor.getUuid(player))) {
+		if (!WorldLandmarks.canModify(owner, world, player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -355,7 +358,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (player != null && !player.hasPermissionLevel(2) && !landmark.owner().equals(Surveyor.getUuid(player))) {
+		if (!WorldLandmarks.canModify(owner, world, player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -380,7 +383,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (player != null && !player.hasPermissionLevel(2) && !landmark.owner().equals(Surveyor.getUuid(player))) {
+		if (!WorldLandmarks.canModify(landmark.owner(), world, player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -405,7 +408,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (player != null && !player.hasPermissionLevel(2) && owner != Surveyor.getUuid(player)) {
+		if (!WorldLandmarks.canModify(owner, world, player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to add that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -434,7 +437,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (player != null && !player.hasPermissionLevel(2) && owner != Surveyor.getUuid(player)) {
+		if (!WorldLandmarks.canModify(owner, world, player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to add that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -459,7 +462,7 @@ public class SurveyorCommands {
 		ServerPlayerEntity player = c.getSource().getPlayer();
 		if (player == null) return b.buildFuture();
 		boolean op = player.hasPermissionLevel(2);
-		SurveyorExploration exploration = op ? null : SurveyorExploration.of(player);
+		SurveyorExploration exploration = op ? null : SurveyorExploration.ofShared(player);
 		ServerWorld world;
 		try {
 			world = DimensionArgumentType.getDimensionArgument(c, "dim");
@@ -468,7 +471,25 @@ public class SurveyorCommands {
 		}
 		WorldLandmarks landmarks = WorldSummary.of(world).landmarks();
 		if (landmarks == null) return b.buildFuture();
-		return CommandSource.suggestIdentifiers(global ? landmarks.asMap(WorldLandmarks.GLOBAL, exploration).keySet() : landmarks.asMap(Surveyor.getUuid(player), exploration).keySet(), b);
+		return CommandSource.suggestIdentifiers(global ? landmarks.asMap(WorldLandmarks.GLOBAL, exploration).keySet() : landmarks.asMap(exploration).values().stream().flatMap(m -> m.keySet().stream()).toList(), b);
+	}
+
+	private static CompletableFuture<Suggestions> suggestOwners(CommandContext<ServerCommandSource> c, SuggestionsBuilder b) {
+		ServerPlayerEntity player = c.getSource().getPlayer();
+		if (player == null) return b.buildFuture();
+		boolean op = player.hasPermissionLevel(2);
+		SurveyorExploration exploration = op ? null : SurveyorExploration.ofShared(player);
+		ServerWorld world;
+		Identifier id;
+		try {
+			world = DimensionArgumentType.getDimensionArgument(c, "dim");
+			id = c.getArgument("id", Identifier.class);
+		} catch (CommandSyntaxException e) {
+			throw new RuntimeException(e);
+		}
+		WorldLandmarks landmarks = WorldSummary.of(world).landmarks();
+		if (landmarks == null) return b.buildFuture();
+		return CommandSource.suggestMatching(landmarks.asMap(exploration).entrySet().stream().filter(e -> e.getValue().containsKey(id)).map(e -> e.getKey().toString()).toList(), b);
 	}
 
 	public static <T> T map(CommandContext<ServerCommandSource> context, SurveyorCommandExecutor<T> executor, boolean feedback) {
@@ -641,6 +662,7 @@ public class SurveyorCommands {
 						.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
 							.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
 								.then(CommandManager.argument("owner", UuidArgumentType.uuid())
+									.suggests(SurveyorCommands::suggestOwners)
 									.requires(c -> c.hasPermissionLevel(2))
 									.executes(c -> execute(c, (s, p, e, f) -> {
 										try {
@@ -727,6 +749,7 @@ public class SurveyorCommands {
 								.suggests((c, s) -> CommandSource.suggestMatching(Formatting.getNames(true, false), s))
 								.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
 									.then(CommandManager.argument("owner", UuidArgumentType.uuid())
+									.suggests(SurveyorCommands::suggestOwners)
 										.requires(c -> c.hasPermissionLevel(2))
 										.executes(c -> execute(c, (s, p, e, f) -> {
 											try {
@@ -767,6 +790,7 @@ public class SurveyorCommands {
 							.suggests((c, b) -> CommandSource.suggestIdentifiers(LandmarkComponentType.keySet(), b))
 							.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
 								.then(CommandManager.argument("owner", UuidArgumentType.uuid())
+									.suggests(SurveyorCommands::suggestOwners)
 									.requires(c -> c.hasPermissionLevel(2))
 									.executes(c -> execute(c, (s, p, e, f) -> {
 										try {
@@ -803,6 +827,7 @@ public class SurveyorCommands {
 						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
 							.suggests((c, b) -> suggestLandmarks(c, b, false))
 							.then(CommandManager.argument("owner", UuidArgumentType.uuid())
+									.suggests(SurveyorCommands::suggestOwners)
 								.requires(c -> c.hasPermissionLevel(2))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
@@ -832,6 +857,7 @@ public class SurveyorCommands {
 						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
 							.suggests((c, b) -> suggestLandmarks(c, b, true))
 							.then(CommandManager.argument("owner", UuidArgumentType.uuid())
+									.suggests(SurveyorCommands::suggestOwners)
 								.requires(c -> c.hasPermissionLevel(2))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
@@ -861,6 +887,7 @@ public class SurveyorCommands {
 						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
 							.suggests((c, b) -> suggestLandmarks(c, b, false))
 							.then(CommandManager.argument("owner", UuidArgumentType.uuid())
+									.suggests(SurveyorCommands::suggestOwners)
 								.requires(c -> c.hasPermissionLevel(2))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
