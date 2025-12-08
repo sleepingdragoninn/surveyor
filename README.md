@@ -38,10 +38,12 @@ Feel free to reach out if you'd like to develop something with surveyor! Or don'
 - PRs making shots at [surveyor enhancements and bugs](https://github.com/sisby-folk/surveyor/issues?q=is%3Aissue%20state%3Aopen%20(label%3Abug%20OR%20label%3Aenhancement)).
 - PRs containing ports to an older established versions (1.4.7, 1.17.10, 1.12.2, 1.16.5, 1.18.2) - [_or latest, i guess..._](https://github.com/sisby-folk/surveyor/issues/91)
 - PRs containing API features that you'd benefit from - ideally post an issue first, and we can workshop and label it!
-- Compat addons, world maps, minimaps, and waypoint frontends utilizing surveyor! Serverside, web map, minecraftless... Surveyor is all about cultivating fun new things in the map mod space. Reach out so we can link you on this page!
+- Compat addons, world maps, minimaps, and waypoint frontends utilizing surveyor! Serverside, web map, minecraftless... Surveyor is all about cultivating fun new things in the map mod space.
 
 Check out the [frontend dev guide](https://github.com/sisby-folk/surveyor/blob/1.20/README.md) for a breakdown of the complicated parts of the internals. <br/>
-You can reach out to us via [email](mailto:sleepingdragoninn@gmail.com) or [mastodon](https://tech.lgbt/@sleepingdragoninn) or through the [modfest discord](https://discord.gg/gn543Ee) (#projects->Surveyor)
+
+If you've made something with or for surveyor, hit us up and we'll link it here! We'll also answer questions for any in-progress project.<br/>
+You reach out to us through the [modfest discord](https://discord.gg/gn543Ee) (#projects->Surveyor) or via [mastodon](https://tech.lgbt/@sleepingdragoninn), or hell, [email](mailto:sleepingdragoninn@gmail.com).
 
 ## Afterword
 
