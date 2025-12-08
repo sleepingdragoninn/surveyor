@@ -124,27 +124,34 @@ public class WorldTerrainSummary {
 		if (summary != null) summary.serverTick(world);
 	}
 
+	public void sendUpdateForRegion(World world, RegionPos rPos, ServerPlayerEntity player, BitSet set) {
+		RegionSummary region = getRegion(rPos);
+		SurveyorExploration personalExploration = SurveyorExploration.of(player);
+		BitSet personalSet = personalExploration.limitTerrainBitset(world.getRegistryKey(), rPos, (BitSet) set.clone());
+		if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(false, rPos, region, personalSet, world.getRegistryManager()).send(player);
+		set.andNot(personalSet);
+		if (!set.isEmpty()) S2CUpdateRegionPacket.of(true, rPos, region, set, world.getRegistryManager()).send(player);
+	}
+
 	public void serverTick(ServerWorld world) {
 		if ((world.getServer().getTicks() % Surveyor.CONFIG.networking.terrainTicks) != 0) return;
 		queuedUpdates.keySet().stream().findFirst().ifPresent(rPos -> {
 			RegionSummary region = getRegion(rPos);
 			queuedUpdates.get(rPos).forEach((uuid, set) -> {
 				ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(uuid);
-				if (player != null) {
-					SurveyorExploration personalExploration = SurveyorExploration.of(player);
-					BitSet personalSet = personalExploration.limitTerrainBitset(world.getRegistryKey(), rPos, (BitSet) set.clone());
-					if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(false, rPos, region, personalSet, world.getRegistryManager()).send(player);
-					set.andNot(personalSet);
-					if (!set.isEmpty()) S2CUpdateRegionPacket.of(true, rPos, region, set, world.getRegistryManager()).send(player);
-				}
+				if (player != null) sendUpdateForRegion(world, rPos, player, set);
 			});
 			queuedUpdates.remove(rPos);
 			if (region.isLoaded() && region.isUnloaded(world)) region.save(world.getRegistryManager(), true);
 		});
 	}
 
-	public void queueUpdate(RegionPos rPos, BitSet set, ServerPlayerEntity player) {
-		queuedUpdates.computeIfAbsent(rPos, k -> new LinkedHashMap<>()).put(player.getUuid(), set);
+	public void queueUpdate(ServerWorld world, RegionPos rPos, BitSet set, ServerPlayerEntity player) {
+		if (getRegion(rPos).isLoaded()) {
+			sendUpdateForRegion(world, rPos, player, set);
+		} else {
+			queuedUpdates.computeIfAbsent(rPos, k -> new LinkedHashMap<>()).put(player.getUuid(), set);
+		}
 	}
 
 	public int save(World world) {

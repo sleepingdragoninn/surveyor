@@ -53,9 +53,7 @@ public class SurveyorNetworking {
 		Map<RegionPos, BitSet> clientBits = packet.regionBits();
 		serverBits.forEach((rPos, set) -> {
 			if (clientBits.containsKey(rPos)) set.andNot(clientBits.get(rPos));
-			if (!set.isEmpty()) {
-				summary.terrain().queueUpdate(rPos, set, player);
-			}
+			if (!set.isEmpty()) summary.terrain().queueUpdate(world, rPos, set, player);
 		});
 	}
 
