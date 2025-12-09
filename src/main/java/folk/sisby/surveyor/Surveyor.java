@@ -107,6 +107,7 @@ public class Surveyor implements ModInitializer {
 		ServerChunkEvents.CHUNK_LOAD.register(WorldStructureSummary::onChunkLoad);
 		ServerChunkEvents.CHUNK_UNLOAD.register(WorldTerrainSummary::onChunkUnload);
 		ServerTickEvents.END_SERVER_TICK.register(ServerSummary::onTick);
+		ServerTickEvents.END_WORLD_TICK.register(WorldTerrainSummary::onTick);
 		ServerTickEvents.END_WORLD_TICK.register((world -> {
 			if ((world.getTime() & 7) != 0) return;
 			for (ServerPlayerEntity player : world.getPlayers()) {
