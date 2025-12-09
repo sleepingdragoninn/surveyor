@@ -1,226 +1,52 @@
 <!--suppress HtmlDeprecatedTag, XmlDeprecatedElement -->
 <center>
 <img alt="surveyor banner" src="https://cdn.modrinth.com/data/4KjqhPc9/images/036db8bcb021c9e81e18561698d45d3c7bb71127.png"><br/>
-Unified API, networking, and save data for map mods.<br/>
-Used in <a href="https://modrinth.com/mod/antique-atlas-4">Antique Atlas 4</a> and <a href="https://modrinth.com/mod/hoofprint">Hoofprint</a>.
+An open-source backend (and API) for world map and waypoint mods!<br/>
 <b>Requires <a href="https://modrinth.com/mod/connector">Connector</a> and <a href="https://modrinth.com/mod/forgified-fabric-api">FFAPI</a> on (neo)forge.<br/></b>
-<i>Other names considered: Polaris, Ichnite, Trackway, Lay of the Land, Worldsense, and Lithography.</i>
 </center>
 
 ---
 
-### Player Usage
-
-> *Surveyor is a library for map mod developers! You shouldn't need to download it alone.*
-
-#### Commands
-
-* `/surveyor` - display information about your map exploration, including sharing.
-* `/surveyor share [username]` - request/accept sharing map exploration with a player.
-* `/surveyor unshare` - stop sharing map exploration (leave your "sharing group")
-* `/surveyor landmarks` - view a cross-world landmark breakdown by type.
-* `/surveyor landmarks get [type]` - lists each landmark of that type in the current world.
-* `/surveyor landmarks remove [type] [pos]` removes a waypoint or landmark (op 2) from the world.
-* `/surveyor landmarks add [type] [pos] [name]` add a waypoint to the world at the specified position.
-* `/surveyor landmarks global [type] [pos] [name]` (op 2) add a landmark to the world at the specified position.
-
-#### Configuration
-
-Surveyor has extensive start-time configuration in `config/surveyor.toml`.<br/>
-It's various systems can be turned on and off, and map sharing tweaked finely.
-
----
-
-### Library Features
-
-**Surveyor relieves the scanning, saving, and networking responsibilities from dependent map mods.**
-
-In general, Surveyor:
-
-* Records terrain, structure, and "landmark" data suitable for maps as the world is changed.
-* Enables live map sharing between players by tracking individual exploration of the map.
-* Sends the client structures as they're discovered or shared.
-* Syncs map data and landmarks (e.g. waypoints) when sharing or on client data loss.
-* Exposes a generic API for map mod integrations (e.g. adding map markers to important locations).
-* Only adds 2-5% to save size, using an efficient format both in-memory and on-disk.
-
-Surveyor's data **deliberately preserves key details**, designed to allow any abitrary map mod to use it:
-
-* Terrain is a top-down view of blocks with height, biome, light level, and water depth.
-* Terrain contains multiple layers, allowing for usable cave and nether maps.
-* Structures have IDs, pieces, tags, and even full piece NBT for smaller structures intact.
-* Landmarks generically represent other positional map data - e.g. waypoints, POIs, or faction claims.
-
----
-
-**Notice: Surveyor is still in early releases.**
-
-* The API might break several times during 0.x
-* The networking format will break several times during 0.x.
-* The save format will likely break on the change to 1.x
-* Javadoc is very limited
-
----
-
-## Developers
-
-```groovy
-repositories {
-	maven { url 'https://repo.sleeping.town/' }
-}
-
-dependencies {
-	modImplementation 'folk.sisby:surveyor:0.3.0+1.20'
-	include 'folk.sisby:surveyor:0.3.0+1.20'
-}
-```
-
-#### Examples
-
-* **[Antique Atlas 4](https://github.com/sisby-folk/antique-atlas)** - A stylized client-side map mod.
-* **[SurveyorSurveyor](https://github.com/HestiMae/surveyor-surveyor)** - An enhanced-vanilla style java map image generator, using raw surveyor save files.
-* **[Surveystones](https://github.com/sisby-folk/antique-fwaystones)** - A mixed-side addon that automatically adds landmarks for waystones from [Fabric Waystones](https://modrinth.com/mod/fwaystones/versions).
-
-### Core Concepts
-
-The **World Summary** holds all of surveyor's data for a world. It can be accessed using `WorldSummary.of(World)`.
-
-**Chunk Summaries** (or the "Terrain Summary") represent the world viewed from above. This includes the top layer of blocks, along with their biome, height, block light level, and the depth of water above them.
-
-**Structure Summaries** represent an in-world structure (called `StructureStart` in yarn) - they include map-critical information for identifying the structure and its pieces, even full NBT for structures with under 10 pieces, but not any actual blocks.
-
-**Landmarks** are a way to represent all other positional information on-map. They have unique serialization per-type, and are uniquely keyed by their type and position to prevent overlaps.
-
-**Exploration** is a record of what chunks, structures, and landmarks a player should be able to see.<br/>
-A player explores a chunk when they're sent it, explores a structure when they stand in (or look at) one of its pieces, and explores an (unowned) landmark when they explore the chunk it's in.
-
-### Terrain Summary Layers
-
-To facilitate cave mapping, Surveyor records the top layer of blocks at **multiple height levels** (layer heights).
-
-**The Overworld** scans for floors in these layers:
-
-* 257-319 - usually empty
-* 62-256 - surface terrain
-* 0-61 - sea floors and riverbeds, ravines, and caves
-* -64-0 - deepslate caves
-
-**The Nether** scans for floors in these layers:
-
-* 127-255 - usually flat bedrock
-* 71-126 - high caves and outcrops
-* 41-70 - mid-level outcrops and walkways
-* 0-40 - the lava sea and shores
-
-Roughly speaking, Surveyor will accept any non-clear solid block below a 2-high walk-space as a floor.<br/>
-It will also detect "carpets" (non-clear non-solid blocks) above these floors and use those instead.
-
-Surveyor supports any layer height configuration, but currently lacks the API/config to change this for specific dimensions.
-
-Note that the amount of layers doesn't affect how mods display the map, only how often cave floors will be occluded by floors above them.
-
-### Map Mods
-
-<details>
-<summary>Click to show the map mod guide</summary>
-
-Quick reminder that surveyor should **replace any existing world scanning logic**<br/>
-You should never need to look at the currently loaded chunks - If some information is missing, let us know!
-
-#### Initial Setup
-
-Client map mods should always use `SurveyorClientEvents` - this ensures only explored areas will be provided in singleplayer.
-
-Tune into `WorldLoad` and queue up the provided keys for rendering.<br/>
-This event will trigger when the client world has access to surveyor data and the player is available.
-
-`terrain` contains all available chunks by region. `WorldTerrainSummary.toKeys()` converts this into ChunkPos.<br/>
-`structures` contains all structure starts by key + ChunkPos.<br/>
-`landmarks` contains all landmarks (POIs, waypoints, death markers, etc.) by type + BlockPos.
-
-You can get these from the world summary later using `keySet()` methods - check the event implementation.<br/>
-Pass in `SurveyorClient.getExploration()` to ensure unexplored areas are hidden.
-
-##### Live Updates
-
-Also tune into `TerrainUpdated`, `StructuresAdded`, `LandmarksAdded` to add to your render queues.<br/>
-These fire whenever the client player should see something new (usually via exploration).<br/>
-They can also fire before `ClientPlayerLoad`, so let any of them create your map data.
-
-Tune into `LandmarksRemoved` as well but without a queue - just remove from your map/queue directly.
-
-#### Terrain Rendering
-
-First, generate a top layer (with any desired height limits) using `get(ChunkPos).toSingleLayer()`.<br/>
-This will produce a raw layer summary of one-dimensional arrays:
-
-* **exists** - True where a floor exists, false otherwise - where false, all other fields are junk.
-* **depths** - The distance of the floor below your specified world height. so y = worldHeight - depth.
-* **blocks** - The floor block. Indexed per-region via `getBlockPalette(ChunkPos)`.
-* **biomes** - The floor biome. Indexed per-region via `getBiomePalette(ChunkPos)`.
-* **lightLevels** - The block light level directly above the floor (i.e. the block light for its top face). 0-15.
-* **waterLights** - The block light level directly above the water's surface (if there is one). 0-15.
-* **waterDepths** - How deep the contiguous water above the floor is.
-	* All other liquid surfaces are considered floors, but water is special-cased.
-	* The sea floor (e.g. sand) is recorded, and this depth value indicates the water surface instead.
-	* This allows maps to show water depth shading, but also hide water completely if desired.
-
-All arrays can be indexed by `x * 16 + z`, where x and z are relative to the chunk.<br/>
-Use these arrays to render and store map data for that chunk (pixels, buffers, whichever).<br/>
-Remember that you'll be rendering hundreds of thousands of chunks here - optimize this process hard.
-
-#### Structure Rendering
-
-Along with the key and ChunkPos, you can get the type and any tags using `getType(key)` and `getTags(key)`.
-
-You can access a full summary of the structure (e.g. to draw its bounding boxes) using `get(key, ChunkPos)`.<br/>
-This includes piece data like boxes, direction, IDs, etc.
-
-#### Landmark Rendering & Management
-
-Along with the type and BlockPos, you can get a full landmark using `get(type, BlockPos)`.
-
-By default, this can include a dye color, a text name, the owner's UUID, and a texture (could be from another map mod).<br/>
-You should have a method of rendering a landmark using just this information.
-
-To improve how landmarks are displayed, you can use `instanceof` to check for additional data, e.g. `HasBlockBox`.
-
-To add a waypoint landmark, just make a `SimplePointLandmark` owned by the player and use `put(Landmark)`.<br/>
-This will save to disk and send a copy to the server.
-
-#### Player Rendering
-
-You can use `SurveyorClient.getFriends()` to get a set of players to draw on the map.
-
-This includes both the client player, online "friends" (map sharing group members), and offline friends.
-
-The players are represented abstractly, providing UUID, username, global position, yaw, and online status.
-
-</details>
-
-### Landmark Integrations
-
-<details>
-<summary>Click to show the landmark integration guide</summary>
-
-Landmark types can be registered via the registry in `Landmarks`.<br/>
-This allows you to set and serialize custom data relevant to your landmark.<br/>
-Your landmark can usually be a record. Check the [builtins](https://github.com/sisby-folk/surveyor/tree/1.20/src/main/java/folk/sisby/surveyor/landmark) for an example.
-
-To make extra landmark data accessible to map mods, always declare a new `Has` interface to access it from.
-
-To place a landmark, just use `WorldSummary.of(world).landmarks().put(Landmark)`.<br/>
-This works fine on either side - adding a landmark on the server will send it to the client and vice-versa.
-
-Landmark types can't yet have fallback types - so use a simple type (or PR a new one!) if your mod is only on one side.
-
-</details>
+**Surveyor** is the **map backend** for mods like [Antique Atlas 4](https://modrinth.com/mod/antique-atlas-4), [Hoofprint](https://modrinth.com/mod/hoofprint), and [Via Romana](https://modrinth.com/mod/via-romana).<br/>
+Along with handling the generation and saving of map data like terrain and waypoints, Surveyor:
+- Shows other players on your map, even hundreds of chunks away!
+- Tracks your exploration, and will restore your map data from the server if it's lost or you change computers!
+- Enables **live map sharing** with other players of your choosing - terrain, waypoints, the lot!
+- Allows swapping map frontends any time without losing your map data!
+- Imports waypoints from Xaero's Minimap, and has integration for mods like [Waystones](https://modrinth.com/mod/surveystones) and [OPAC](https://modrinth.com/mod/surveyalot).
+- Is fully modular - so mods like [Atlas HUD](https://modrinth.com/mod/antique-atlas-compass-hud) can utilize waypoints without enabling terrain scanning.
+
+### Commands
+
+If you're a server admin or don't have a map frontend installed, surveyor comes builtin with a few helpful commands.
+- `/surveyor` displays summary of how many chunks and structures you've explored, and waypoints recorded.
+- `/surveyor share [player]` and `/surveyor unshare` allows joining and leaving map sharing groups.
+- `/waypoints` allows viewing and editing your recorded waypoints.
+- `/landmarks` allows viewing and (op 2 or above) editing global waypoints.
+
+### Configuration
+
+Surveyor's configuration can be edited in `config/surveyor.toml`, or in-game using [McQoy](https://modrinth.com/mod/mcqoy). This includes:
+- Toggling the terrain, structure, and landmark subsystems (otherwise set by installed frontends on clients)
+- What data should be networked to clients / the server, and between group members.
+- Whether all players on the server should be considered part of one global map sharing group.
+- How often to send player position updates to clients, and how fast to restore terrain to clients with missing data.
+
+### Mod Developers
+
+Feel free to reach out if you'd like to develop something with surveyor! Or don't, we don't mind! We appreciate:
+- PRs making shots at [surveyor enhancements and bugs](https://github.com/sisby-folk/surveyor/issues?q=is%3Aissue%20state%3Aopen%20(label%3Abug%20OR%20label%3Aenhancement)).
+- PRs containing ports to an older established versions (1.4.7, 1.17.10, 1.12.2, 1.16.5, 1.18.2) - [_or latest, i guess..._](https://github.com/sisby-folk/surveyor/issues/91)
+- PRs containing API features that you'd benefit from - ideally post an issue first, and we can workshop and label it!
+- Compat addons, world maps, minimaps, and waypoint frontends utilizing surveyor! Serverside, web map, minecraftless... Surveyor is all about cultivating fun new things in the map mod space.
+
+Check out the [frontend dev guide](https://github.com/sisby-folk/surveyor/blob/1.20/README.md) for a breakdown of the complicated parts of the internals. <br/>
+
+If you've made something, hit us up and we'll link it here! We'll also answer questions for any in-progress project.<br/>
+You reach out to us through the [modfest discord](https://discord.gg/gn543Ee) (#projects->Surveyor) on [mastodon](https://tech.lgbt/@sleepingdragoninn), or hell, via [email](mailto:sleepingdragoninn@gmail.com).
 
 ## Afterword
 
-All mods are built on the work of many others.
+Surveyor was built on the thoughts, advice, opinions, and past works of many modders in the community.
 
-**Special thanks to:**<br/>
-[Ampflower](https://github.com/Ampflower), [Falkreon](https://github.com/falkreon), [Garden](https://modrinth.com/user/GardenSystem), [Kat](https://git.sleeping.town/Kat), [Solo](https://github.com/solonovamax), [Crosby](https://github.com/RacoonDog), [Lemma](https://github.com/LemmaEOF), [Leo](https://github.com/leo60228), [Jasmine](https://github.com/jaskarth), [Aqua](https://github.com/Aquaeyes), [Wonder](https://git.sleeping.town/wonder), [Infinidoge](https://github.com/Infinidoge), [Emi](https://github.com/emilyploszaj), and [Una](https://github.com/unascribed).
-
-We're open to better ways to implement our mods. If you see something odd and have an idea, let us know! 
+We made this mod because it sounded cool - we hope it helps other artists and mod devs to make cool things too!

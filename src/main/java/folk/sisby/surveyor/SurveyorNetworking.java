@@ -9,11 +9,11 @@ import folk.sisby.surveyor.packet.C2SKnownStructuresPacket;
 import folk.sisby.surveyor.packet.C2SKnownTerrainPacket;
 import folk.sisby.surveyor.packet.C2SPacket;
 import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
+import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRequestedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
-import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
 import folk.sisby.surveyor.util.RegionPos;
@@ -73,13 +73,7 @@ public class SurveyorNetworking {
 		Map<RegionPos, BitSet> clientBits = packet.regionBits();
 		serverBits.forEach((rPos, set) -> {
 			if (clientBits.containsKey(rPos)) set.andNot(clientBits.get(rPos));
-			if (!set.isEmpty()) {
-				SurveyorExploration personalExploration = SurveyorExploration.of(player);
-				BitSet personalSet = personalExploration.limitTerrainBitset(world.getRegistryKey(), rPos, (BitSet) set.clone());
-				if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(false, rPos, summary.terrain().getRegion(rPos), personalSet, world.getRegistryManager()).send(player);
-				set.andNot(personalSet);
-				if (!set.isEmpty()) S2CUpdateRegionPacket.of(true, rPos, summary.terrain().getRegion(rPos), set, world.getRegistryManager()).send(player);
-			}
+			if (!set.isEmpty()) summary.terrain().queueUpdate(world, rPos, set, player);
 		});
 	}
 

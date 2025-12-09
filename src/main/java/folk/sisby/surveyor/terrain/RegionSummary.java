@@ -52,6 +52,7 @@ public class RegionSummary {
 	protected @Nullable BitSet bitSet;
 
 	protected boolean dirty = false;
+	protected boolean saving = false;
 
 	private RegionSummary(DynamicRegistryManager manager, File saveFile, RegionPos regionPos, ChunkSummary[][] chunks, BitSet bitSet) {
 		this.biomePalette = new RegistryPalette<>(manager.getOrThrow(RegistryKeys.BIOME));
@@ -60,7 +61,7 @@ public class RegionSummary {
 		this.regionPos = regionPos;
 		this.chunks = chunks;
 		this.bitSet = bitSet;
-		readNbt(manager, regionPos, true);
+		if (bitSet == null) readNbt(manager, regionPos, true);
 	}
 
 	public static <T, O> List<O> mapIterable(Iterable<T> palette, Function<T, O> mapper) {
@@ -170,6 +171,7 @@ public class RegionSummary {
 	}
 
 	public void save(DynamicRegistryManager manager, boolean unload) {
+		if (saving) return;
 		if (!isDirty()) {
 			if (unload) chunks = null;
 			return;
@@ -193,14 +195,17 @@ public class RegionSummary {
 		});
 		nbt.put(KEY_CHUNKS, chunksCompound);
 		dirty = false;
+		saving = true;
 		Util.getIoWorkerExecutor().execute(() -> {
 			try {
 				NbtIo.writeCompressed(nbt, saveFile.toPath());
+			} catch (IOException e) {
+				Surveyor.LOGGER.error("[Surveyor] Error writing region summary file {}.", saveFile.getName(), e);
+			} finally {
 				if (unload && !dirty) {
 					chunks = null;
 				}
-			} catch (IOException e) {
-				Surveyor.LOGGER.error("[Surveyor] Error writing region summary file {}.", saveFile.getName(), e);
+				saving = false;
 			}
 		});
 	}
