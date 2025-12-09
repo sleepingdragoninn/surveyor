@@ -24,6 +24,8 @@ If you're a server admin or don't have a map frontend installed, surveyor comes 
 - `/waypoints` allows viewing and editing your recorded waypoints.
 - `/landmarks` allows viewing and (op 2 or above) editing global waypoints.
 
+Surveyor data is stored in plain NBT under `data/surveyor` (inside each dimension for singleplayer/servers, and in `.minecraft` for clients) - so it's easy to inspect or clear out while troubleshooting.
+
 ### Configuration
 
 Surveyor's configuration can be edited in `config/surveyor.toml`, or in-game using [McQoy](https://modrinth.com/mod/mcqoy). This includes:
@@ -36,17 +38,19 @@ Surveyor's configuration can be edited in `config/surveyor.toml`, or in-game usi
 
 Feel free to reach out if you'd like to develop something with surveyor! Or don't, we don't mind! We appreciate:
 - PRs making shots at [surveyor enhancements and bugs](https://github.com/sisby-folk/surveyor/issues?q=is%3Aissue%20state%3Aopen%20(label%3Abug%20OR%20label%3Aenhancement)).
-- PRs containing ports to an older established versions (1.4.7, 1.17.10, 1.12.2, 1.16.5, 1.18.2) - [_or latest, i guess..._](https://github.com/sisby-folk/surveyor/issues/91)
+- PRs containing ports to an older established versions (1.4.7, 1.17.10, 1.12.2, 1.16.5, 1.18.2) - [or latest, per policy](https://github.com/sisby-folk/surveyor/issues/91)
 - PRs containing API features that you'd benefit from - ideally post an issue first, and we can workshop and label it!
 - Compat addons, world maps, minimaps, and waypoint frontends utilizing surveyor! Serverside, web map, minecraftless... Surveyor is all about cultivating fun new things in the map mod space.
 
-Check out the [frontend dev guide](https://github.com/sisby-folk/surveyor/blob/1.20/README.md) for a breakdown of the complicated parts of the internals. <br/>
+Check out the [frontend dev guide](https://github.com/sisby-folk/surveyor/blob/1.20/FRONTENDS.md) for a breakdown of the complicated parts of the internals. <br/>
 
 If you've made something, hit us up and we'll link it here! We'll also answer questions for any in-progress project.<br/>
-You reach out to us through the [modfest discord](https://discord.gg/gn543Ee) (#projects->Surveyor) on [mastodon](https://tech.lgbt/@sleepingdragoninn), or hell, via [email](mailto:sleepingdragoninn@gmail.com).
+You can reach out to us through the [modfest discord](https://discord.gg/gn543Ee) (#projects->Surveyor), on [mastodon](https://tech.lgbt/@sleepingdragoninn), or hell, via [email](mailto:sleepingdragoninn@gmail.com).
 
 ## Afterword
 
 Surveyor was built on the thoughts, advice, opinions, and past works of many modders in the community.
 
-We made this mod because it sounded cool - we hope it helps other artists and mod devs to make cool things too!
+Thank you to everyone who helped make this project happen, both directly and through fluttering on the sidelines - it genuinely means a lot!
+
+We made this mod because it sounded cool - we hope it helps other artists and mod devs to make cool things too. Enjoy!
