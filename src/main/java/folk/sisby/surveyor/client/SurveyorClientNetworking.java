@@ -56,7 +56,7 @@ public class SurveyorClientNetworking {
 		summary.terrain().getRegion(packet.regionPos()).readUpdatePacket(world.getRegistryManager(), packet);
 		(packet.shared() ? SurveyorClient.getSharedExploration() : SurveyorClient.getPersonalExploration()).mergeRegion(world.getRegistryKey(), packet.regionPos(), packet.set());
 		SurveyorEvents.Invoke.terrainUpdated(world, packet.set().stream().mapToObj(i -> packet.regionPos().toChunk(i)).toList());
-		Surveyor.LOGGER.info("[Surveyor] Received {} chunks in {} from the server.", packet.chunks().size(), packet.regionPos());
+		if (packet.chunks().size() > 1) Surveyor.LOGGER.info("[Surveyor] Received {} chunks in {} from the server.", packet.chunks().size(), packet.regionPos());
 	}
 
 	private static void handleStructuresAdded(ClientWorld world, WorldSummary summary, S2CStructuresAddedPacket packet) {
