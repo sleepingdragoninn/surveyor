@@ -309,7 +309,7 @@ public class WorldLandmarks {
 		}
 	}
 
-	public void readUpdatePacket(World world, SyncLandmarksAddedPacket packet, @Nullable ServerPlayerEntity sender) {
+	public Map<UUID, Map<Identifier, Landmark>> readUpdatePacket(World world, SyncLandmarksAddedPacket packet, @Nullable ServerPlayerEntity sender) {
 		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
 		packet.landmarks().forEach((uuid, map) -> map.forEach((id, landmark) -> {
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
@@ -318,6 +318,7 @@ public class WorldLandmarks {
 			}
 		}));
 		if (!changed.isEmpty()) handleChanged(world, changed, sender == null, sender);
+		return changed;
 	}
 
 	public void readUpdatePacket(World world, SyncLandmarksRemovedPacket packet, @Nullable ServerPlayerEntity sender) {
