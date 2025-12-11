@@ -157,7 +157,7 @@ public class RegionSummary {
 
 	public BitSet bitSet(DynamicRegistryManager manager) {
 		if (bitSet == null) readNbt(manager, regionPos, true);
-		return bitSet;
+		return (BitSet) bitSet.clone();
 	}
 
 	public void putChunk(World world, WorldChunk chunk) {
