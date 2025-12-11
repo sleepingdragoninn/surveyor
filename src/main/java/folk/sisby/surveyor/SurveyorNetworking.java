@@ -16,6 +16,7 @@ import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
+import folk.sisby.surveyor.util.MapUtil;
 import folk.sisby.surveyor.util.RegionPos;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -32,6 +33,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class SurveyorNetworking {
 
@@ -71,10 +74,18 @@ public class SurveyorNetworking {
 		if (summary.terrain() == null || Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.NONE)) return;
 		Map<RegionPos, BitSet> serverBits = summary.terrain().bitSet(explorationForMode(Surveyor.CONFIG.networking.terrain, player));
 		Map<RegionPos, BitSet> clientBits = packet.regionBits();
-		serverBits.forEach((rPos, set) -> {
+		int regions = 0;
+		int chunks = 0;
+		for (RegionPos rPos : serverBits.keySet()) {
+			BitSet set = serverBits.get(rPos);
 			if (clientBits.containsKey(rPos)) set.andNot(clientBits.get(rPos));
-			if (!set.isEmpty()) summary.terrain().queueUpdate(world, rPos, set, player);
-		});
+			if (!set.isEmpty()) {
+				regions++;
+				chunks += set.cardinality();
+				summary.terrain().queueUpdate(world, rPos, set, player);
+			}
+		}
+		if (regions > 0) Surveyor.LOGGER.info("[Surveyor] Syncing {} missing chunks over {} regions to player {}.", chunks, regions, player.getGameProfile().getName());
 	}
 
 	private static void handleKnownStructures(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, C2SKnownStructuresPacket packet) {
@@ -87,6 +98,7 @@ public class SurveyorNetworking {
 		if (!personalStructures.isEmpty()) S2CStructuresAddedPacket.of(false, personalStructures, summary.structures()).send(player);
 		personalStructures.forEach(structures::remove);
 		if (!structures.isEmpty()) S2CStructuresAddedPacket.of(true, structures, summary.structures()).send(player);
+		if (!personalStructures.isEmpty() || !structures.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Syncing {} personal and {} shared structures to player {}", personalStructures.size(), structures.size(), player.getGameProfile().getName());
 	}
 
 	private static void handleKnownLandmarks(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, C2SKnownLandmarksPacket packet) {
@@ -105,11 +117,13 @@ public class SurveyorNetworking {
 		summary.landmarks().keySet(null).get(uuid).forEach(id -> unknownWaypoints.remove(uuid, id));
 		removedLandmarks.get(uuid).forEach(id -> unknownWaypoints.remove(uuid, id));
 		if (!unknownWaypoints.isEmpty()) new SyncLandmarksRequestedPacket(unknownWaypoints).send(player);
+		if (!addLandmarks.isEmpty() || !removeLandmarks.isEmpty() || !unknownWaypoints.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Syncing {} landmarks and {} removals and {} unknowns from player {}", addLandmarks.size(), removeLandmarks.size(), unknownWaypoints.size(), player.getGameProfile().getName());
 	}
 
 	private static void handleLandmarksAdded(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, SyncLandmarksAddedPacket packet) {
 		if (summary.landmarks() == null) return;
-		summary.landmarks().readUpdatePacket(world, packet, player);
+		Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(summary.landmarks().readUpdatePacket(world, packet, player));
+		if (!keys.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Adding landmark(s) from player {} - {}", player.getGameProfile().getName(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 
 	private static void handleLandmarksRemoved(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, SyncLandmarksRemovedPacket packet) {
@@ -118,13 +132,20 @@ public class SurveyorNetworking {
 		packet.landmarks().forEach((uuid, id) -> {
 			if (summary.landmarks().contains(uuid, id) && Surveyor.getUuid(player).equals(summary.landmarks().get(uuid, id).owner())) summary.landmarks().removeForBatch(changed, uuid, id);
 		});
-		if (!changed.isEmpty()) summary.landmarks().handleChanged(world, changed, false, player);
+		if (!changed.isEmpty()) {
+			summary.landmarks().handleChanged(world, changed, false, player);
+			Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(changed);
+			Surveyor.LOGGER.info("[Surveyor] Removing landmark(s) for player {} - {}", player.getGameProfile().getName(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
+		}
 	}
 
 	private static void handleLandmarksRequested(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, SyncLandmarksRequestedPacket packet) {
 		if (summary.landmarks() == null) return;
 		Multimap<UUID, Identifier> allowed = SurveyorExploration.ofShared(player).limitLandmarkKeySet(world.getRegistryKey(), summary.landmarks(), HashMultimap.create(packet.landmarks()));
-		summary.landmarks().createUpdatePacket(allowed).send(player);
+		if (!allowed.isEmpty()) {
+			summary.landmarks().createUpdatePacket(allowed).send(player);
+			Surveyor.LOGGER.info("[Surveyor] Sending requested landmark(s) to player {} - {}", player.getGameProfile().getName(), allowed.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
+		}
 	}
 
 	private static <T extends C2SPacket> void handleServer(T packet, ServerPlayNetworking.Context context, ServerPacketHandler<T> handler) {
