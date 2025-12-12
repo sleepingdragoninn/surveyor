@@ -275,7 +275,7 @@ public final class ServerSummary {
 	}
 
 	public Set<ServerPlayerEntity> groupServerPlayers(UUID player, MinecraftServer server) {
-		return getGroup(player).stream().map(uuid -> Surveyor.getPlayer(server, player)).filter(Objects::nonNull).collect(Collectors.toSet());
+		return getGroup(player).stream().map(uuid -> Surveyor.getPlayer(server, uuid)).filter(Objects::nonNull).collect(Collectors.toSet());
 	}
 
 	public Set<ServerPlayerEntity> allOtherServerPlayers(UUID player, MinecraftServer server) {
