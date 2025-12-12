@@ -11,6 +11,7 @@ import net.minecraft.server.world.ServerWorld;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public interface S2CPacket extends SurveyorPacket {
 	default void send(Collection<ServerPlayerEntity> players) {
@@ -40,7 +41,10 @@ public interface S2CPacket extends SurveyorPacket {
 		if (mode.atMost(NetworkMode.NONE) || (sender != null && mode.atMost(NetworkMode.SOLO))) return;
 		List<ServerPlayerEntity> players = new ArrayList<>(allPlayers);
 		players.remove(sender);
-		if (sender != null && mode.atMost(NetworkMode.GROUP)) ServerSummary.of(server).groupOtherServerPlayers(Surveyor.getUuid(sender), server).forEach(players::remove);
+		if (sender != null && mode.atMost(NetworkMode.GROUP)) { // reduce to just group members
+			Set<ServerPlayerEntity> group = ServerSummary.of(server).groupOtherServerPlayers(Surveyor.getUuid(sender), server);
+			players.removeIf(p -> !group.contains(p));
+		}
 		send(players);
 	}
 

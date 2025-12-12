@@ -65,6 +65,7 @@ public class RegistryPalette<T> implements IntIterable {
 	public class ValueView implements IndexedIterable<T> {
 		private final T defaultValue = registry instanceof DefaultedRegistry<T> defreg ? defreg.get(defreg.getDefaultId()) : registry.get(0);
 		private final List<T> values = new ArrayList<>();
+		private boolean errored = false;
 
 		public Registry<T> registry() {
 			return registry;
@@ -73,7 +74,10 @@ public class RegistryPalette<T> implements IntIterable {
 		@Override
 		public T get(int index) {
 			if (index >= values.size()) {
-				Surveyor.LOGGER.error("[Surveyor] Palette view access at index {} for palette size {}! Returning garbage!", index, values.size(), new IllegalStateException());
+				if (!errored) {
+					Surveyor.LOGGER.error("[Surveyor] Palette view access at index {} for palette size {}! Returning garbage!", index, values.size(), new IllegalStateException("garbage palette"));
+					errored = true;
+				}
 				return defaultValue;
 			}
 			return values.get(index);

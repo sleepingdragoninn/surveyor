@@ -30,8 +30,8 @@ public record S2CUpdateRegionPacket(boolean shared, RegionPos regionPos, List<In
 		S2CUpdateRegionPacket::new
 	);
 
-	public static S2CUpdateRegionPacket of(boolean shared, RegionPos regionPos, RegionSummary summary, BitSet keys, DynamicRegistryManager manager) {
-		return summary.createUpdatePacket(shared, regionPos, keys, manager);
+	public static S2CUpdateRegionPacket of(boolean shared, RegionPos regionPos, RegionSummary summary, BitSet keys) {
+		return summary.createUpdatePacket(shared, regionPos, keys);
 	}
 
 	@Override

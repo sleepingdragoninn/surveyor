@@ -1,6 +1,7 @@
 package folk.sisby.surveyor;
 
 import com.google.common.collect.Multimap;
+import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SurveyorConfig;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.structure.WorldStructureSummary;
@@ -95,6 +96,10 @@ public class Surveyor implements ModInitializer {
 
 	public static ServerPlayerEntity getPlayer(MinecraftServer server, UUID uuid) {
 		return server.getPlayerManager().getPlayer(uuid == ServerSummary.HOST && server.getHostProfile() != null ? server.getHostProfile().getId() : uuid);
+	}
+
+	static SurveyorExploration explorationForMode(NetworkMode mode, ServerPlayerEntity player) {
+		return mode.atLeast(NetworkMode.SERVER) ? null : mode.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : mode.atLeast(NetworkMode.SOLO) ? SurveyorExploration.of(player) : PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.empty(player.getUuid());
 	}
 
 	@Override
