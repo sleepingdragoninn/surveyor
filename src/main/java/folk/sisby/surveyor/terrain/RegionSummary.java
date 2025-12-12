@@ -55,10 +55,10 @@ public class RegionSummary {
 	protected boolean dirty = false;
 	protected boolean saving = false;
 
-	private RegionSummary(DynamicRegistryManager manager, File saveFile, RegionPos regionPos, ChunkSummary[][] chunks, BitSet bitSet) {
+	private RegionSummary(DynamicRegistryManager manager, File saveFile, RegionPos regionPos, ChunkSummary[][] chunks, BitSet bitSet, RegistryPalette<Biome> biomePalette, RegistryPalette<Block> blockPalette) {
 		this.manager = manager;
-		this.biomePalette = null;
-		this.blockPalette = null;
+		this.biomePalette = biomePalette;
+		this.blockPalette = blockPalette;
 		this.saveFile = saveFile;
 		this.regionPos = regionPos;
 		this.chunks = chunks;
@@ -74,12 +74,12 @@ public class RegionSummary {
 		return list;
 	}
 
-	public static RegionSummary fromEmpty(File folder, RegionPos rPos, DynamicRegistryManager registryManager) {
-		return new RegionSummary(registryManager, new File(folder, "c.%d.%d.dat".formatted(rPos.x(), rPos.z())), rPos, new ChunkSummary[RegionPos.CHUNK_SIZE][RegionPos.CHUNK_SIZE], new BitSet(RegionPos.CHUNK_AREA));
+	public static RegionSummary fromEmpty(File folder, RegionPos rPos, DynamicRegistryManager manager) {
+		return new RegionSummary(manager, new File(folder, "c.%d.%d.dat".formatted(rPos.x(), rPos.z())), rPos, new ChunkSummary[RegionPos.CHUNK_SIZE][RegionPos.CHUNK_SIZE], new BitSet(RegionPos.CHUNK_AREA), new RegistryPalette<>(manager.get(RegistryKeys.BIOME)), new RegistryPalette<>(manager.get(RegistryKeys.BLOCK)));
 	}
 
-	public static RegionSummary fromFile(File file, DynamicRegistryManager registryManager, RegionPos rPos) {
-		return new RegionSummary(registryManager, file, rPos, null, null);
+	public static RegionSummary fromFile(File file, DynamicRegistryManager manager, RegionPos rPos) {
+		return new RegionSummary(manager, file, rPos, null, null, null, null);
 	}
 
 	protected void readNbt(RegionPos pos, boolean bitsOnly) {
