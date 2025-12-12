@@ -85,12 +85,12 @@ public class WorldTerrainSummary {
 
 	public boolean contains(ChunkPos pos) {
 		RegionPos regionPos = RegionPos.of(pos);
-		return regions.containsKey(regionPos) && regions.get(regionPos).contains(pos, registryManager);
+		return regions.containsKey(regionPos) && regions.get(regionPos).contains(pos);
 	}
 
 	public ChunkSummary get(ChunkPos pos) {
 		RegionPos regionPos = RegionPos.of(pos);
-		return regions.containsKey(regionPos) ? regions.get(regionPos).get(pos, registryManager) : null;
+		return regions.containsKey(regionPos) ? regions.get(regionPos).get(pos) : null;
 	}
 
 	public RegionSummary getRegion(RegionPos regionPos) {
@@ -109,7 +109,7 @@ public class WorldTerrainSummary {
 
 	public Map<RegionPos, BitSet> bitSet(SurveyorExploration exploration) {
 		Map<RegionPos, BitSet> map = new HashMap<>();
-		regions.forEach((p, r) -> map.put(p, r.bitSet(registryManager)));
+		regions.forEach((p, r) -> map.put(p, r.bitSet()));
 		return exploration == null ? map : exploration.limitTerrainBitset(worldKey, map);
 	}
 
@@ -128,9 +128,9 @@ public class WorldTerrainSummary {
 		RegionSummary region = getRegion(rPos);
 		SurveyorExploration personalExploration = SurveyorExploration.of(player);
 		BitSet personalSet = personalExploration.limitTerrainBitset(world.getRegistryKey(), rPos, (BitSet) set.clone());
-		if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(false, rPos, region, personalSet, world.getRegistryManager()).send(player);
+		if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(false, rPos, region, personalSet).send(player);
 		set.andNot(personalSet);
-		if (!set.isEmpty()) S2CUpdateRegionPacket.of(true, rPos, region, set, world.getRegistryManager()).send(player);
+		if (!set.isEmpty()) S2CUpdateRegionPacket.of(true, rPos, region, set).send(player);
 	}
 
 	public void serverTick(ServerWorld world) {
@@ -142,7 +142,7 @@ public class WorldTerrainSummary {
 				if (player != null) sendUpdateForRegion(world, rPos, player, set);
 			});
 			queuedUpdates.remove(rPos);
-			if (region.isLoaded() && region.isUnloaded(world)) region.save(world.getRegistryManager(), true);
+			if (region.isLoaded() && region.isUnloaded(world)) region.save(true);
 		});
 	}
 
@@ -159,7 +159,7 @@ public class WorldTerrainSummary {
 		regions.forEach((pos, summary) -> {
 			if (summary.isLoaded()) {
 				if (summary.isDirty()) savedRegions.add(pos);
-				summary.save(world.getRegistryManager(), summary.isUnloaded(world));
+				summary.save(summary.isUnloaded(world));
 			}
 		});
 		return savedRegions.size();
