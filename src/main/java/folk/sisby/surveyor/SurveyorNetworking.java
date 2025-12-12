@@ -45,13 +45,9 @@ public class SurveyorNetworking {
 		ServerPlayNetworking.registerGlobalReceiver(SyncLandmarksRequestedPacket.ID, (sv, p, h, b, se) -> handleServer(p, b, SyncLandmarksRequestedPacket::read, SurveyorNetworking::handleLandmarksRequested));
 	}
 
-	private static SurveyorExploration explorationForMode(NetworkMode mode, ServerPlayerEntity player) {
-		return mode.atLeast(NetworkMode.SERVER) ? null : mode.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : mode.atLeast(NetworkMode.SOLO) ? SurveyorExploration.of(player) : PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.empty(player.getUuid());
-	}
-
 	private static void handleKnownTerrain(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, C2SKnownTerrainPacket packet) {
 		if (summary.terrain() == null || Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.NONE)) return;
-		Map<RegionPos, BitSet> serverBits = summary.terrain().bitSet(explorationForMode(Surveyor.CONFIG.networking.terrain, player));
+		Map<RegionPos, BitSet> serverBits = summary.terrain().bitSet(Surveyor.explorationForMode(Surveyor.CONFIG.networking.terrain, player));
 		Map<RegionPos, BitSet> clientBits = packet.regionBits();
 		int regions = 0;
 		int chunks = 0;
@@ -69,7 +65,7 @@ public class SurveyorNetworking {
 
 	private static void handleKnownStructures(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, C2SKnownStructuresPacket packet) {
 		if (summary.structures() == null || Surveyor.CONFIG.networking.structures.atMost(NetworkMode.NONE)) return;
-		Multimap<RegistryKey<Structure>, ChunkPos> structures = summary.structures().keySet(explorationForMode(Surveyor.CONFIG.networking.structures, player));
+		Multimap<RegistryKey<Structure>, ChunkPos> structures = summary.structures().keySet(Surveyor.explorationForMode(Surveyor.CONFIG.networking.structures, player));
 		packet.structureKeys().forEach(structures::remove);
 		if (structures.isEmpty()) return;
 		SurveyorExploration personalExploration = SurveyorExploration.of(player);
@@ -82,7 +78,7 @@ public class SurveyorNetworking {
 
 	private static void handleKnownLandmarks(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, C2SKnownLandmarksPacket packet) {
 		if (summary.landmarks() == null || Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.NONE)) return;
-		Multimap<UUID, Identifier> landmarks = summary.landmarks().keySet(explorationForMode(Surveyor.CONFIG.networking.landmarks, player));
+		Multimap<UUID, Identifier> landmarks = summary.landmarks().keySet(Surveyor.explorationForMode(Surveyor.CONFIG.networking.landmarks, player));
 		Multimap<UUID, Identifier> addLandmarks = HashMultimap.create(landmarks);
 		if (!Surveyor.CONFIG.forceUpdateLandmarks) packet.landmarks().forEach(addLandmarks::remove);
 		if (!addLandmarks.isEmpty()) SyncLandmarksAddedPacket.of(addLandmarks, summary.landmarks()).send(player);

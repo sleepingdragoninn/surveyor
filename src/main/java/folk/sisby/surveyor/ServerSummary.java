@@ -1,10 +1,13 @@
 package folk.sisby.surveyor;
 
+import com.google.common.collect.Multimap;
 import com.mojang.authlib.GameProfile;
 import folk.sisby.surveyor.config.NetworkMode;
+import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
+import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -15,6 +18,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.crash.CrashException;
 import net.minecraft.world.World;
@@ -235,6 +239,11 @@ public final class ServerSummary {
 		SurveyorExploration groupExploration = groupExploration(player1, server);
 		for (ServerPlayerEntity friend : groupServerPlayers(player1, server)) {
 			new S2CGroupChangedPacket(getGroupSummaries(player1, server), groupExploration.terrain().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>())).send(friend);
+			WorldLandmarks landmarks = WorldSummary.of(friend.getWorld()).landmarks();
+			if (landmarks == null || Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO)) continue;
+			Multimap<UUID, Identifier> sharedLandmarks = landmarks.keySet(Surveyor.explorationForMode(Surveyor.CONFIG.networking.terrain, friend));
+			landmarks.keySet(SurveyorExploration.of(friend)).forEach(sharedLandmarks::remove);
+			if (!sharedLandmarks.isEmpty()) SyncLandmarksAddedPacket.of(sharedLandmarks, landmarks).send(friend);
 		}
 		dirty();
 	}

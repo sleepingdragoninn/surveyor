@@ -313,7 +313,7 @@ public class WorldLandmarks {
 		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
 		packet.landmarks().forEach((uuid, map) -> map.forEach((id, landmark) -> {
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
-			if (canModify(landmark.owner(), world, sender) && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
+			if (sender == null || canModify(landmark.owner(), world, sender) && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
 				putForBatch(changed, landmark);
 			}
 		}));
@@ -327,7 +327,7 @@ public class WorldLandmarks {
 			Landmark landmark = get(uuid, id);
 			if (landmark == null) return;
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
-			if (canModify(landmark.owner(), world, sender) && ((waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO)) || (!waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)))) {
+			if (sender == null || canModify(landmark.owner(), world, sender) && ((waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO)) || (!waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)))) {
 				removeForBatch(changed, uuid, id);
 			}
 		});
