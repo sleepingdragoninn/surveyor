@@ -8,6 +8,7 @@ import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
+import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -241,9 +242,12 @@ public final class ServerSummary {
 			new S2CGroupChangedPacket(getGroupSummaries(player1, server), groupExploration.terrain().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>())).send(friend);
 			WorldLandmarks landmarks = WorldSummary.of(friend.getWorld()).landmarks();
 			if (landmarks == null || Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO)) continue;
-			Multimap<UUID, Identifier> sharedLandmarks = landmarks.keySet(Surveyor.explorationForMode(Surveyor.CONFIG.networking.terrain, friend));
+			Multimap<UUID, Identifier> sharedLandmarks = landmarks.keySet(groupExploration);
 			landmarks.keySet(SurveyorExploration.of(friend)).forEach(sharedLandmarks::remove);
 			if (!sharedLandmarks.isEmpty()) SyncLandmarksAddedPacket.of(sharedLandmarks, landmarks).send(friend);
+			Multimap<UUID, Identifier> removedLandmarks = landmarks.removed();
+			removedLandmarks.keySet().removeIf(uuid -> !groupExploration.sharedPlayers().contains(uuid));
+			if (!removedLandmarks.isEmpty()) new SyncLandmarksRemovedPacket(removedLandmarks).send(friend);
 		}
 		dirty();
 	}
