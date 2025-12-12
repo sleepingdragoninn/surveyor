@@ -4,6 +4,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.landmark.Landmark;
+import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.packet.C2SKnownLandmarksPacket;
 import folk.sisby.surveyor.packet.C2SKnownStructuresPacket;
 import folk.sisby.surveyor.packet.C2SKnownTerrainPacket;
@@ -77,16 +78,16 @@ public class SurveyorNetworking {
 
 	private static void handleKnownLandmarks(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, C2SKnownLandmarksPacket packet) {
 		if (summary.landmarks() == null || Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.NONE)) return;
+		UUID uuid = Surveyor.getUuid(player);
 		Multimap<UUID, Identifier> landmarks = summary.landmarks().keySet(Surveyor.explorationForMode(Surveyor.CONFIG.networking.landmarks, player));
 		Multimap<UUID, Identifier> addLandmarks = HashMultimap.create(landmarks);
 		if (!Surveyor.CONFIG.forceUpdateLandmarks) packet.landmarks().forEach(addLandmarks::remove);
 		if (!addLandmarks.isEmpty()) SyncLandmarksAddedPacket.of(addLandmarks, summary.landmarks()).send(player);
 		Multimap<UUID, Identifier> removeLandmarks = HashMultimap.create(packet.landmarks());
 		Multimap<UUID, Identifier> removedLandmarks = summary.landmarks().removed();
-		removeLandmarks.entries().removeIf(e -> !removedLandmarks.containsEntry(e.getKey(), e.getValue()));
+		removeLandmarks.entries().removeIf(e -> !(removedLandmarks.containsEntry(e.getKey(), e.getValue()) || (!landmarks.containsEntry(e.getKey(), e.getValue()) && !e.getKey().equals(WorldLandmarks.GLOBAL) && !e.getKey().equals(uuid))));
 		if (!removeLandmarks.isEmpty()) new SyncLandmarksRemovedPacket(removeLandmarks).send(player);
 		Multimap<UUID, Identifier> unknownWaypoints = HashMultimap.create();
-		UUID uuid = Surveyor.getUuid(player);
 		unknownWaypoints.putAll(uuid, packet.landmarks().get(uuid));
 		summary.landmarks().keySet(null).get(uuid).forEach(id -> unknownWaypoints.remove(uuid, id));
 		removedLandmarks.get(uuid).forEach(id -> unknownWaypoints.remove(uuid, id));
