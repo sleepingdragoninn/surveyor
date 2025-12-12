@@ -126,7 +126,10 @@ public class RegionSummary {
 			}
 		}
 		chunks = new ChunkSummary[RegionPos.CHUNK_SIZE][RegionPos.CHUNK_SIZE];
-		if (biomePalette.view().size() == 0 || blockPalette.view().size() == 0) return; // abandon ship
+		if (biomePalette.view().size() == 0 || blockPalette.view().size() == 0) { // abandon ship
+			Surveyor.LOGGER.warn("[Surveyor] Palette was empty in region {}, skipping data load!", regionPos);
+			return;
+		}
 		for (String posKey : chunksCompound.getKeys()) {
 			int x = RegionPos.regionRelative(Integer.parseInt(posKey.split(",")[0]));
 			int z = RegionPos.regionRelative(Integer.parseInt(posKey.split(",")[1]));
