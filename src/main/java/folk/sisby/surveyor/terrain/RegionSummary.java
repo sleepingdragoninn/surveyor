@@ -221,6 +221,7 @@ public class RegionSummary {
 	public BitSet readUpdatePacket(S2CUpdateRegionPacket packet) {
 		if (Surveyor.CONFIG.terrain == SystemMode.FROZEN) return new BitSet();
 		if (chunks == null) readNbt(regionPos, false);
+		if (packet.biomePalette().isEmpty() || packet.blockPalette().isEmpty()) return new BitSet(); // nonsense
 		Registry<Biome> biomeRegistry = manager.get(RegistryKeys.BIOME);
 		Registry<Block> blockRegistry = manager.get(RegistryKeys.BLOCK);
 		Map<Integer, Integer> biomeRemap = new Int2IntArrayMap();
