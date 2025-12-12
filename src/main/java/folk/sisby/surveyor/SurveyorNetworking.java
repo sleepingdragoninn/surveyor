@@ -24,7 +24,6 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.gen.structure.Structure;
 
 import java.util.BitSet;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -103,10 +102,7 @@ public class SurveyorNetworking {
 
 	private static void handleLandmarksRemoved(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, SyncLandmarksRemovedPacket packet) {
 		if (summary.landmarks() == null) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
-		packet.landmarks().forEach((uuid, id) -> {
-			if (summary.landmarks().contains(uuid, id) && Surveyor.getUuid(player).equals(summary.landmarks().get(uuid, id).owner())) summary.landmarks().removeForBatch(changed, uuid, id);
-		});
+		Map<UUID, Map<Identifier, Landmark>> changed = summary.landmarks().readUpdatePacket(world, packet, player);
 		if (!changed.isEmpty()) {
 			summary.landmarks().handleChanged(world, changed, false, player);
 			Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(changed);

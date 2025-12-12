@@ -321,7 +321,7 @@ public class WorldLandmarks {
 		return changed;
 	}
 
-	public void readUpdatePacket(World world, SyncLandmarksRemovedPacket packet, @Nullable ServerPlayerEntity sender) {
+	public Map<UUID, Map<Identifier, Landmark>>  readUpdatePacket(World world, SyncLandmarksRemovedPacket packet, @Nullable ServerPlayerEntity sender) {
 		Map<UUID, Map<Identifier, Landmark>> changed = new HashMap<>();
 		packet.landmarks().forEach((uuid, id) -> {
 			Landmark landmark = get(uuid, id);
@@ -332,6 +332,7 @@ public class WorldLandmarks {
 			}
 		});
 		if (!changed.isEmpty()) handleChanged(world, changed, sender == null, sender);
+		return changed;
 	}
 
 	public SyncLandmarksAddedPacket createUpdatePacket(Multimap<UUID, Identifier> keySet) {
