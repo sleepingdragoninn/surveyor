@@ -73,7 +73,7 @@ public class RegistryPalette<T> implements IntIterable {
 		@Override
 		public T get(int index) {
 			if (index >= values.size()) {
-				Surveyor.LOGGER.error("[Surveyor] Palette view access at index {} for palette size {}! Returning garbage!", index, values.size());
+				Surveyor.LOGGER.error("[Surveyor] Palette view access at index {} for palette size {}! Returning garbage!", index, values.size(), new IllegalStateException());
 				return defaultValue;
 			}
 			return values.get(index);
