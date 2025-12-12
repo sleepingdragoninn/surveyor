@@ -170,6 +170,7 @@ public class RegionSummary {
 	public void putChunk(World world, WorldChunk chunk) {
 		if (Surveyor.CONFIG.terrain == SystemMode.FROZEN) return;
 		if (world.getHeight() == 0) return;
+		if (chunks == null) readNbt(regionPos, false);
 		set(RegionPos.regionRelative(chunk.getPos().x), RegionPos.regionRelative(chunk.getPos().z), new ChunkSummary(world, chunk, DimensionSupport.getSummaryLayers(world), biomePalette, blockPalette, !(world instanceof ServerWorld)));
 		dirty();
 	}
