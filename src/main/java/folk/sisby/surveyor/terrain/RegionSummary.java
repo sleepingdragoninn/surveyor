@@ -103,7 +103,7 @@ public class RegionSummary {
 		}
 		this.biomePalette = new RegistryPalette<>(manager.get(RegistryKeys.BIOME));
 		this.blockPalette = new RegistryPalette<>(manager.get(RegistryKeys.BLOCK));
-		this. chunks = new ChunkSummary[RegionPos.CHUNK_SIZE][RegionPos.CHUNK_SIZE];
+		this.chunks = new ChunkSummary[RegionPos.CHUNK_SIZE][RegionPos.CHUNK_SIZE];
 		NbtList biomeList = nbt.getList(KEY_BIOMES, NbtElement.STRING_TYPE);
 		Map<Integer, Integer> biomeRemap = new Int2IntArrayMap(biomeList.size());
 		for (int i = 0; i < biomeList.size(); i++) {
