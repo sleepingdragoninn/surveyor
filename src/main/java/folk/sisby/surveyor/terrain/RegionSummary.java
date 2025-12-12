@@ -213,14 +213,16 @@ public class RegionSummary {
 
 	public BitSet readUpdatePacket(DynamicRegistryManager manager, S2CUpdateRegionPacket packet) {
 		if (Surveyor.CONFIG.terrain == SystemMode.FROZEN) return new BitSet();
+		Registry<Biome> biomeRegistry = manager.get(RegistryKeys.BIOME);
+		Registry<Block> blockRegistry = manager.get(RegistryKeys.BLOCK);
 		Map<Integer, Integer> biomeRemap = new Int2IntArrayMap();
 		for (int i = 0; i < packet.biomePalette().size(); i++) {
-			biomeRemap.put(i, biomePalette.findOrAdd(packet.biomePalette().get(i)));
+			biomeRemap.put(i, biomePalette.findOrAdd(biomeRegistry.get(packet.biomePalette().get(i))));
 		}
 
 		Map<Integer, Integer> blockRemap = new Int2IntArrayMap();
 		for (int i = 0; i < packet.blockPalette().size(); i++) {
-			blockRemap.put(i, blockPalette.findOrAdd(packet.blockPalette().get(i)));
+			blockRemap.put(i, blockPalette.findOrAdd(blockRegistry.get(packet.blockPalette().get(i))));
 		}
 		int[] indices = packet.set().stream().toArray();
 		for (int i = 0; i < packet.chunks().size(); i++) {
