@@ -131,7 +131,7 @@ tasks.register("curseforge", net.darkhax.curseforgegradle.TaskPublishCurseForge)
 tasks.register("fullRelease") {
 	group "publishing"
 	dependsOn "githubRelease"
-	// dependsOn "modrinth"
-	// dependsOn "curseforge"
+	dependsOn "modrinth"
+	dependsOn "curseforge"
 	dependsOn "publish"
 }
