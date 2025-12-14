@@ -69,8 +69,11 @@ public class WorldTerrainSummary {
 
 	public static void onChunkLoad(World world, WorldChunk chunk) {
 		WorldSummary summary = WorldSummary.of(world);
-		if (summary.terrain() != null && (!summary.terrain().contains(chunk.getPos()) || !Surveyor.CONFIG.lazyClientUpdating || !ChunkUtil.airCount(chunk).equals(summary.terrain().get(chunk.getPos()).getAirCount()))) {
-			summary.terrain().put(world, chunk);
+		if (summary.terrain() != null) {
+			ChunkSummary chunkSummary = summary.terrain().get(chunk.getPos());
+			if (chunkSummary == null || !Surveyor.CONFIG.lazyClientUpdating || !ChunkUtil.airCount(chunk).equals(chunkSummary.getAirCount())) {
+				summary.terrain().put(world, chunk);
+			}
 		}
 	}
 
