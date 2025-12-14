@@ -45,7 +45,12 @@ Serverside, web map, minecraftless... we just want to cultivate fun new things i
 
 Check out the [frontend dev guide](https://github.com/sisby-folk/surveyor/blob/1.20/FRONTENDS.md) for a breakdown of the complicated parts of the internals. <br/>
 
-If you've made something, hit us up and we'll link it here! We'll also answer questions for any in-progress project.<br/>
+#### Licensing + Credit
+
+Please match your addon licenses to LGPLv3 if possible - it helps improve the surveyor ecosystem!<br/>
+(LGPLv3 is a copyleft license, so this is required for anything directly adapted from Surveyor)
+
+If you've made something, hit us up and we might link it here! We'll also answer questions for in-progress projects.<br/>
 You can reach out to us through the [modfest discord](https://discord.gg/gn543Ee) (#projects->Surveyor), on [mastodon](https://tech.lgbt/@sleepingdragoninn), or hell, via [email](mailto:sleepingdragoninn@gmail.com).
 
 ## Afterword
