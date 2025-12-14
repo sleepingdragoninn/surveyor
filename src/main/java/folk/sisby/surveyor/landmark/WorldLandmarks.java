@@ -306,7 +306,7 @@ public class WorldLandmarks {
 		if (serverWorld == null) {
 			return landmark.equals(SurveyorClient.getClientUuid()) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && SurveyorClient.getSharedExploration().groupPlayers().contains(landmark));
 		} else {
-			return player == null || player.hasPermissionLevel(2) ||  landmark.equals(Surveyor.getUuid(player)) || ServerSummary.of(world.getServer()).getGroup(Surveyor.getUuid(player)).contains(landmark);
+			return player == null || player.hasPermissionLevel(2) ||  landmark.equals(Surveyor.getUuid(player)) || ServerSummary.of(serverWorld.getServer()).getGroup(Surveyor.getUuid(player)).contains(landmark);
 		}
 	}
 
