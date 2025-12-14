@@ -36,7 +36,7 @@ Surveyor's configuration can be edited in `config/surveyor.toml`, or in-game usi
 
 ### Mod Developers
 
-Feel free to reach out if you'd like to develop something with surveyor - or just make it! We appreciate:
+Feel free to reach out if you'd like to develop something with surveyor - or just go for it! We appreciate:
 - PRs making shots at [surveyor enhancements and bugs](https://github.com/sisby-folk/surveyor/issues?q=is%3Aissue%20state%3Aopen%20(label%3Abug%20OR%20label%3Aenhancement)).
 - PRs containing ports to an older established versions (1.4.7, 1.17.10, 1.12.2, 1.16.5, 1.18.2) - [or latest, per policy](https://github.com/sisby-folk/surveyor/issues/91)
 - PRs containing API features that you'd benefit from - ideally post an issue first, and we can workshop it!
