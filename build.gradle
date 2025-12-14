@@ -110,6 +110,7 @@ modrinth {
 	syncBodyFrom = rootProject.file("README.md").text
 	dependencies {
 		required.version libs.fapi.get().getName(), libs.versions.fapi.get()
+		required.project "mcqoy"
 	}
 }
 
