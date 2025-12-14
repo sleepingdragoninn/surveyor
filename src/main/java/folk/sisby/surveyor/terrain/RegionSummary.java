@@ -148,6 +148,7 @@ public class RegionSummary {
 	}
 
 	public ChunkSummary get(ChunkPos pos) {
+		if (!contains(pos)) return null;
 		return get(RegionPos.regionRelative(pos.x), RegionPos.regionRelative(pos.z));
 	}
 
