@@ -92,6 +92,7 @@ public class RegionSummary {
 			Surveyor.LOGGER.error("[Surveyor] Error reading region summary file {}.", saveFile.getName(), e);
 		}
 		NbtCompound chunksCompound = nbt.getCompound(KEY_CHUNKS);
+		BitSet oldSet = bitSet;
 		bitSet = new BitSet(RegionPos.CHUNK_AREA);
 		if (bitsOnly) {
 			for (String posKey : chunksCompound.getKeys()) {
@@ -99,6 +100,7 @@ public class RegionSummary {
 				int z = RegionPos.regionRelative(Integer.parseInt(posKey.split(",")[1]));
 				bitSet.set(RegionPos.chunkToBit(x, z));
 			}
+			if (oldSet != null && oldSet.cardinality() > bitSet.cardinality()) Surveyor.LOGGER.warn("[Surveyor] Reloading region {} caused {} chunks to be dropped.", regionPos, oldSet.cardinality() - bitSet.cardinality());
 			return;
 		}
 		this.biomePalette = new RegistryPalette<>(manager.get(RegistryKeys.BIOME));
@@ -141,6 +143,7 @@ public class RegionSummary {
 			set(x, z, summary);
 			if (!biomeRemap.isEmpty() || !blockRemap.isEmpty()) summary.remap(biomeRemap, blockRemap);
 		}
+		if (oldSet != null && oldSet.cardinality() > bitSet.cardinality()) Surveyor.LOGGER.warn("[Surveyor] Reloading region {} caused {} chunks to be dropped.", regionPos, oldSet.cardinality() - bitSet.cardinality());
 	}
 
 	public boolean contains(ChunkPos pos) {
