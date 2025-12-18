@@ -248,7 +248,9 @@ public class RegionSummary {
 
 	public S2CUpdateRegionPacket createUpdatePacket(boolean shared, RegionPos rPos, BitSet set) {
 		if (chunks == null) readNbt(regionPos, false);
-		return new S2CUpdateRegionPacket(shared, rPos, mapIterable(biomePalette, i -> i), mapIterable(blockPalette, i -> i), set, set.stream().mapToObj(i -> get(RegionPos.bitToX(i), RegionPos.bitToZ(i))).toList());
+		BitSet realSet = ((BitSet) set.clone());
+		realSet.and(bitSet);
+		return new S2CUpdateRegionPacket(shared, rPos, mapIterable(biomePalette, i -> i), mapIterable(blockPalette, i -> i), realSet, realSet.stream().mapToObj(i -> get(RegionPos.bitToX(i), RegionPos.bitToZ(i))).toList());
 	}
 
 	public RegistryPalette<Biome>.ValueView getBiomePalette() {
