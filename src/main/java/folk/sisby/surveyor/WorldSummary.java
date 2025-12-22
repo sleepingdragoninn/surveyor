@@ -1,5 +1,6 @@
 package folk.sisby.surveyor;
 
+import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.structure.WorldStructureSummary;
@@ -15,6 +16,7 @@ public record WorldSummary(@Nullable WorldTerrainSummary terrain, @Nullable Worl
 	private static boolean ENABLE_LANDMARKS = false;
 
 	public static WorldSummary of(World world) {
+		if (world.isClient()) SurveyorClient.getSummary(world);
 		return ((SurveyorWorld) world).surveyor$getSummary();
 	}
 

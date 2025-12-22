@@ -25,6 +25,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.registry.RegistryKey;
@@ -50,10 +51,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SurveyorClient implements ClientModInitializer {
 	public static final String SERVERS_FILE_NAME = "servers.txt";
 	private static final Multimap<RegistryKey<World>, WorldChunk> LOADING_CHUNKS = HashMultimap.create();
+	private static final Map<RegistryKey<World>, WorldSummary> SUMMARIES = new ConcurrentHashMap<>();
 
 	public static File getSavePath(World world) {
 		String saveFolder = String.valueOf(world.getBiomeAccess().seed);
@@ -150,7 +153,15 @@ public class SurveyorClient implements ClientModInitializer {
 		return integratedServer.getWorld(worldKey);
 	}
 
-	@Override
+	public static WorldSummary getSummary(World world) {
+		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
+			return WorldSummary.of(SurveyorClient.stealServerWorld(world.getRegistryKey()));
+		} else {
+			return SUMMARIES.computeIfAbsent(world.getRegistryKey(), k -> WorldSummary.load(world, SurveyorClient.getWorldSavePath(world), true));
+		}
+	}
+
+    @Override
 	public void onInitializeClient() {
 		SurveyorClientNetworking.init();
 		ClientCommandRegistrationCallback.EVENT.register(SurveyorClientCommands::registerCommands);
