@@ -103,7 +103,7 @@ public class SurveyorNetworking {
 
 	private static void handleLandmarksRemoved(ServerPlayerEntity player, ServerWorld world, WorldSummary summary, SyncLandmarksRemovedPacket packet) {
 		if (summary.landmarks() == null) return;
-		Map<UUID, Map<Identifier, Landmark>> changed = summary.landmarks().readUpdatePacket(world, packet, player);
+		Table<UUID, Identifier, Landmark> changed = summary.landmarks().readUpdatePacket(world, packet, player);
 		if (!changed.isEmpty()) {
 			summary.landmarks().handleChanged(world, changed, false, player);
 			Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(changed);

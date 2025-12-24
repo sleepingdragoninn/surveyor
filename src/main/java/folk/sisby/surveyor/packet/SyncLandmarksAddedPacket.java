@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public record SyncLandmarksAddedPacket(Map<UUID, Map<Identifier, Landmark>> landmarks) implements SyncPacket {
+public record SyncLandmarksAddedPacket(Table<UUID, Identifier, Landmark> landmarks) implements SyncPacket {
 	public static final Identifier ID = Surveyor.id("landmarks_added");
 
 	public static SyncLandmarksAddedPacket of(Multimap<UUID, Identifier> keySet, WorldLandmarks summary) {

@@ -253,7 +253,7 @@ public class SurveyorCommands {
 				feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 				return 0;
 			}
-			Map<UUID, Map<Identifier, Landmark>> landmarks = summary.landmarks().asMap(op ? null : Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player));
+			Table<UUID, Identifier, Landmark> landmarks = summary.landmarks().asMap(op ? null : Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player));
 			if (global) {
 				if (landmarks.containsKey(WorldLandmarks.GLOBAL)) {
 					dimensionLandmarks.put(world.getRegistryKey().getValue(), landmarks.get(WorldLandmarks.GLOBAL).values());

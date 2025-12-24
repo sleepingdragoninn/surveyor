@@ -118,7 +118,7 @@ public interface SurveyorExploration {
 		return keySet;
 	}
 
-	default Map<UUID, Map<Identifier, Landmark>> limitLandmarkMap(RegistryKey<World> worldKey, Map<UUID, Map<Identifier, Landmark>> asMap) {
+	default Table<UUID, Identifier, Landmark> limitLandmarkMap(RegistryKey<World> worldKey, Table<UUID, Identifier, Landmark> asMap) {
 		Multimap<UUID, Identifier> toRemove = HashMultimap.create();
 		asMap.forEach((uuid, map) -> map.forEach((id, landmark) -> {
 			if (!exploredLandmark(worldKey, landmark)) toRemove.put(uuid, id);
