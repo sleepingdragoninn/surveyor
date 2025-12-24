@@ -2,6 +2,7 @@ package folk.sisby.surveyor;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Table;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -108,8 +109,8 @@ public class SurveyorCommands {
 		for (ServerWorld world : server.getWorlds()) {
 			WorldLandmarks worldLandmarks = WorldSummary.of(world).landmarks();
 			if (worldLandmarks != null) {
-				worldLandmarks.asMap(exploration).forEach((type, inner) -> inner.forEach((id, landmark) -> (landmark.owner().equals(WorldLandmarks.GLOBAL) ? landmarks : waypoints).add(landmark)));
-				if (groupExploration != null) worldLandmarks.asMap(groupExploration).forEach((type, inner) -> inner.forEach((id, landmark) -> (landmark.owner().equals(WorldLandmarks.GLOBAL) ? groupLandmarks : groupWaypoints).add(landmark)));
+				worldLandmarks.asMap(exploration).values().forEach(landmark -> (landmark.owner().equals(WorldLandmarks.GLOBAL) ? landmarks : waypoints).add(landmark));
+				if (groupExploration != null) worldLandmarks.asMap(groupExploration).values().forEach(landmark -> (landmark.owner().equals(WorldLandmarks.GLOBAL) ? groupLandmarks : groupWaypoints).add(landmark));
 			}
 			if (exploration == null) {
 				WorldTerrainSummary terrainSummary = WorldSummary.of(world).terrain();
@@ -255,12 +256,12 @@ public class SurveyorCommands {
 			}
 			Table<UUID, Identifier, Landmark> landmarks = summary.landmarks().asMap(op ? null : Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player));
 			if (global) {
-				if (landmarks.containsKey(WorldLandmarks.GLOBAL)) {
-					dimensionLandmarks.put(world.getRegistryKey().getValue(), landmarks.get(WorldLandmarks.GLOBAL).values());
+				if (landmarks.containsRow(WorldLandmarks.GLOBAL)) {
+					dimensionLandmarks.put(world.getRegistryKey().getValue(), landmarks.row(WorldLandmarks.GLOBAL).values());
 				}
 			} else {
-				landmarks.remove(WorldLandmarks.GLOBAL);
-				dimensionLandmarks.put(world.getRegistryKey().getValue(), landmarks.values().stream().flatMap(m -> m.values().stream()).toList());
+				landmarks.rowKeySet().remove(WorldLandmarks.GLOBAL);
+				dimensionLandmarks.put(world.getRegistryKey().getValue(), landmarks.values());
 			}
 		}
 		int numLandmarks = dimensionLandmarks.values().stream().mapToInt(Collection::size).sum();
@@ -472,7 +473,7 @@ public class SurveyorCommands {
 		}
 		WorldLandmarks landmarks = WorldSummary.of(world).landmarks();
 		if (landmarks == null) return b.buildFuture();
-		return CommandSource.suggestIdentifiers(global ? landmarks.asMap(WorldLandmarks.GLOBAL, exploration).keySet() : landmarks.asMap(exploration).values().stream().flatMap(m -> m.keySet().stream()).toList(), b);
+		return CommandSource.suggestIdentifiers(global ? landmarks.asMap(WorldLandmarks.GLOBAL, exploration).keySet() : landmarks.asMap(exploration).columnKeySet(), b);
 	}
 
 	private static CompletableFuture<Suggestions> suggestOwners(CommandContext<ServerCommandSource> c, SuggestionsBuilder b) {
@@ -490,7 +491,7 @@ public class SurveyorCommands {
 		}
 		WorldLandmarks landmarks = WorldSummary.of(world).landmarks();
 		if (landmarks == null) return b.buildFuture();
-		return CommandSource.suggestMatching(landmarks.asMap(exploration).entrySet().stream().filter(e -> e.getValue().containsKey(id)).map(e -> e.getKey().toString()).toList(), b);
+		return CommandSource.suggestMatching(landmarks.asMap(exploration).rowMap().entrySet().stream().filter(e -> e.getValue().containsKey(id)).map(e -> e.getKey().toString()).toList(), b);
 	}
 
 	public static <T> T map(CommandContext<ServerCommandSource> context, SurveyorCommandExecutor<T> executor, boolean feedback) {

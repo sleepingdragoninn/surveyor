@@ -16,7 +16,7 @@ public record WorldSummary(@Nullable WorldTerrainSummary terrain, @Nullable Worl
 	private static boolean ENABLE_LANDMARKS = false;
 
 	public static WorldSummary of(World world) {
-		if (world.isClient()) SurveyorClient.getSummary(world);
+		if (world.isClient()) return SurveyorClient.getSummary(world);
 		return ((SurveyorWorld) world).surveyor$getSummary();
 	}
 

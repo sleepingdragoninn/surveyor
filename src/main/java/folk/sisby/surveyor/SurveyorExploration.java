@@ -1,7 +1,9 @@
 package folk.sisby.surveyor;
 
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Table;
 import folk.sisby.surveyor.client.SurveyorClientEvents;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.landmark.Landmark;
@@ -119,15 +121,9 @@ public interface SurveyorExploration {
 	}
 
 	default Table<UUID, Identifier, Landmark> limitLandmarkMap(RegistryKey<World> worldKey, Table<UUID, Identifier, Landmark> asMap) {
-		Multimap<UUID, Identifier> toRemove = HashMultimap.create();
-		asMap.forEach((uuid, map) -> map.forEach((id, landmark) -> {
-			if (!exploredLandmark(worldKey, landmark)) toRemove.put(uuid, id);
-		}));
-		toRemove.forEach((uuid, id) -> {
-			asMap.get(uuid).remove(id);
-			if (asMap.get(uuid).isEmpty()) asMap.remove(uuid);
-		});
-		return asMap;
+		Table<UUID, Identifier, Landmark> outTable = HashBasedTable.create(asMap);
+		outTable.values().removeIf(l -> !exploredLandmark(worldKey, l));
+		return outTable;
 	}
 
 	default Multimap<UUID, Identifier> limitLandmarkKeySet(RegistryKey<World> worldKey, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> keySet) {
@@ -145,9 +141,9 @@ public interface SurveyorExploration {
 		Multimap<UUID, Identifier> landmarkKeys = HashMultimap.create();
 		WorldLandmarks summary = WorldSummary.of(world).landmarks();
 		if (summary == null) return;
-		summary.asMap(this).forEach((uuid, map) -> map.forEach((id, landmark) -> {
-			if (landmark.components().contains(LandmarkComponentTypes.POS) && terrainKeys.contains(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(uuid, id);
-		}));
+		summary.asMap(this).values().forEach(landmark -> {
+			if (landmark.components().contains(LandmarkComponentTypes.POS) && terrainKeys.contains(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(landmark.owner(), landmark.id());
+		});
 		SurveyorClientEvents.Invoke.landmarksAdded(world, landmarkKeys);
 	}
 
@@ -176,9 +172,9 @@ public interface SurveyorExploration {
 		Multimap<UUID, Identifier> landmarkKeys = HashMultimap.create();
 		WorldLandmarks summary = WorldSummary.of(world).landmarks();
 		if (summary == null) return;
-		summary.asMap(this).forEach((uuid, map) -> map.forEach((id, landmark) -> {
-			if (landmark.components().contains(LandmarkComponentTypes.POS) && chunkPos.equals(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(uuid, id);
-		}));
+		summary.asMap(this).values().forEach(landmark -> {
+			if (landmark.components().contains(LandmarkComponentTypes.POS) && chunkPos.equals(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(landmark.owner(), landmark.id());
+		});
 		SurveyorClientEvents.Invoke.landmarksAdded(world, landmarkKeys);
 	}
 

@@ -1,14 +1,11 @@
 package folk.sisby.surveyor.util;
 
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Table;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class MapUtil {
@@ -24,6 +21,12 @@ public class MapUtil {
 		return map;
 	}
 
+	public static <K, V> Multimap<K, V> keyMultiMap(Table<K, V, ?> table) {
+		Multimap<K, V> map = HashMultimap.create();
+		table.rowKeySet().forEach(r -> map.putAll(r, table.row(r).keySet()));
+		return map;
+	}
+
 	public static <K, V> Map<K, List<V>> asListMap(Multimap<K, V> multimap) {
 		return multimap.asMap().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue())));
 	}
@@ -34,11 +37,23 @@ public class MapUtil {
 		return outMap;
 	}
 
+	public static <K1, K2, V> Table<K1, K2, V> splitByKeyMap(Table<K1, K2, V> table, Multimap<K1, K2> keySet) {
+		Table<K1, K2, V> outTable = HashBasedTable.create();
+		keySet.forEach((k1, k2) -> outTable.put(k1, k2, table.get(k1, k2)));
+		return outTable;
+	}
+
 	public static <K, V> Map<K, V> splitByKeySet(Map<K, V> map, Collection<K> keySet) {
 		Map<K, V> outMap = new HashMap<>();
 		keySet.forEach(k -> {
 			if (map.containsKey(k)) outMap.put(k, map.get(k));
 		});
 		return outMap;
+	}
+
+	public static <K, V, T> Table<K, V, T> asTable(Map<K, Map<V, T>> map) {
+		Table<K, V, T> outTable = HashBasedTable.create();
+		map.forEach((k, m) -> m.forEach((v, t) -> outTable.put(k, v, t)));
+		return outTable;
 	}
 }

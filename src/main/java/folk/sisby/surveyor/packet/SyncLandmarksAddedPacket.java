@@ -2,6 +2,7 @@ package folk.sisby.surveyor.packet;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Table;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
@@ -15,7 +16,6 @@ import net.minecraft.util.Identifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public record SyncLandmarksAddedPacket(Table<UUID, Identifier, Landmark> landmarks) implements SyncPacket {
