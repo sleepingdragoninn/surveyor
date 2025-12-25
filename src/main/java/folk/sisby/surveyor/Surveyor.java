@@ -56,6 +56,10 @@ public class Surveyor implements ModInitializer {
 		return DimensionType.getSaveDirectory(worldKey, server.getSavePath(WorldSavePath.ROOT)).resolve(DATA_SUBFOLDER).resolve(Surveyor.ID).toFile();
 	}
 
+	public static long getBiomeSeed(World world) {
+		return world.getBiomeAccess().seed;
+	}
+
 	public static void checkStructureExploration(ServerWorld world, ServerPlayerEntity player, BlockPos pos) {
 		if (!world.isChunkLoaded(pos.getX() >> 4, pos.getZ() >> 4)) return;
 		WorldStructureSummary worldStructures = WorldSummary.of(world).structures();

@@ -4,21 +4,24 @@ import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.util.MapUtil;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public record SyncLandmarksRemovedPacket(Multimap<UUID, Identifier> landmarks) implements SyncPacket {
+public record SyncLandmarksRemovedPacket(RegistryKey<World> dim, Multimap<UUID, Identifier> landmarks) implements SyncPacket {
 	public static final Identifier ID = Surveyor.id("landmarks_removed");
 
-	public static SyncLandmarksRemovedPacket of(UUID uuid, Identifier id) {
-		return new SyncLandmarksRemovedPacket(MapUtil.asMultiMap(Map.of(uuid, List.of(id))));
+	public static SyncLandmarksRemovedPacket of(RegistryKey<World> dim, UUID uuid, Identifier id) {
+		return new SyncLandmarksRemovedPacket(dim, MapUtil.asMultiMap(Map.of(uuid, List.of(id))));
 	}
 
 	public static SyncLandmarksRemovedPacket read(PacketByteBuf buf) {
-		return new SyncLandmarksRemovedPacket(MapUtil.asMultiMap(buf.readMap(
+		return new SyncLandmarksRemovedPacket(buf.readRegistryKey(RegistryKeys.WORLD), MapUtil.asMultiMap(buf.readMap(
 			PacketByteBuf::readUuid,
 			b -> b.readList(PacketByteBuf::readIdentifier)
 		)));
@@ -26,6 +29,7 @@ public record SyncLandmarksRemovedPacket(Multimap<UUID, Identifier> landmarks) i
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
+		buf.writeRegistryKey(dim);
 		buf.writeMap(landmarks.asMap(),
 			PacketByteBuf::writeUuid,
 			(b, c) -> b.writeCollection(c, PacketByteBuf::writeIdentifier)

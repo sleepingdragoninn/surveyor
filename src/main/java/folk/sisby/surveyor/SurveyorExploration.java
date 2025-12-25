@@ -24,11 +24,7 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.Structure;
 
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public interface SurveyorExploration {
@@ -51,9 +47,9 @@ public interface SurveyorExploration {
 		return ServerSummary.of(server).groupExploration(player, server);
 	}
 
-	Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain();
+	Table<RegistryKey<World>, RegionPos, BitSet> terrain();
 
-	Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures();
+	Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures();
 
 	Set<UUID> sharedPlayers();
 
@@ -66,13 +62,11 @@ public interface SurveyorExploration {
 
 	default boolean exploredChunk(RegistryKey<World> worldKey, ChunkPos pos) {
 		RegionPos regionPos = RegionPos.of(pos);
-		Map<RegionPos, BitSet> regions = terrain().get(worldKey);
-		return (!personal() && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SERVER)) || regions != null && regions.containsKey(regionPos) && regions.get(regionPos).get(RegionPos.chunkToBit(pos));
+		return !personal() && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SERVER) || terrain().contains(worldKey, regionPos) && terrain().get(worldKey, regionPos).get(RegionPos.chunkToBit(pos));
 	}
 
 	default boolean exploredStructure(RegistryKey<World> worldKey, RegistryKey<Structure> structure, ChunkPos pos) {
-		Map<RegistryKey<Structure>, LongSet> structures = structures().get(worldKey);
-		return (!personal() && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SERVER)) || structures != null && structures.containsKey(structure) && structures.get(structure).contains(pos.toLong());
+		return !personal() && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SERVER) || structures().contains(worldKey, structure) && structures().get(worldKey, structure).contains(pos.toLong());
 	}
 
 	default boolean exploredLandmark(RegistryKey<World> worldKey, Landmark landmark) {
@@ -80,42 +74,40 @@ public interface SurveyorExploration {
 	}
 
 	default int chunkCount() {
-		return terrain().values().stream().flatMap(m -> m.values().stream()).mapToInt(BitSet::cardinality).sum();
+		return terrain().values().stream().mapToInt(BitSet::cardinality).sum();
 	}
 
 	default int structureCount() {
-		return structures().values().stream().flatMap(m -> m.values().stream()).mapToInt(LongSet::size).sum();
+		return structures().values().stream().mapToInt(LongSet::size).sum();
 	}
 
 	default BitSet limitTerrainBitset(RegistryKey<World> worldKey, RegionPos rPos, BitSet bitSet) {
 		if (!personal() && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SERVER)) return bitSet;
-		if (terrain().get(worldKey) == null || !terrain().get(worldKey).containsKey(rPos)) {
-			bitSet.clear();
+		if (terrain().contains(worldKey, rPos)) {
+			bitSet.and(terrain().get(worldKey, rPos));
 		} else {
-			bitSet.and(terrain().get(worldKey).get(rPos));
+			bitSet.clear();
 		}
 		return bitSet;
 	}
 
-	default Map<RegionPos, BitSet> limitTerrainBitset(RegistryKey<World> worldKey, Map<RegionPos, BitSet> bitSet) {
-		if (!personal() && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SERVER)) return bitSet;
-		Map<RegionPos, BitSet> regions = terrain().get(worldKey);
-		if (regions == null) {
-			bitSet.clear();
+	default Map<RegionPos, BitSet> limitTerrainBitset(RegistryKey<World> worldKey, Map<RegionPos, BitSet> bitSets) {
+		if (!personal() && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SERVER)) return bitSets;
+		if (terrain().row(worldKey).isEmpty()) {
+			bitSets.clear();
 		} else {
-			bitSet.forEach((rPos, set) -> limitTerrainBitset(worldKey, rPos, set));
+			bitSets.forEach((rPos, set) -> limitTerrainBitset(worldKey, rPos, set));
 		}
-		return bitSet;
+		return bitSets;
 	}
 
 	default Multimap<RegistryKey<Structure>, ChunkPos> limitStructureKeySet(RegistryKey<World> worldKey, Multimap<RegistryKey<Structure>, ChunkPos> keySet) {
 		if (!personal() && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SERVER)) return keySet;
-		Map<RegistryKey<Structure>, LongSet> structures = structures().get(worldKey);
-		if (structures == null) {
+		if (structures().row(worldKey).isEmpty()) {
 			keySet.clear();
 		} else {
-			keySet.keySet().removeIf(key -> !structures.containsKey(key));
-			keySet.entries().removeIf(e -> !structures.get(e.getKey()).contains(e.getValue().toLong()));
+			keySet.keySet().removeIf(key -> !structures().contains(worldKey, key));
+			keySet.entries().removeIf(e -> !structures().get(worldKey, keySet).contains(e.getValue().toLong()));
 		}
 		return keySet;
 	}
@@ -147,24 +139,23 @@ public interface SurveyorExploration {
 		SurveyorClientEvents.Invoke.landmarksAdded(world, landmarkKeys);
 	}
 
-	default void updateClientForLandmarks(World world) {
-		WorldLandmarks summary = WorldSummary.of(world).landmarks();
+	default void updateClientForLandmarks(WorldSummary worldSummary) {
+		WorldLandmarks summary = worldSummary.landmarks();
 		if (summary == null) return;
 		Multimap<UUID, Identifier> unexploredLandmarks = summary.keySet(null);
 		Multimap<UUID, Identifier> exploredLandmarks = summary.keySet(this);
 		exploredLandmarks.forEach(unexploredLandmarks::remove);
-		SurveyorClientEvents.Invoke.landmarksAdded(world, exploredLandmarks);
-		SurveyorClientEvents.Invoke.landmarksRemoved(world, unexploredLandmarks);
+		SurveyorClientEvents.Invoke.landmarksAdded(worldSummary, exploredLandmarks);
+		SurveyorClientEvents.Invoke.landmarksRemoved(worldSummary, unexploredLandmarks);
 	}
 
 	default void mergeRegion(RegistryKey<World> worldKey, RegionPos regionPos, BitSet bitSet) {
-		terrain().computeIfAbsent(worldKey, k -> new HashMap<>()).computeIfAbsent(regionPos, p -> new BitSet(RegionPos.CHUNK_SIZE)).or(bitSet);
+		if (!terrain().contains(worldKey, regionPos)) terrain().put(worldKey, regionPos, new BitSet(RegionPos.CHUNK_SIZE));
+		terrain().get(worldKey, regionPos).or(bitSet);
 	}
 
-	default void replaceTerrain(RegistryKey<World> worldKey, Map<RegionPos, BitSet> bitSet) {
-		Map<RegionPos, BitSet> oldSet = terrain().get(worldKey);
-		if (oldSet != null) oldSet.clear();
-		bitSet.forEach((pos, set) -> mergeRegion(worldKey, pos, set));
+	default void replaceTerrain(Table<RegistryKey<World>, RegionPos, BitSet> terrain) {
+		terrain().putAll(terrain);
 	}
 
 	default void updateClientForAddChunk(World world, ChunkPos chunkPos) {
@@ -179,7 +170,9 @@ public interface SurveyorExploration {
 	}
 
 	default void addChunk(RegistryKey<World> worldKey, ChunkPos pos) {
-		terrain().computeIfAbsent(worldKey, k -> new HashMap<>()).computeIfAbsent(RegionPos.of(pos), k -> new BitSet(RegionPos.CHUNK_AREA)).set(RegionPos.chunkToBit(pos));
+		RegionPos regionPos = RegionPos.of(pos);
+		if (!terrain().contains(worldKey, regionPos)) terrain().put(worldKey, regionPos, new BitSet(RegionPos.CHUNK_SIZE));
+		terrain().get(worldKey, regionPos).set(RegionPos.chunkToBit(pos));
 	}
 
 	default void updateClientForAddStructure(World world, RegistryKey<Structure> structureKey, ChunkPos pos) {
@@ -187,22 +180,22 @@ public interface SurveyorExploration {
 	}
 
 	default void addStructure(RegistryKey<World> worldKey, RegistryKey<Structure> structureKey, ChunkPos pos) {
-		structures().computeIfAbsent(worldKey, k -> new HashMap<>()).computeIfAbsent(structureKey, s -> new LongOpenHashSet()).add(pos.toLong());
+		if (!structures().contains(worldKey, structureKey)) structures().put(worldKey, structureKey, new LongOpenHashSet());
+		structures().get(worldKey, structureKey).add(pos.toLong());
 	}
 
 	default void mergeStructures(RegistryKey<World> worldKey, RegistryKey<Structure> structureKey, LongSet starts) {
-		structures().computeIfAbsent(worldKey, k -> new HashMap<>()).computeIfAbsent(structureKey, s -> new LongOpenHashSet()).addAll(starts);
+		if (!structures().contains(worldKey, structureKey)) structures().put(worldKey, structureKey, new LongOpenHashSet());
+		structures().get(worldKey, structureKey).addAll(starts);
 	}
 
-	default void replaceStructures(RegistryKey<World> worldKey, Map<RegistryKey<Structure>, LongSet> structures) {
-		LongSet oldSet = structures.get(worldKey);
-		if (oldSet != null) oldSet.clear();
-		structures.forEach((key, set) -> mergeStructures(worldKey, key, set));
+	default void replaceStructures(Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures) {
+		structures().putAll(structures);
 	}
 
 	default NbtCompound write(NbtCompound nbt) {
 		NbtCompound terrainCompound = new NbtCompound();
-		terrain().forEach((worldKey, map) -> {
+		terrain().rowMap().forEach((worldKey, map) -> {
 			LongList regionLongs = new LongArrayList();
 			for (Map.Entry<RegionPos, BitSet> entry : map.entrySet()) {
 				regionLongs.add(entry.getKey().toLong());
@@ -219,7 +212,7 @@ public interface SurveyorExploration {
 		nbt.put(KEY_EXPLORED_TERRAIN, terrainCompound);
 
 		NbtCompound structuresCompound = new NbtCompound();
-		structures().forEach((worldKey, map) -> {
+		structures().rowMap().forEach((worldKey, map) -> {
 			NbtCompound worldStructuresCompound = new NbtCompound();
 			for (RegistryKey<Structure> structure : map.keySet()) {
 				worldStructuresCompound.putLongArray(structure.getValue().toString(), map.get(structure).toLongArray());
@@ -249,7 +242,7 @@ public interface SurveyorExploration {
 					i += bitLength;
 				}
 			}
-			terrain().put(RegistryKey.of(RegistryKeys.WORLD, new Identifier(worldKeyString)), regionMap);
+			terrain().rowMap().put(RegistryKey.of(RegistryKeys.WORLD, new Identifier(worldKeyString)), regionMap);
 		}
 
 		NbtCompound structuresCompound = nbt.getCompound(KEY_EXPLORED_STRUCTURES);
@@ -259,7 +252,7 @@ public interface SurveyorExploration {
 			for (String key : worldStructuresCompound.getKeys()) {
 				structureMap.put(RegistryKey.of(RegistryKeys.STRUCTURE, new Identifier(key)), new LongOpenHashSet(worldStructuresCompound.getLongArray(key)));
 			}
-			structures().put(RegistryKey.of(RegistryKeys.WORLD, new Identifier(worldKeyString)), structureMap);
+			structures().rowMap().put(RegistryKey.of(RegistryKeys.WORLD, new Identifier(worldKeyString)), structureMap);
 		}
 	}
 }

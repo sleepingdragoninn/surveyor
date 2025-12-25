@@ -128,7 +128,7 @@ public final class ServerSummary {
 			// initial exploration
 			SurveyorExploration groupExploration = serverSummary.groupExploration(uuid, server);
 			Map<UUID, PlayerSummary> groupSummaries = serverSummary.getGroupSummaries(uuid, server);
-			new S2CGroupChangedPacket(groupSummaries, groupExploration.terrain().getOrDefault(player.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(player.getWorld().getRegistryKey(), new HashMap<>())).send(player);
+			new S2CGroupChangedPacket(groupSummaries, groupExploration.terrain(), groupExploration.structures()).send(player);
 			// initial offline group positions
 			new S2CGroupUpdatedPacket(groupSummaries).send(player);
 		}
@@ -239,15 +239,7 @@ public final class ServerSummary {
 		}
 		SurveyorExploration groupExploration = groupExploration(player1, server);
 		for (ServerPlayerEntity friend : groupServerPlayers(player1, server)) {
-			new S2CGroupChangedPacket(getGroupSummaries(player1, server), groupExploration.terrain().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>())).send(friend);
-			WorldLandmarks landmarks = WorldSummary.of(friend.getWorld()).landmarks();
-			if (landmarks == null || Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO)) continue;
-			Multimap<UUID, Identifier> sharedLandmarks = landmarks.keySet(groupExploration);
-			landmarks.keySet(SurveyorExploration.of(friend)).forEach(sharedLandmarks::remove);
-			if (!sharedLandmarks.isEmpty()) SyncLandmarksAddedPacket.of(sharedLandmarks, landmarks).send(friend);
-			Multimap<UUID, Identifier> removedLandmarks = landmarks.removed();
-			removedLandmarks.keySet().removeIf(uuid -> !groupExploration.sharedPlayers().contains(uuid));
-			if (!removedLandmarks.isEmpty()) new SyncLandmarksRemovedPacket(removedLandmarks).send(friend);
+			new S2CGroupChangedPacket(getGroupSummaries(player1, server), groupExploration.terrain(), groupExploration.structures()).send(friend);
 		}
 		dirty();
 	}

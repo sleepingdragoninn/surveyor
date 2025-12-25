@@ -1,39 +1,55 @@
 package folk.sisby.surveyor.packet;
 
+import com.google.common.collect.Table;
 import folk.sisby.surveyor.PlayerSummary;
 import folk.sisby.surveyor.Surveyor;
+import folk.sisby.surveyor.util.MapUtil;
 import folk.sisby.surveyor.util.RegionPos;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.Structure;
 
-import java.util.BitSet;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
-public record S2CGroupChangedPacket(Map<UUID, PlayerSummary> players, Map<RegionPos, BitSet> regionBits, Map<RegistryKey<Structure>, LongSet> structureKeys) implements S2CPacket {
+public record S2CGroupChangedPacket(Map<UUID, PlayerSummary> players, Table<RegistryKey<World>, RegionPos, BitSet> regionBits, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structureKeys) implements S2CPacket {
 	public static final Identifier ID = Surveyor.id("s2c_group_changed");
 
 	public static S2CGroupChangedPacket read(PacketByteBuf buf) {
 		return new S2CGroupChangedPacket(
 			buf.readMap(PacketByteBuf::readUuid, PlayerSummary.OfflinePlayerSummary::readBuf),
-			buf.readMap(b -> RegionPos.of(b.readLong()), PacketByteBuf::readBitSet),
-			buf.readMap(
-				b -> b.readRegistryKey(RegistryKeys.STRUCTURE),
-				b -> new LongOpenHashSet(b.readLongArray())
-			)
+			MapUtil.asTable(buf.readMap(b -> b.readRegistryKey(RegistryKeys.WORLD),
+				b -> b.readMap(b2 -> RegionPos.of(b2.readLong()), PacketByteBuf::readBitSet)
+			)),
+			MapUtil.asTable(buf.readMap(
+				b -> b.readRegistryKey(RegistryKeys.WORLD),
+				b -> b.readMap(
+					b2 -> b2.readRegistryKey(RegistryKeys.STRUCTURE),
+					b2 -> LongSet.of(b2.readLongArray())
+				)
+			))
 		);
 	}
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
 		buf.writeMap(players, PacketByteBuf::writeUuid, PlayerSummary.OfflinePlayerSummary::writeBuf);
-		buf.writeMap(regionBits, (b, r) -> b.writeLong(r.toLong()), PacketByteBuf::writeBitSet);
-		buf.writeMap(structureKeys, PacketByteBuf::writeRegistryKey, (b, starts) -> b.writeLongArray(starts.toLongArray()));
+		buf.writeMap(regionBits.rowMap(),
+			PacketByteBuf::writeRegistryKey,
+			(b, m) -> b.writeMap(m,
+				(b2, r) -> b2.writeLong(r.toLong()),
+				PacketByteBuf::writeBitSet
+			));
+		buf.writeMap(structureKeys.rowMap(),
+			PacketByteBuf::writeRegistryKey,
+			(b, m) -> b.writeMap(m,
+				PacketByteBuf::writeRegistryKey,
+				(b2, starts) -> b2.writeLongArray(starts.toLongArray())
+			)
+		);
 	}
 
 	@Override

@@ -15,6 +15,7 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -248,11 +249,11 @@ public class RegionSummary {
 		return packet.set();
 	}
 
-	public S2CUpdateRegionPacket createUpdatePacket(boolean shared, RegionPos rPos, BitSet set) {
+	public S2CUpdateRegionPacket createUpdatePacket(RegistryKey<World> dim, boolean shared, RegionPos rPos, BitSet set) {
 		if (chunks == null) readNbt(regionPos, false);
 		BitSet realSet = ((BitSet) set.clone());
 		realSet.and(bitSet);
-		return new S2CUpdateRegionPacket(shared, rPos, mapIterable(biomePalette, i -> i), mapIterable(blockPalette, i -> i), realSet, realSet.stream().mapToObj(i -> get(RegionPos.bitToX(i), RegionPos.bitToZ(i))).toList());
+		return new S2CUpdateRegionPacket(dim, shared, rPos, mapIterable(biomePalette, i -> i), mapIterable(blockPalette, i -> i), realSet, realSet.stream().mapToObj(i -> get(RegionPos.bitToX(i), RegionPos.bitToZ(i))).toList());
 	}
 
 	public RegistryPalette<Biome>.ValueView getBiomePalette() {

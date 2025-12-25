@@ -491,7 +491,7 @@ public class SurveyorCommands {
 		}
 		WorldLandmarks landmarks = WorldSummary.of(world).landmarks();
 		if (landmarks == null) return b.buildFuture();
-		return CommandSource.suggestMatching(landmarks.asMap(exploration).rowMap().entrySet().stream().filter(e -> e.getValue().containsKey(id)).map(e -> e.getKey().toString()).toList(), b);
+		return CommandSource.suggestMatching(landmarks.asMap(exploration).columnMap().get(id).keySet().stream().map(UUID::toString), b);
 	}
 
 	public static <T> T map(CommandContext<ServerCommandSource> context, SurveyorCommandExecutor<T> executor, boolean feedback) {

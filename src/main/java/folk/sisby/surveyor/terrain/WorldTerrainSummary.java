@@ -61,10 +61,10 @@ public class WorldTerrainSummary {
 		return set;
 	}
 
-	public static WorldTerrainSummary load(World world, File folder) {
+	public static WorldTerrainSummary load(RegistryKey<World> dim, DynamicRegistryManager manager, File folder) {
 		Map<RegionPos, RegionSummary> regions = new HashMap<>();
-		ChunkUtil.getRegionFiles(folder, "c").forEach((pos, file) -> regions.put(pos, RegionSummary.fromFile(file, world.getRegistryManager(), pos)));
-		return new WorldTerrainSummary(world.getRegistryKey(), world.getRegistryManager(), regions, folder);
+		ChunkUtil.getRegionFiles(folder, "c").forEach((pos, file) -> regions.put(pos, RegionSummary.fromFile(file, manager, pos)));
+		return new WorldTerrainSummary(dim, manager, regions, folder);
 	}
 
 	public static void onChunkLoad(World world, WorldChunk chunk) {
@@ -131,9 +131,9 @@ public class WorldTerrainSummary {
 		RegionSummary region = getRegion(rPos);
 		SurveyorExploration personalExploration = SurveyorExploration.of(player);
 		BitSet personalSet = personalExploration.limitTerrainBitset(world.getRegistryKey(), rPos, (BitSet) set.clone());
-		if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(false, rPos, region, personalSet).send(player);
+		if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(worldKey, false, rPos, region, personalSet).send(player);
 		set.andNot(personalSet);
-		if (!set.isEmpty()) S2CUpdateRegionPacket.of(true, rPos, region, set).send(player);
+		if (!set.isEmpty()) S2CUpdateRegionPacket.of(worldKey, true, rPos, region, set).send(player);
 	}
 
 	public void serverTick(ServerWorld world) {

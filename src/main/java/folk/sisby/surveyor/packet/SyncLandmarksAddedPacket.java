@@ -11,14 +11,17 @@ import io.netty.buffer.Unpooled;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-public record SyncLandmarksAddedPacket(Table<UUID, Identifier, Landmark> landmarks) implements SyncPacket {
+public record SyncLandmarksAddedPacket(RegistryKey<World> dim, Table<UUID, Identifier, Landmark> landmarks) implements SyncPacket {
 	public static final Identifier ID = Surveyor.id("landmarks_added");
 
 	public static SyncLandmarksAddedPacket of(Multimap<UUID, Identifier> keySet, WorldLandmarks summary) {
@@ -26,11 +29,12 @@ public record SyncLandmarksAddedPacket(Table<UUID, Identifier, Landmark> landmar
 	}
 
 	public static SyncLandmarksAddedPacket read(PacketByteBuf buf) {
-		return new SyncLandmarksAddedPacket(WorldLandmarks.CODEC.decode(NbtOps.INSTANCE, buf.readNbt()).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst());
+		return new SyncLandmarksAddedPacket(buf.readRegistryKey(RegistryKeys.WORLD), WorldLandmarks.CODEC.decode(NbtOps.INSTANCE, buf.readNbt()).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst());
 	}
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
+		buf.writeRegistryKey(dim);
 		buf.writeNbt((NbtCompound) WorldLandmarks.CODEC.encodeStart(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow());
 	}
 
@@ -56,8 +60,8 @@ public record SyncLandmarksAddedPacket(Table<UUID, Identifier, Landmark> landmar
 					secondHalf.put(key, pos);
 				}
 			});
-			bufs.addAll(new SyncLandmarksAddedPacket(MapUtil.splitByKeyMap(landmarks, firstHalf)).toBufs());
-			bufs.addAll(new SyncLandmarksAddedPacket(MapUtil.splitByKeyMap(landmarks, secondHalf)).toBufs());
+			bufs.addAll(new SyncLandmarksAddedPacket(dim, MapUtil.splitByKeyMap(landmarks, firstHalf)).toBufs());
+			bufs.addAll(new SyncLandmarksAddedPacket(dim, MapUtil.splitByKeyMap(landmarks, secondHalf)).toBufs());
 		}
 		return bufs;
 	}

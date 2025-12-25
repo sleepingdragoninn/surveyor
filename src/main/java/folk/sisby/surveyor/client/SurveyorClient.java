@@ -1,7 +1,9 @@
 package folk.sisby.surveyor.client;
 
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Table;
 import com.mojang.authlib.GameProfile;
 import folk.sisby.surveyor.PlayerSummary;
 import folk.sisby.surveyor.ServerSummary;
@@ -25,9 +27,9 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
-import net.minecraft.client.world.ClientWorld;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
@@ -58,8 +60,8 @@ public class SurveyorClient implements ClientModInitializer {
 	private static final Multimap<RegistryKey<World>, WorldChunk> LOADING_CHUNKS = HashMultimap.create();
 	private static final Map<RegistryKey<World>, WorldSummary> SUMMARIES = new ConcurrentHashMap<>();
 
-	public static File getSavePath(World world) {
-		String saveFolder = String.valueOf(world.getBiomeAccess().seed);
+	public static File getSavePath(long biomeSeed) {
+		String saveFolder = String.valueOf(biomeSeed);
 		Path savePath = FabricLoader.getInstance().getGameDir().resolve(Surveyor.DATA_SUBFOLDER).resolve(Surveyor.ID).resolve(saveFolder);
 		savePath.toFile().mkdirs();
 		File serversFile = savePath.resolve(SERVERS_FILE_NAME).toFile();
@@ -74,13 +76,13 @@ public class SurveyorClient implements ClientModInitializer {
 		return savePath.toFile();
 	}
 
-	public static File getWorldSavePath(World world) {
-		String dimNamespace = world.getRegistryKey().getValue().getNamespace();
-		String dimPath = world.getRegistryKey().getValue().getPath();
-		return getSavePath(world).toPath().resolve(dimNamespace).resolve(dimPath).toFile();
+	public static File getWorldSavePath(RegistryKey<World> dim, long biomeSeed) {
+		String dimNamespace = dim.getValue().getNamespace();
+		String dimPath = dim.getValue().getPath();
+		return getSavePath(biomeSeed).toPath().resolve(dimNamespace).resolve(dimPath).toFile();
 	}
 
-	public static @Nullable File getXaerosSavePath(World world) {
+	public static @Nullable File getXaerosSavePath(RegistryKey<World> dim) {
 		File baseFolder = FabricLoader.getInstance().getGameDir().resolve("xaero").resolve("minimap").toFile();
 		if (!baseFolder.exists()) return null;
 		String id = null;
@@ -89,12 +91,12 @@ public class SurveyorClient implements ClientModInitializer {
 			String sanitized = (MinecraftClient.getInstance().getCurrentServerEntry() != null ? "Multiplayer_" : "") + (id.contains(":") ? id.substring(0, id.indexOf(":")) : id).replace("_", "%us%").replace("\\", "%bs%").replace("/", "%fs%").replace(":", "§").replace("[", "%lb%").replace("]", "%rb%");
 			File saveFolder = baseFolder.toPath().resolve(sanitized).toFile();
 			if (!saveFolder.exists()) return null;
-			String sanitizedDim = world.getRegistryKey() == World.OVERWORLD ? "dim%0" : world.getRegistryKey() == World.NETHER ? "dim%-1" : world.getRegistryKey() == World.END ? "dim%1" : "dim%" + world.getRegistryKey().toString().replace(":", "$").replace('/', '%');
+			String sanitizedDim = dim == World.OVERWORLD ? "dim%0" : dim == World.NETHER ? "dim%-1" : dim == World.END ? "dim%1" : "dim%" + dim.toString().replace(":", "$").replace('/', '%');
 			File dimFolder = saveFolder.toPath().resolve(sanitizedDim).toFile();
 			if (!dimFolder.exists() || dimFolder.toPath().resolve(".surveyor_migrated").toFile().exists()) return null;
 			return dimFolder;
 		} catch (Exception e) {
-			Surveyor.LOGGER.error("[Surveyor] Error fetching xaeros data for {} {}", id,  world.getRegistryKey(), e);
+			Surveyor.LOGGER.error("[Surveyor] Error fetching xaeros data for {} {}", id,  dim, e);
 		}
 		return null;
 	}
@@ -153,11 +155,11 @@ public class SurveyorClient implements ClientModInitializer {
 		return integratedServer.getWorld(worldKey);
 	}
 
-	public static WorldSummary getSummary(World world) {
+	public static WorldSummary getSummary(RegistryKey<World> dim, DynamicRegistryManager manager, long biomeSeed) {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
-			return WorldSummary.of(SurveyorClient.stealServerWorld(world.getRegistryKey()));
+			return WorldSummary.of(SurveyorClient.stealServerWorld(dim));
 		} else {
-			return SUMMARIES.computeIfAbsent(world.getRegistryKey(), k -> WorldSummary.load(world, SurveyorClient.getWorldSavePath(world), true));
+			return SUMMARIES.computeIfAbsent(dim, k -> WorldSummary.load(dim, manager, SurveyorClient.getWorldSavePath(dim, biomeSeed), true));
 		}
 	}
 
@@ -194,7 +196,7 @@ public class SurveyorClient implements ClientModInitializer {
 					WorldSummary summary = WorldSummary.of(world);
 					if (summary.terrain() != null && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SOLO)) new C2SKnownTerrainPacket(summary.terrain().bitSet(null)).send();
 					if (summary.structures() != null && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SOLO)) new C2SKnownStructuresPacket(summary.structures().keySet(null)).send();
-					if (summary.landmarks() != null) summary.landmarks().clientInitialized(world);
+					if (summary.landmarks() != null) summary.landmarks().clientInitialized();
 				}
 				SurveyorClientEvents.Invoke.worldLoad(MinecraftClient.getInstance().player.clientWorld, MinecraftClient.getInstance().player);
 			}
@@ -207,10 +209,10 @@ public class SurveyorClient implements ClientModInitializer {
 		Surveyor.LOGGER.info("[Surveyor Client] is not a map mod either");
 	}
 
-	public record ClientExploration(Set<UUID> groupPlayers, Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures) implements SurveyorExploration {
+	public record ClientExploration(Set<UUID> groupPlayers, Table<RegistryKey<World>, RegionPos, BitSet> terrain, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures) implements SurveyorExploration {
 		public static final String KEY_SHARED = "shared";
-		public static final ClientExploration INSTANCE = new ClientExploration(new HashSet<>(), new HashMap<>(), new HashMap<>());
-		public static final ClientExploration SHARED = new ClientExploration(new HashSet<>(), new HashMap<>(), new HashMap<>());
+		public static final ClientExploration INSTANCE = new ClientExploration(new HashSet<>(), HashBasedTable.create(), HashBasedTable.create());
+		public static final ClientExploration SHARED = new ClientExploration(new HashSet<>(), HashBasedTable.create(), HashBasedTable.create());
 		public static File saveFile = null;
 
 		public static void onLoad() {

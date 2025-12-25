@@ -26,6 +26,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -83,18 +84,18 @@ public class WorldLandmarks {
 		this.dirty = dirty;
 	}
 
-	public static WorldLandmarks load(World world, File folder, boolean isClient) {
+	public static WorldLandmarks load(RegistryKey<World> dim, DynamicRegistryManager manager, File folder, boolean isClient) {
 		NbtCompound landmarkNbt = new NbtCompound();
 		File landmarksFile = new File(folder, "landmarks.dat");
 		if (landmarksFile.exists()) {
 			try {
 				landmarkNbt = NbtIo.readCompressed(landmarksFile);
 			} catch (IOException | CrashException e) {
-				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", world.getRegistryKey().getValue(), e);
+				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", dim.getValue(), e);
 			}
 		}
-		WorldLandmarks worldLandmarks = fromNbt(world, landmarkNbt, landmarksFile, isClient);
-		if (!isClient) worldLandmarks.tryMigrateXaeros(world, false); // for singleplayer
+		WorldLandmarks worldLandmarks = fromNbt(dim, manager, landmarkNbt, landmarksFile, isClient);
+		if (!isClient) worldLandmarks.tryMigrateXaeros(false); // for singleplayer
 		return worldLandmarks;
 	}
 
@@ -104,7 +105,7 @@ public class WorldLandmarks {
 		return nbt;
 	}
 
-	public static WorldLandmarks fromNbt(World world, NbtCompound nbt, File landmarksFile, boolean isClient) {
+	public static WorldLandmarks fromNbt(RegistryKey<World> dim, DynamicRegistryManager manager, NbtCompound nbt, File landmarksFile, boolean isClient) {
 		NbtCompound landmarks = nbt.getCompound(KEY_LANDMARKS);
 		boolean dirty = false;
 		Table<UUID, Identifier, Landmark> outMap = HashBasedTable.create();
@@ -148,7 +149,7 @@ public class WorldLandmarks {
 				if (!removed.isEmpty()) removedMap = REMOVED_CODEC.decode(NbtOps.INSTANCE, removed).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst();
 			}
 		}
-		return new WorldLandmarks(world.getRegistryKey(), outMap, removedMap, dirty);
+		return new WorldLandmarks(dim, outMap, removedMap, dirty);
 	}
 
 	public boolean contains(UUID uuid, Identifier id) {
@@ -197,10 +198,10 @@ public class WorldLandmarks {
 			landmarksAddedChanged.rowKeySet().removeAll(waypointsAddedChanged.rowKeySet());
 			landmarksRemoved.rowKeySet().removeAll(waypointsRemoved.rowKeySet());
 
-			if (!landmarksRemoved.isEmpty()) new SyncLandmarksRemovedPacket(MapUtil.keyMultiMap(landmarksRemoved)).send(sender, world, Surveyor.CONFIG.networking.landmarks);
-			if (!landmarksAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(landmarksAddedChanged).send(sender, world, Surveyor.CONFIG.networking.landmarks);
-			if (!waypointsRemoved.isEmpty()) new SyncLandmarksRemovedPacket(MapUtil.keyMultiMap(waypointsRemoved)).send(sender, world, Surveyor.CONFIG.networking.waypoints);
-			if (!waypointsAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(waypointsAddedChanged).send(sender, world, Surveyor.CONFIG.networking.waypoints);
+			if (!landmarksRemoved.isEmpty()) new SyncLandmarksRemovedPacket(worldKey, MapUtil.keyMultiMap(landmarksRemoved)).send(sender, world, Surveyor.CONFIG.networking.landmarks);
+			if (!landmarksAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(worldKey, landmarksAddedChanged).send(sender, world, Surveyor.CONFIG.networking.landmarks);
+			if (!waypointsRemoved.isEmpty()) new SyncLandmarksRemovedPacket(worldKey, MapUtil.keyMultiMap(waypointsRemoved)).send(sender, world, Surveyor.CONFIG.networking.waypoints);
+			if (!waypointsAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(worldKey, waypointsAddedChanged).send(sender, world, Surveyor.CONFIG.networking.waypoints);
 		}
 	}
 
@@ -289,7 +290,7 @@ public class WorldLandmarks {
 	}
 
 	public static boolean canModify(UUID landmark, World world, @Nullable ServerPlayerEntity player) {
-		World serverWorld = world.isClient() ? SurveyorClient.stealServerWorld(world.getRegistryKey()) : world;
+		World serverWorld = world == null ? null : world.isClient() ? SurveyorClient.stealServerWorld(world.getRegistryKey()) : world;
 		if (serverWorld == null) {
 			return landmark.equals(SurveyorClient.getClientUuid()) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && SurveyorClient.getSharedExploration().groupPlayers().contains(landmark));
 		} else {
@@ -326,7 +327,7 @@ public class WorldLandmarks {
 	public SyncLandmarksAddedPacket createUpdatePacket(Multimap<UUID, Identifier> keySet) {
 		Table<UUID, Identifier, Landmark> updated = HashBasedTable.create();
 		keySet.forEach((uuid, id) -> updated.put(uuid, id, get(uuid, id)));
-		return new SyncLandmarksAddedPacket(updated);
+		return new SyncLandmarksAddedPacket(worldKey, updated);
 	}
 
 	public boolean isDirty() {
@@ -337,9 +338,9 @@ public class WorldLandmarks {
 		dirty = true;
 	}
 
-	private void tryMigrateXaeros(World world, boolean handleChanged) {
+	private void tryMigrateXaeros(boolean handleChanged) {
 		if (FabricLoader.getInstance().getEnvironmentType() != EnvType.CLIENT) return;
-		File saveFolder = SurveyorClient.getXaerosSavePath(world);
+		File saveFolder = SurveyorClient.getXaerosSavePath(worldKey);
 		if (saveFolder != null) {
 			Table<UUID, Identifier, Landmark> changed = HashBasedTable.create();
 			Surveyor.LOGGER.info("[Surveyor] Attempting to parse xaero's waypoints from {}/{}", saveFolder.getParentFile().getName(), saveFolder.getName());
@@ -368,12 +369,12 @@ public class WorldLandmarks {
 				Surveyor.LOGGER.error("[Surveyor] Error parsing xaeros data from {}", saveFolder, e);
 			}
 			Surveyor.LOGGER.info("[Surveyor] Migrated {} waypoints from xaeros data.", changed.size());
-			if (handleChanged) handleChanged(world, changed, Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO), null);
+			if (handleChanged) handleChanged(null, changed, Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO), null);
 		}
 	}
 
-	public void clientInitialized(World world) {
-		tryMigrateXaeros(world, true);
-		if (Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) new C2SKnownLandmarksPacket(keySet(null)).send();
+	public void clientInitialized(DynamicRegistryManager manager) {
+		tryMigrateXaeros(true);
+		if (Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) C2SKnownLandmarksPacket.of(worldKey, keySet(null)).send();
 	}
 }

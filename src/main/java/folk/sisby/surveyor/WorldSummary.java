@@ -5,6 +5,8 @@ import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.structure.WorldStructureSummary;
 import folk.sisby.surveyor.terrain.WorldTerrainSummary;
+import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,17 +22,17 @@ public record WorldSummary(@Nullable WorldTerrainSummary terrain, @Nullable Worl
 		return ((SurveyorWorld) world).surveyor$getSummary();
 	}
 
-	public static WorldSummary load(World world, File folder, boolean isClient) {
+	public static WorldSummary load(RegistryKey<World> dim, DynamicRegistryManager manager, File folder, boolean isClient) {
 		boolean disableTerrain = (Surveyor.CONFIG.terrain == SystemMode.DISABLED || Surveyor.CONFIG.terrain == SystemMode.DYNAMIC && !ENABLE_TERRAIN && (isClient || world.getServer().isSingleplayer()));
 		boolean disableStructures = (Surveyor.CONFIG.structures == SystemMode.DISABLED || Surveyor.CONFIG.structures == SystemMode.DYNAMIC && !ENABLE_STRUCTURES && (isClient || world.getServer().isSingleplayer()));
 		boolean disableLandmarks = (Surveyor.CONFIG.landmarks == SystemMode.DISABLED || Surveyor.CONFIG.landmarks == SystemMode.DYNAMIC && !ENABLE_LANDMARKS && (isClient || world.getServer().isSingleplayer()));
 		if (disableTerrain && disableStructures && disableLandmarks) return new WorldSummary(null, null, null, isClient);
-		Surveyor.LOGGER.info("[Surveyor] Loading data for {}", world.getRegistryKey().getValue());
+		Surveyor.LOGGER.info("[Surveyor] Loading data for {}", dim.getValue());
 		folder.mkdirs();
-		WorldTerrainSummary terrain = disableTerrain ? null : WorldTerrainSummary.load(world, folder);
-		WorldStructureSummary structures = disableStructures ? null : WorldStructureSummary.load(world, folder);
-		WorldLandmarks landmarks = disableLandmarks ? null : WorldLandmarks.load(world, folder, isClient);
-		Surveyor.LOGGER.info("[Surveyor] Finished loading data for {}", world.getRegistryKey().getValue());
+		WorldTerrainSummary terrain = disableTerrain ? null : WorldTerrainSummary.load(dim, manager, folder);
+		WorldStructureSummary structures = disableStructures ? null : WorldStructureSummary.load(dim, manager, folder);
+		WorldLandmarks landmarks = disableLandmarks ? null : WorldLandmarks.load(dim, manager, folder, isClient);
+		Surveyor.LOGGER.info("[Surveyor] Finished loading data for {}", dim.getValue());
 		return new WorldSummary(terrain, structures, landmarks, isClient);
 	}
 

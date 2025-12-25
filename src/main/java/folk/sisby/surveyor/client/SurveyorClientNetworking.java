@@ -26,6 +26,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
@@ -52,15 +53,17 @@ public class SurveyorClientNetworking {
 		ClientPlayNetworking.registerGlobalReceiver(SyncLandmarksRequestedPacket.ID, (c, h, b, s) -> handleClient(b, SyncLandmarksRequestedPacket::read, SurveyorClientNetworking::handleLandmarksRequested));
 	}
 
-	private static void handleTerrainAdded(ClientWorld world, WorldSummary summary, S2CUpdateRegionPacket packet) {
+	private static void handleTerrainAdded(long biomeSeed, DynamicRegistryManager manager, S2CUpdateRegionPacket packet) {
+		WorldSummary summary = SurveyorClient.getSummary(packet.dim(), manager, biomeSeed);
 		if (summary.terrain() == null) return;
 		BitSet changed = summary.terrain().getRegion(packet.regionPos()).readUpdatePacket(packet);
-		(packet.shared() ? SurveyorClient.getSharedExploration() : SurveyorClient.getPersonalExploration()).mergeRegion(world.getRegistryKey(), packet.regionPos(), packet.set());
-		SurveyorEvents.Invoke.terrainUpdated(world, packet.set().stream().mapToObj(i -> packet.regionPos().toChunk(i)).toList());
+		(packet.shared() ? SurveyorClient.getSharedExploration() : SurveyorClient.getPersonalExploration()).mergeRegion(packet.dim(), packet.regionPos(), packet.set());
+		SurveyorEvents.Invoke.terrainUpdated(summary, packet.set().stream().mapToObj(i -> packet.regionPos().toChunk(i)).toList());
 		if (changed.cardinality() > 1) Surveyor.LOGGER.info("[Surveyor] Received {} chunks in {} from the server.", changed.cardinality(), packet.regionPos());
 	}
 
-	private static void handleStructuresAdded(ClientWorld world, WorldSummary summary, S2CStructuresAddedPacket packet) {
+	private static void handleStructuresAdded(long biomeSeed, DynamicRegistryManager manager, S2CStructuresAddedPacket packet) {
+		WorldSummary summary = SurveyorClient.getSummary(packet.dim(), manager, biomeSeed);
 		if (summary.structures() == null) return;
 		Multimap<RegistryKey<Structure>, ChunkPos> keySet = summary.structures().readUpdatePacket(world, packet);
 		if (MinecraftClient.getInstance().player != null && !keySet.isEmpty()) {
@@ -70,14 +73,14 @@ public class SurveyorClientNetworking {
 		}
 	}
 
-	private static void handleGroupChanged(ClientWorld world, WorldSummary summary, S2CGroupChangedPacket packet) {
+	private static void handleGroupChanged(long biomeSeed, DynamicRegistryManager manager, S2CGroupChangedPacket packet) {
 		if (!SurveyorClient.getSharedExploration().groupPlayers().equals(packet.players().keySet())) {
 			SurveyorClient.getSharedExploration().groupPlayers().clear();
 			SurveyorClient.getSharedExploration().groupPlayers().addAll(packet.players().keySet());
 		}
 		NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).matchSummaries(packet.players());
-		SurveyorClient.getSharedExploration().replaceTerrain(world.getRegistryKey(), packet.regionBits());
-		SurveyorClient.getSharedExploration().replaceStructures(world.getRegistryKey(), packet.structureKeys());
+		SurveyorClient.getSharedExploration().replaceTerrain(packet.regionBits());
+		SurveyorClient.getSharedExploration().replaceStructures(packet.structureKeys());
 		SurveyorClient.getExploration().updateClientForLandmarks(world);
 		if (summary != null) {
 			if (summary.terrain() != null && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SOLO)) new C2SKnownTerrainPacket(summary.terrain().bitSet(null)).send();
@@ -87,30 +90,33 @@ public class SurveyorClientNetworking {
 		}
 	}
 
-	private static void handleGroupAmended(ClientWorld world, WorldSummary summary, S2CGroupAmendedPacket packet) {
+	private static void handleGroupAmended(long biomeSeed, DynamicRegistryManager manager, S2CGroupAmendedPacket packet) {
 		SurveyorClient.getSharedExploration().groupPlayers().add(packet.player());
-		PlayerEntity player = world.getPlayerByUuid(packet.player());
+		PlayerEntity player = MinecraftClient.getInstance().world.getPlayerByUuid(packet.player());
 		Surveyor.LOGGER.info("[Surveyor] Received additional share group player {}", player == null ? packet.player() : player.getGameProfile().getName());
 	}
 
-	private static void handleGroupUpdated(ClientWorld world, WorldSummary summary, S2CGroupUpdatedPacket packet) {
+	private static void handleGroupUpdated(long biomeSeed, DynamicRegistryManager manager, S2CGroupUpdatedPacket packet) {
 		NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).mergeSummaries(packet.players());
 	}
 
-	private static void handleLandmarksAdded(ClientWorld world, WorldSummary summary, SyncLandmarksAddedPacket packet) {
+	private static void handleLandmarksAdded(long biomeSeed, DynamicRegistryManager manager, SyncLandmarksAddedPacket packet) {
+		WorldSummary summary = SurveyorClient.getSummary(packet.dim(), manager, biomeSeed);
 		if (summary.landmarks() == null) return;
-		summary.landmarks().readUpdatePacket(world, packet, null);
+		summary.landmarks().readUpdatePacket(null, packet, null);
 		Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(packet.landmarks());
 		Surveyor.LOGGER.info("[Surveyor] Received {} landmarks from the server - {}", keys.size(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 
-	private static void handleLandmarksRemoved(ClientWorld world, WorldSummary summary, SyncLandmarksRemovedPacket packet) {
+	private static void handleLandmarksRemoved(long biomeSeed, DynamicRegistryManager manager, SyncLandmarksRemovedPacket packet) {
+		WorldSummary summary = SurveyorClient.getSummary(packet.dim(), manager, biomeSeed);
 		if (summary.landmarks() == null) return;
-		summary.landmarks().readUpdatePacket(world, packet, null);
+		summary.landmarks().readUpdatePacket(null, packet, null);
 		Surveyor.LOGGER.info("[Surveyor] Received {} landmark removals from the server - {}", packet.landmarks().size(), packet.landmarks().values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 
-	private static void handleLandmarksRequested(ClientWorld world, WorldSummary summary, SyncLandmarksRequestedPacket packet) {
+	private static void handleLandmarksRequested(long biomeSeed, DynamicRegistryManager manager, SyncLandmarksRequestedPacket packet) {
+		WorldSummary summary = SurveyorClient.getSummary(packet.dim(), manager, biomeSeed);
 		if (summary.landmarks() == null) return;
 		summary.landmarks().createUpdatePacket(packet.landmarks()).send();
 		Surveyor.LOGGER.info("[Surveyor] Received {} landmark requests from the server - {}", packet.landmarks().size(), packet.landmarks().values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
@@ -120,10 +126,10 @@ public class SurveyorClientNetworking {
 		T packet = reader.apply(buf);
 		WorldSummary summary = MinecraftClient.getInstance().world == null ? null : WorldSummary.of(MinecraftClient.getInstance().world);
 		if (summary != null && !summary.isClient()) return;
-		MinecraftClient.getInstance().execute(() -> handler.handle(MinecraftClient.getInstance().world, summary, packet));
+		MinecraftClient.getInstance().execute(() -> handler.handle(Surveyor.getBiomeSeed(MinecraftClient.getInstance().world), MinecraftClient.getInstance().world.getRegistryManager(), packet));
 	}
 
 	public interface ClientPacketHandler<T> {
-		void handle(ClientWorld clientWorld, WorldSummary summary, T packet);
+		void handle(long biomeSeed, DynamicRegistryManager manager, T packet);
 	}
 }

@@ -8,22 +8,26 @@ import folk.sisby.surveyor.util.ListUtil;
 import folk.sisby.surveyor.util.RegionPos;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.List;
 
-public record S2CUpdateRegionPacket(boolean shared, RegionPos regionPos, List<Integer> biomePalette, List<Integer> blockPalette, BitSet set, List<ChunkSummary> chunks) implements S2CPacket {
+public record S2CUpdateRegionPacket(RegistryKey<World> dim, boolean shared, RegionPos regionPos, List<Integer> biomePalette, List<Integer> blockPalette, BitSet set, List<ChunkSummary> chunks) implements S2CPacket {
 	public static final Identifier ID = Surveyor.id("s2c_update_region");
 
-	public static S2CUpdateRegionPacket of(boolean shared, RegionPos regionPos, RegionSummary summary, BitSet keys) {
-		return summary.createUpdatePacket(shared, regionPos, keys);
+	public static S2CUpdateRegionPacket of(RegistryKey<World> dim, boolean shared, RegionPos regionPos, RegionSummary summary, BitSet keys) {
+		return summary.createUpdatePacket(dim, shared, regionPos, keys);
 	}
 
 	public static S2CUpdateRegionPacket read(PacketByteBuf buf) {
 		return new S2CUpdateRegionPacket(
+			buf.readRegistryKey(RegistryKeys.WORLD),
 			buf.readBoolean(),
 			RegionPos.of(buf.readLong()),
 			buf.readList(PacketByteBuf::readVarInt),
@@ -35,6 +39,7 @@ public record S2CUpdateRegionPacket(boolean shared, RegionPos regionPos, List<In
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
+		buf.writeRegistryKey(dim);
 		buf.writeBoolean(shared);
 		buf.writeLong(regionPos.toLong());
 		buf.writeCollection(biomePalette, PacketByteBuf::writeVarInt);
@@ -57,7 +62,7 @@ public record S2CUpdateRegionPacket(boolean shared, RegionPos regionPos, List<In
 				return List.of();
 			}
 			for (BitSet splitChunks : BitSetUtil.half(set)) {
-				bufs.addAll(new S2CUpdateRegionPacket(shared, regionPos, biomePalette, blockPalette, splitChunks, ListUtil.splitSet(chunks, splitChunks, set)).toBufs());
+				bufs.addAll(new S2CUpdateRegionPacket(dim, shared, regionPos, biomePalette, blockPalette, splitChunks, ListUtil.splitSet(chunks, splitChunks, set)).toBufs());
 			}
 		}
 		return bufs;

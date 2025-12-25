@@ -1,5 +1,8 @@
 package folk.sisby.surveyor;
 
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
+import com.google.common.collect.Tables;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
 import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
@@ -117,26 +120,26 @@ public interface PlayerSummary {
 			return 0;
 		}
 
-		public record OfflinePlayerExploration(Set<UUID> sharedPlayers, Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures, boolean personal) implements SurveyorExploration {
+		public record OfflinePlayerExploration(Set<UUID> sharedPlayers, Table<RegistryKey<World>, RegionPos, BitSet> terrain, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures, boolean personal) implements SurveyorExploration {
 			public static OfflinePlayerExploration empty(UUID uuid) {
-				return new OfflinePlayerExploration(Set.of(uuid), new HashMap<>(), new HashMap<>(), true);
+				return new OfflinePlayerExploration(Set.of(uuid), HashBasedTable.create(), HashBasedTable.create(), true);
 			}
 
 			public static OfflinePlayerExploration ofMerged(Set<SurveyorExploration> explorations) {
 				Set<UUID> sharedPlayers = new HashSet<>();
-				Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain = new HashMap<>();
-				Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures = new HashMap<>();
+				Table<RegistryKey<World>, RegionPos, BitSet> terrain = HashBasedTable.create();
+				Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures = HashBasedTable.create();
 				OfflinePlayerExploration outExploration = new OfflinePlayerExploration(sharedPlayers, terrain, structures, false);
 				for (SurveyorExploration exploration : explorations) {
 					sharedPlayers.addAll(exploration.sharedPlayers());
-					exploration.terrain().forEach((wKey, map) -> map.forEach((rPos, bits) -> outExploration.mergeRegion(wKey, rPos, bits)));
-					exploration.structures().forEach((wKey, map) -> map.forEach((sKey, longs) -> outExploration.mergeStructures(wKey, sKey, longs)));
+					exploration.terrain().cellSet().forEach(c -> outExploration.mergeRegion(c.getRowKey(), c.getColumnKey(), c.getValue()));
+					exploration.structures().cellSet().forEach(c -> outExploration.mergeStructures(c.getRowKey(), c.getColumnKey(), c.getValue()));
 				}
 				return outExploration;
 			}
 
 			public static SurveyorExploration from(UUID uuid, NbtCompound nbt) {
-				OfflinePlayerExploration mutable = new OfflinePlayerExploration(new HashSet<>(Set.of(uuid)), new HashMap<>(), new HashMap<>(), true);
+				OfflinePlayerExploration mutable = new OfflinePlayerExploration(new HashSet<>(Set.of(uuid)), HashBasedTable.create(), HashBasedTable.create(), true);
 				mutable.read(nbt);
 				return mutable;
 			}
@@ -192,7 +195,7 @@ public interface PlayerSummary {
 
 		public ServerPlayerEntitySummary(ServerPlayerEntity player) {
 			super(player);
-			this.exploration = new ServerPlayerExploration(player, new ConcurrentHashMap<>(), new ConcurrentHashMap<>());
+			this.exploration = new ServerPlayerExploration(player, Tables.synchronizedTable(HashBasedTable.create()), Tables.synchronizedTable(HashBasedTable.create()));
 		}
 
 		@Override
@@ -226,7 +229,7 @@ public interface PlayerSummary {
 			nbt.put(PlayerSummary.KEY_DATA, surveyorNbt);
 		}
 
-		public record ServerPlayerExploration(ServerPlayerEntity player, Map<RegistryKey<World>, Map<RegionPos, BitSet>> terrain, Map<RegistryKey<World>, Map<RegistryKey<Structure>, LongSet>> structures) implements SurveyorExploration {
+		public record ServerPlayerExploration(ServerPlayerEntity player, Table<RegistryKey<World>, RegionPos, BitSet> terrain, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures) implements SurveyorExploration {
 			@Override
 			public Set<UUID> sharedPlayers() {
 				return Set.of(Surveyor.getUuid(player));
@@ -246,9 +249,9 @@ public interface PlayerSummary {
 					if (friend.getWorld().getRegistryKey().equals(worldKey)) {
 						SurveyorExploration friendExploration = SurveyorExploration.of(friend);
 						BitSet sendSet = (BitSet) bitSet.clone();
-						if (friendExploration.terrain().containsKey(worldKey) && friendExploration.terrain().get(worldKey).containsKey(regionPos)) sendSet.andNot(friendExploration.terrain().get(worldKey).get(regionPos));
+						if (friendExploration.terrain().contains(worldKey, regionPos)) sendSet.andNot(friendExploration.terrain().get(worldKey, regionPos));
 						WorldTerrainSummary summary = WorldSummary.of(player.getWorld()).terrain();
-						if (!sendSet.isEmpty() && summary != null) S2CUpdateRegionPacket.of(true, regionPos, summary.getRegion(regionPos), sendSet).send(friend);
+						if (!sendSet.isEmpty() && summary != null) S2CUpdateRegionPacket.of(worldKey, true, regionPos, summary.getRegion(regionPos), sendSet).send(friend);
 					}
 				}
 			}
@@ -266,7 +269,7 @@ public interface PlayerSummary {
 						RegionSummary region = summary.getRegion(regionPos);
 						BitSet sendSet = new BitSet();
 						sendSet.set(RegionPos.chunkToBit(pos));
-						S2CUpdateRegionPacket.of(true, regionPos, region, sendSet).send(friend);
+						S2CUpdateRegionPacket.of(worldKey, true, regionPos, region, sendSet).send(friend);
 					}
 				}
 			}
