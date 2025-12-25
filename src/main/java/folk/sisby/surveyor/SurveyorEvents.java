@@ -9,9 +9,7 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.Structure;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -28,27 +26,27 @@ public class SurveyorEvents {
 
 	@FunctionalInterface
 	public interface WorldLoad {
-		void onWorldLoad(@Nullable ServerWorld world,WorldSummary summary);
+		void onWorldLoad(WorldSummary summary);
 	}
 
 	@FunctionalInterface
 	public interface TerrainUpdated {
-		void onTerrainUpdated(@Nullable World world, WorldSummary summary, WorldTerrainSummary worldStructures, Collection<ChunkPos> chunks);
+		void onTerrainUpdated(WorldSummary summary, WorldTerrainSummary worldTerrain, Collection<ChunkPos> chunks);
 	}
 
 	@FunctionalInterface
 	public interface StructuresAdded {
-		void onStructuresAdded(@Nullable World world, WorldSummary summary, WorldStructureSummary worldStructures, Multimap<RegistryKey<Structure>, ChunkPos> structures);
+		void onStructuresAdded(WorldSummary summary, WorldStructureSummary worldStructures, Multimap<RegistryKey<Structure>, ChunkPos> structures);
 	}
 
 	@FunctionalInterface
 	public interface LandmarksAdded {
-		void onLandmarksAdded(@Nullable World world, WorldSummary summary, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
+		void onLandmarksAdded(WorldSummary summary, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
 	}
 
 	@FunctionalInterface
 	public interface LandmarksRemoved {
-		void onLandmarksRemoved(@Nullable World world, WorldSummary summary, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
+		void onLandmarksRemoved(WorldSummary summary, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
 	}
 
 	public static class Invoke {
@@ -58,30 +56,30 @@ public class SurveyorEvents {
 			worldLoad.forEach((id, handler) -> handler.onWorldLoad(world, summary));
 		}
 
-		public static void terrainUpdated(@Nullable World world, WorldSummary summary, Collection<ChunkPos> chunks) {
+		public static void terrainUpdated(WorldSummary summary, Collection<ChunkPos> chunks) {
 			if (terrainUpdated.isEmpty() || chunks.isEmpty()) return;
 			terrainUpdated.forEach((id, handler) -> handler.onTerrainUpdated(world, summary, summary.terrain(), chunks));
 		}
 
-		public static void terrainUpdated(@Nullable World world, WorldSummary summary, ChunkPos pos) {
+		public static void terrainUpdated(WorldSummary summary, ChunkPos pos) {
 			terrainUpdated(world, summary, List.of(pos));
 		}
 
-		public static void structuresAdded(@Nullable World world, WorldSummary summary, Multimap<RegistryKey<Structure>, ChunkPos> structures) {
+		public static void structuresAdded(WorldSummary summary, Multimap<RegistryKey<Structure>, ChunkPos> structures) {
 			if (structuresAdded.isEmpty() || structures.isEmpty()) return;
 			structuresAdded.forEach((id, handler) -> handler.onStructuresAdded(world, summary, summary.structures(), structures));
 		}
 
-		public static void structuresAdded(@Nullable World world, WorldSummary summary, RegistryKey<Structure> key, ChunkPos pos) {
+		public static void structuresAdded(WorldSummary summary, RegistryKey<Structure> key, ChunkPos pos) {
 			structuresAdded(world, summary, MapUtil.asMultiMap(Map.of(key, List.of(pos))));
 		}
 
-		public static void landmarksAdded(@Nullable World world, WorldSummary summary, Multimap<UUID, Identifier> landmarks) {
+		public static void landmarksAdded(WorldSummary summary, Multimap<UUID, Identifier> landmarks) {
 			if (landmarksAdded.isEmpty() || landmarks.isEmpty()) return;
 			landmarksAdded.forEach((id, handler) -> handler.onLandmarksAdded(world, summary, summary.landmarks(), landmarks));
 		}
 
-		public static void landmarksRemoved(@Nullable World world, WorldSummary summary, Multimap<UUID, Identifier> landmarks) {
+		public static void landmarksRemoved(WorldSummary summary, Multimap<UUID, Identifier> landmarks) {
 			if (landmarksRemoved.isEmpty() || landmarks.isEmpty()) return;
 			landmarksRemoved.forEach((id, handler) -> handler.onLandmarksRemoved(world, summary, summary.landmarks(), landmarks));
 		}

@@ -10,11 +10,9 @@ import folk.sisby.surveyor.terrain.WorldTerrainSummary;
 import folk.sisby.surveyor.util.MapUtil;
 import folk.sisby.surveyor.util.RegionPos;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.world.ClientWorld;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.Structure;
 
 import java.util.BitSet;
@@ -39,7 +37,7 @@ public class SurveyorClientEvents {
 
 	@FunctionalInterface
 	public interface TerrainUpdated {
-		void onTerrainUpdated(WorldSummary summary, WorldTerrainSummary worldStructures, Collection<ChunkPos> chunks);
+		void onTerrainUpdated(WorldSummary summary, WorldTerrainSummary worldTerrain, Collection<ChunkPos> chunks);
 	}
 
 	@FunctionalInterface

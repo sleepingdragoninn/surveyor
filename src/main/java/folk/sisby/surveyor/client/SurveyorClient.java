@@ -27,6 +27,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.registry.DynamicRegistryManager;
@@ -163,7 +164,12 @@ public class SurveyorClient implements ClientModInitializer {
 		}
 	}
 
-    @Override
+	public static @Nullable World getWorld(RegistryKey<World> worldKey) {
+		ClientWorld world = MinecraftClient.getInstance().world;
+		return world != null && world.getRegistryKey().equals(worldKey) ? world : null;
+	}
+
+	@Override
 	public void onInitializeClient() {
 		SurveyorClientNetworking.init();
 		ClientCommandRegistrationCallback.EVENT.register(SurveyorClientCommands::registerCommands);
