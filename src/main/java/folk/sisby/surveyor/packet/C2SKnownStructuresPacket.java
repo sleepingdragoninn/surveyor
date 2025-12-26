@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 
-public record C2SKnownStructuresPacket(Map<RegistryKey<World>, Multimap<RegistryKey<Structure>, ChunkPos>> structureKeys) implements C2SPacket {
+public record C2SKnownStructuresPacket(Map<RegistryKey<World>, Multimap<RegistryKey<Structure>, ChunkPos>> starts) implements C2SPacket {
 	public static final Identifier ID = Surveyor.id("c2s_known_structures");
 
 	public static C2SKnownStructuresPacket read(PacketByteBuf buf) {
@@ -31,7 +31,7 @@ public record C2SKnownStructuresPacket(Map<RegistryKey<World>, Multimap<Registry
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
 		buf.writeMap(
-			structureKeys,
+			starts,
 			PacketByteBuf::writeRegistryKey,
 			(b, m) -> b.writeMap(m.asMap(),
 				PacketByteBuf::writeRegistryKey,

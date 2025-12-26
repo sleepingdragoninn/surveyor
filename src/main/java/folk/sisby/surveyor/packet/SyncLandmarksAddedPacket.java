@@ -21,7 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-public record SyncLandmarksAddedPacket(RegistryKey<World> dim, Table<UUID, Identifier, Landmark> landmarks) implements SyncPacket {
+public record SyncLandmarksAddedPacket(RegistryKey<World> dimension, Table<UUID, Identifier, Landmark> landmarks) implements SyncPacket {
 	public static final Identifier ID = Surveyor.id("landmarks_added");
 
 	public static SyncLandmarksAddedPacket of(Multimap<UUID, Identifier> keySet, WorldLandmarks summary) {
@@ -34,7 +34,7 @@ public record SyncLandmarksAddedPacket(RegistryKey<World> dim, Table<UUID, Ident
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
-		buf.writeRegistryKey(dim);
+		buf.writeRegistryKey(dimension);
 		buf.writeNbt((NbtCompound) WorldLandmarks.CODEC.encodeStart(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow());
 	}
 
@@ -60,8 +60,8 @@ public record SyncLandmarksAddedPacket(RegistryKey<World> dim, Table<UUID, Ident
 					secondHalf.put(key, pos);
 				}
 			});
-			bufs.addAll(new SyncLandmarksAddedPacket(dim, MapUtil.splitByKeyMap(landmarks, firstHalf)).toBufs());
-			bufs.addAll(new SyncLandmarksAddedPacket(dim, MapUtil.splitByKeyMap(landmarks, secondHalf)).toBufs());
+			bufs.addAll(new SyncLandmarksAddedPacket(dimension, MapUtil.splitByKeyMap(landmarks, firstHalf)).toBufs());
+			bufs.addAll(new SyncLandmarksAddedPacket(dimension, MapUtil.splitByKeyMap(landmarks, secondHalf)).toBufs());
 		}
 		return bufs;
 	}

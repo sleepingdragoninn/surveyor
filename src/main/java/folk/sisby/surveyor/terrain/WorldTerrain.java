@@ -11,13 +11,13 @@ import folk.sisby.surveyor.util.RegionPos;
 import folk.sisby.surveyor.util.RegistryPalette;
 import net.minecraft.block.Block;
 import net.minecraft.registry.DynamicRegistryManager;
-import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.WorldChunk;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -32,15 +32,15 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class WorldTerrainSummary {
-	protected final RegistryKey<World> worldKey;
+public class WorldTerrain {
+	protected final WorldSummary summary;
 	protected final DynamicRegistryManager registryManager;
 	protected final Map<RegionPos, RegionSummary> regions = new ConcurrentHashMap<>();
 	protected final File folder;
 	protected final Map<RegionPos, Map<UUID, BitSet>> queuedUpdates = new LinkedHashMap<>();
 
-	public WorldTerrainSummary(RegistryKey<World> worldKey, DynamicRegistryManager registryManager, Map<RegionPos, RegionSummary> regions, File folder) {
-		this.worldKey = worldKey;
+	public WorldTerrain(WorldSummary summary, DynamicRegistryManager registryManager, Map<RegionPos, RegionSummary> regions, File folder) {
+		this.summary = summary;
 		this.registryManager = registryManager;
 		this.regions.putAll(regions);
 		this.folder = folder;
@@ -61,10 +61,10 @@ public class WorldTerrainSummary {
 		return set;
 	}
 
-	public static WorldTerrainSummary load(RegistryKey<World> dim, DynamicRegistryManager manager, File folder) {
+	public static WorldTerrain load(WorldSummary summary, DynamicRegistryManager manager, File folder) {
 		Map<RegionPos, RegionSummary> regions = new HashMap<>();
 		ChunkUtil.getRegionFiles(folder, "c").forEach((pos, file) -> regions.put(pos, RegionSummary.fromFile(file, manager, pos)));
-		return new WorldTerrainSummary(dim, manager, regions, folder);
+		return new WorldTerrain(summary, manager, regions, folder);
 	}
 
 	public static void onChunkLoad(World world, WorldChunk chunk) {
@@ -113,56 +113,56 @@ public class WorldTerrainSummary {
 	public Map<RegionPos, BitSet> bitSet(SurveyorExploration exploration) {
 		Map<RegionPos, BitSet> map = new HashMap<>();
 		regions.forEach((p, r) -> map.put(p, r.bitSet()));
-		return exploration == null ? map : exploration.limitTerrainBitset(worldKey, map);
+		return exploration == null ? map : exploration.limit(summary.dimension(), map);
 	}
 
 	public void put(World world, WorldChunk chunk) {
 		if (Surveyor.CONFIG.terrain == SystemMode.FROZEN) return;
 		regions.computeIfAbsent(RegionPos.of(chunk.getPos()), k -> RegionSummary.fromEmpty(folder, RegionPos.of(chunk.getPos()), registryManager)).putChunk(world, chunk);
-		SurveyorEvents.Invoke.terrainUpdated(world, chunk.getPos());
+		SurveyorEvents.Invoke.terrainUpdated(WorldSummary.of(world), chunk.getPos());
 	}
 
 	public static void onTick(ServerWorld world) {
-		WorldTerrainSummary summary = WorldSummary.of(world).terrain();
-		if (summary != null) summary.serverTick(world);
+		WorldTerrain terrain = WorldSummary.of(world).terrain();
+		if (terrain != null) terrain.serverTick(world);
 	}
 
-	public void sendUpdateForRegion(World world, RegionPos rPos, ServerPlayerEntity player, BitSet set) {
-		RegionSummary region = getRegion(rPos);
+	public void sendUpdateForRegion(RegionPos regionPos, ServerPlayerEntity player, BitSet set) {
+		RegionSummary region = getRegion(regionPos);
 		SurveyorExploration personalExploration = SurveyorExploration.of(player);
-		BitSet personalSet = personalExploration.limitTerrainBitset(world.getRegistryKey(), rPos, (BitSet) set.clone());
-		if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(worldKey, false, rPos, region, personalSet).send(player);
+		BitSet personalSet = personalExploration.limit(summary.dimension(), regionPos, (BitSet) set.clone());
+		if (!personalSet.isEmpty()) S2CUpdateRegionPacket.of(summary.dimension(), false, regionPos, region, personalSet).send(player);
 		set.andNot(personalSet);
-		if (!set.isEmpty()) S2CUpdateRegionPacket.of(worldKey, true, rPos, region, set).send(player);
+		if (!set.isEmpty()) S2CUpdateRegionPacket.of(summary.dimension(), true, regionPos, region, set).send(player);
 	}
 
 	public void serverTick(ServerWorld world) {
 		if ((world.getServer().getTicks() % Surveyor.CONFIG.networking.terrainTicks) != 0) return;
-		queuedUpdates.keySet().stream().findFirst().ifPresent(rPos -> {
-			RegionSummary region = getRegion(rPos);
-			queuedUpdates.get(rPos).forEach((uuid, set) -> {
+		queuedUpdates.keySet().stream().findFirst().ifPresent(regionPos -> {
+			RegionSummary region = getRegion(regionPos);
+			queuedUpdates.get(regionPos).forEach((uuid, set) -> {
 				ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(uuid);
-				if (player != null) sendUpdateForRegion(world, rPos, player, set);
+				if (player != null) sendUpdateForRegion(regionPos, player, set);
 			});
-			queuedUpdates.remove(rPos);
+			queuedUpdates.remove(regionPos);
 			if (region.isLoaded() && region.isUnloaded(world)) region.save(true);
 		});
 	}
 
-	public void queueUpdate(ServerWorld world, RegionPos rPos, BitSet set, ServerPlayerEntity player) {
-		if (getRegion(rPos).isLoaded()) {
-			sendUpdateForRegion(world, rPos, player, set);
+	public void queueUpdate(RegionPos regionPos, BitSet set, ServerPlayerEntity player) {
+		if (getRegion(regionPos).isLoaded()) {
+			sendUpdateForRegion(regionPos, player, set);
 		} else {
-			queuedUpdates.computeIfAbsent(rPos, k -> new LinkedHashMap<>()).put(player.getUuid(), set);
+			queuedUpdates.computeIfAbsent(regionPos, k -> new LinkedHashMap<>()).put(player.getUuid(), set);
 		}
 	}
 
-	public int save(World world) {
+	public int save(@Nullable World world) {
 		List<RegionPos> savedRegions = new ArrayList<>();
 		regions.forEach((pos, summary) -> {
 			if (summary.isLoaded()) {
 				if (summary.isDirty()) savedRegions.add(pos);
-				summary.save(summary.isUnloaded(world));
+				summary.save(world == null || summary.isUnloaded(world));
 			}
 		});
 		return savedRegions.size();

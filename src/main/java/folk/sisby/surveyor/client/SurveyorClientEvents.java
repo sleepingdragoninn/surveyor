@@ -1,82 +1,59 @@
 package folk.sisby.surveyor.client;
 
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
-import folk.sisby.surveyor.SurveyorExploration;
 import folk.sisby.surveyor.WorldSummary;
-import folk.sisby.surveyor.landmark.WorldLandmarks;
-import folk.sisby.surveyor.structure.WorldStructureSummary;
-import folk.sisby.surveyor.terrain.WorldTerrainSummary;
 import folk.sisby.surveyor.util.MapUtil;
 import folk.sisby.surveyor.util.RegionPos;
-import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.gen.structure.Structure;
 
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 public class SurveyorClientEvents {
-	private static final Map<Identifier, WorldLoad> worldLoad = new HashMap<>();
 	private static final Map<Identifier, TerrainUpdated> terrainUpdated = new HashMap<>();
 	private static final Map<Identifier, StructuresAdded> structuresAdded = new HashMap<>();
 	private static final Map<Identifier, LandmarksAdded> landmarksAdded = new HashMap<>();
 	private static final Map<Identifier, LandmarksRemoved> landmarksRemoved = new HashMap<>();
-	public static boolean INITIALIZING_WORLD = false;
-
-	@FunctionalInterface
-	public interface WorldLoad {
-		void onWorldLoad(WorldSummary summary, ClientPlayerEntity player, Map<RegionPos, BitSet> terrain, Multimap<RegistryKey<Structure>, ChunkPos> structures, Multimap<UUID, Identifier> landmarks);
-	}
 
 	@FunctionalInterface
 	public interface TerrainUpdated {
-		void onTerrainUpdated(WorldSummary summary, WorldTerrainSummary worldTerrain, Collection<ChunkPos> chunks);
+		void onTerrainUpdated(WorldSummary summary, Map<RegionPos, BitSet> chunks);
 	}
 
 	@FunctionalInterface
 	public interface StructuresAdded {
-		void onStructuresAdded(WorldSummary summary, WorldStructureSummary worldStructures, Multimap<RegistryKey<Structure>, ChunkPos> structures);
+		void onStructuresAdded(WorldSummary summary, Multimap<RegistryKey<Structure>, ChunkPos> starts);
 	}
 
 	@FunctionalInterface
 	public interface LandmarksAdded {
-		void onLandmarksAdded(WorldSummary summary, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
+		void onLandmarksAdded(WorldSummary summary, Multimap<UUID, Identifier> landmarks);
 	}
 
 	@FunctionalInterface
 	public interface LandmarksRemoved {
-		void onLandmarksRemoved(WorldSummary summary, WorldLandmarks worldLandmarks, Multimap<UUID, Identifier> landmarks);
+		void onLandmarksRemoved(WorldSummary summary, Multimap<UUID, Identifier> landmarks);
 	}
 
 	public static class Invoke {
-		public static void worldLoad(WorldSummary summary, ClientPlayerEntity player) {
-			if (worldLoad.isEmpty()) return;
-			SurveyorExploration exploration = SurveyorClient.getExploration();
-			Map<RegionPos, BitSet> terrain = summary.terrain() == null ? new HashMap<>() : summary.terrain().bitSet(exploration);
-			Multimap<RegistryKey<Structure>, ChunkPos> structures = summary.structures() == null ? HashMultimap.create() : summary.structures().keySet(exploration);
-			Multimap<UUID, Identifier> landmarks = summary.landmarks() == null ? HashMultimap.create() : summary.landmarks().keySet(exploration);
-			worldLoad.forEach((id, handler) -> handler.onWorldLoad(summary, player, terrain, structures, landmarks));
-		}
-
-		public static void terrainUpdated(WorldSummary summary, Collection<ChunkPos> chunks) {
+		public static void terrainUpdated(WorldSummary summary, Map<RegionPos, BitSet> chunks) {
 			if (terrainUpdated.isEmpty() || chunks.isEmpty()) return;
-			terrainUpdated.forEach((id, handler) -> handler.onTerrainUpdated(summary, summary.terrain(), chunks));
+			terrainUpdated.forEach((id, handler) -> handler.onTerrainUpdated(summary, chunks));
 		}
 
 		public static void terrainUpdated(WorldSummary summary, ChunkPos pos) {
-			terrainUpdated(summary, List.of(pos));
+			terrainUpdated(summary, Map.of(RegionPos.of(pos), RegionPos.chunkToBitSet(pos)));
 		}
 
-		public static void structuresAdded(WorldSummary summary, Multimap<RegistryKey<Structure>, ChunkPos> structures) {
-			if (structuresAdded.isEmpty() || structures.isEmpty()) return;
-			structuresAdded.forEach((id, handler) -> handler.onStructuresAdded(summary, summary.structures(), structures));
+		public static void structuresAdded(WorldSummary summary, Multimap<RegistryKey<Structure>, ChunkPos> starts) {
+			if (structuresAdded.isEmpty() || starts.isEmpty()) return;
+			structuresAdded.forEach((id, handler) -> handler.onStructuresAdded(summary, starts));
 		}
 
 		public static void structuresAdded(WorldSummary summary, RegistryKey<Structure> key, ChunkPos pos) {
@@ -85,20 +62,16 @@ public class SurveyorClientEvents {
 
 		public static void landmarksAdded(WorldSummary summary, Multimap<UUID, Identifier> landmarks) {
 			if (landmarksAdded.isEmpty() || landmarks.isEmpty()) return;
-			landmarksAdded.forEach((id, handler) -> handler.onLandmarksAdded(summary, summary.landmarks(), landmarks));
+			landmarksAdded.forEach((id, handler) -> handler.onLandmarksAdded(summary, landmarks));
 		}
 
 		public static void landmarksRemoved(WorldSummary summary, Multimap<UUID, Identifier> landmarks) {
 			if (landmarksRemoved.isEmpty() || landmarks.isEmpty()) return;
-			landmarksRemoved.forEach((id, handler) -> handler.onLandmarksRemoved(summary, summary.landmarks(), landmarks));
+			landmarksRemoved.forEach((id, handler) -> handler.onLandmarksRemoved(summary, landmarks));
 		}
 	}
 
 	public static class Register {
-		public static void worldLoad(Identifier id, WorldLoad handler) {
-			worldLoad.put(id, handler);
-		}
-
 		public static void terrainUpdated(Identifier id, TerrainUpdated handler) {
 			terrainUpdated.put(id, handler);
 		}

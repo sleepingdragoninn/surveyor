@@ -56,15 +56,12 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 		ServerPlayerEntity self = (ServerPlayerEntity) (Object) this;
 		WorldLandmarks summary = WorldSummary.of(self.getServerWorld()).landmarks();
 		if (summary == null) return;
-		summary.put(
-			self.getServerWorld(),
-			Landmark.createIncremental(summary, Surveyor.getUuid(self), Surveyor.id("grave"), builder -> builder
-				.add(LandmarkComponentTypes.POS, self.getBlockPos())
-				.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()))
-				.add(LandmarkComponentTypes.TIME, self.getWorld().getTimeOfDay())
-				.add(LandmarkComponentTypes.SEED, self.getRandom().nextInt())
-			)
-		);
+		summary.put(Landmark.createIncremental(summary, Surveyor.getUuid(self), Surveyor.id("grave"), builder -> builder
+			.add(LandmarkComponentTypes.POS, self.getBlockPos())
+			.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()))
+			.add(LandmarkComponentTypes.TIME, self.getWorld().getTimeOfDay())
+			.add(LandmarkComponentTypes.SEED, self.getRandom().nextInt())
+		));
 	}
 
 	@Inject(method = "copyFrom", at = @At("TAIL"))

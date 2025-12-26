@@ -5,7 +5,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Table;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.structure.StructureStartSummary;
-import folk.sisby.surveyor.structure.WorldStructureSummary;
+import folk.sisby.surveyor.structure.WorldStructures;
 import folk.sisby.surveyor.util.MapUtil;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketByteBuf;
@@ -24,15 +24,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public record S2CStructuresAddedPacket(RegistryKey<World> dim, boolean shared, Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary> structures, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> types, Multimap<RegistryKey<Structure>, TagKey<Structure>> tags) implements S2CPacket {
+public record S2CStructuresAddedPacket(RegistryKey<World> dimension, boolean shared, Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary> starts, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> types, Multimap<RegistryKey<Structure>, TagKey<Structure>> tags) implements S2CPacket {
 	public static final Identifier ID = Surveyor.id("s2c_structures_added");
 
-	public static S2CStructuresAddedPacket of(boolean shared, Multimap<RegistryKey<Structure>, ChunkPos> keys, WorldStructureSummary summary) {
-		return summary.createUpdatePacket(shared, keys);
+	public static S2CStructuresAddedPacket of(boolean shared, Multimap<RegistryKey<Structure>, ChunkPos> starts, WorldStructures structures) {
+		return structures.createUpdatePacket(shared, starts);
 	}
 
-	public static S2CStructuresAddedPacket of(boolean shared, RegistryKey<Structure> key, ChunkPos pos, WorldStructureSummary summary) {
-		return of(shared, MapUtil.asMultiMap(Map.of(key, List.of(pos))), summary);
+	public static S2CStructuresAddedPacket of(boolean shared, RegistryKey<Structure> key, ChunkPos pos, WorldStructures structures) {
+		return of(shared, MapUtil.asMultiMap(Map.of(key, List.of(pos))), structures);
 	}
 
 	public static S2CStructuresAddedPacket read(PacketByteBuf buf) {
@@ -43,7 +43,7 @@ public record S2CStructuresAddedPacket(RegistryKey<World> dim, boolean shared, T
 				b -> b.readRegistryKey(RegistryKeys.STRUCTURE),
 				b -> b.readMap(
 					PacketByteBuf::readChunkPos,
-					b2 -> new StructureStartSummary(b2.readList(b3 -> WorldStructureSummary.readStructurePieceNbt(Objects.requireNonNull(b3.readNbt()))))
+					b2 -> new StructureStartSummary(b2.readList(b3 -> WorldStructures.readStructurePieceNbt(Objects.requireNonNull(b3.readNbt()))))
 				)
 			)),
 			buf.readMap(
@@ -59,9 +59,9 @@ public record S2CStructuresAddedPacket(RegistryKey<World> dim, boolean shared, T
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
-		buf.writeRegistryKey(dim);
+		buf.writeRegistryKey(dimension);
 		buf.writeBoolean(shared);
-		buf.writeMap(structures.rowMap(),
+		buf.writeMap(starts.rowMap(),
 			PacketByteBuf::writeRegistryKey,
 			(b, posMap) -> b.writeMap(posMap,
 				PacketByteBuf::writeChunkPos,
@@ -86,7 +86,7 @@ public record S2CStructuresAddedPacket(RegistryKey<World> dim, boolean shared, T
 		if (buf.readableBytes() < MAX_PAYLOAD_SIZE) {
 			bufs.add(buf);
 		} else {
-			Multimap<RegistryKey<Structure>, ChunkPos> keySet = MapUtil.keyMultiMap(structures);
+			Multimap<RegistryKey<Structure>, ChunkPos> keySet = MapUtil.keyMultiMap(starts);
 			if (keySet.size() == 1) {
 				Surveyor.LOGGER.error("Couldn't create a structure update packet for {} - an individual structure would be too large to send!", keySet.keys().stream().findFirst().orElseThrow().getValue());
 				return List.of();
@@ -100,8 +100,8 @@ public record S2CStructuresAddedPacket(RegistryKey<World> dim, boolean shared, T
 					secondHalf.put(key, pos);
 				}
 			});
-			bufs.addAll(new S2CStructuresAddedPacket(dim, shared, MapUtil.splitByKeyMap(structures, firstHalf), MapUtil.splitByKeySet(types, firstHalf.keySet()), MapUtil.asMultiMap(MapUtil.splitByKeySet(tags.asMap(), firstHalf.keySet()))).toBufs());
-			bufs.addAll(new S2CStructuresAddedPacket(dim, shared, MapUtil.splitByKeyMap(structures, secondHalf), MapUtil.splitByKeySet(types, secondHalf.keySet()), MapUtil.asMultiMap(MapUtil.splitByKeySet(tags.asMap(), secondHalf.keySet()))).toBufs());
+			bufs.addAll(new S2CStructuresAddedPacket(dimension, shared, MapUtil.splitByKeyMap(starts, firstHalf), MapUtil.splitByKeySet(types, firstHalf.keySet()), MapUtil.asMultiMap(MapUtil.splitByKeySet(tags.asMap(), firstHalf.keySet()))).toBufs());
+			bufs.addAll(new S2CStructuresAddedPacket(dimension, shared, MapUtil.splitByKeyMap(starts, secondHalf), MapUtil.splitByKeySet(types, secondHalf.keySet()), MapUtil.asMultiMap(MapUtil.splitByKeySet(tags.asMap(), secondHalf.keySet()))).toBufs());
 		}
 		return bufs;
 	}

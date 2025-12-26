@@ -11,7 +11,6 @@ import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 
 import java.util.BitSet;
-import java.util.Map;
 
 public record C2SKnownTerrainPacket(Table<RegistryKey<World>, RegionPos, BitSet> regionBits) implements C2SPacket {
 	public static final Identifier ID = Surveyor.id("known_terrain");

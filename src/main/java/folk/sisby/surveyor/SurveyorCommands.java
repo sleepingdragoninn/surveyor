@@ -15,8 +15,8 @@ import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentType;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
-import folk.sisby.surveyor.structure.WorldStructureSummary;
-import folk.sisby.surveyor.terrain.WorldTerrainSummary;
+import folk.sisby.surveyor.structure.WorldStructures;
+import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.TextUtil;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.CommandSource;
@@ -113,8 +113,8 @@ public class SurveyorCommands {
 				if (groupExploration != null) worldLandmarks.asMap(groupExploration).values().forEach(landmark -> (landmark.owner().equals(WorldLandmarks.GLOBAL) ? groupLandmarks : groupWaypoints).add(landmark));
 			}
 			if (exploration == null) {
-				WorldTerrainSummary terrainSummary = WorldSummary.of(world).terrain();
-				WorldStructureSummary structureSummary = WorldSummary.of(world).structures();
+				WorldTerrain terrainSummary = WorldSummary.of(world).terrain();
+				WorldStructures structureSummary = WorldSummary.of(world).structures();
 				if (terrainSummary != null) chunks += terrainSummary.bitSet(null).values().stream().mapToInt(BitSet::cardinality).sum();
 				if (structureSummary != null) structures += structureSummary.keySet(null).size();
 			}
@@ -266,13 +266,13 @@ public class SurveyorCommands {
 		}
 		int numLandmarks = dimensionLandmarks.values().stream().mapToInt(Collection::size).sum();
 		feedback.accept(prefix().append(Text.literal("%s %d %s:".formatted(op ? "There are" : "You've discovered", numLandmarks, global ? "Landmarks" : "Waypoints"))));
-		for (Identifier dim : dimensionLandmarks.keySet()) {
-			Collection<Landmark> landmarks = dimensionLandmarks.get(dim);
-			if (!landmarks.isEmpty()) feedback.accept(indent().append(indent()).append(Text.literal("%s:".formatted(WordUtils.capitalize(dim.getPath().replaceAll("[/_-]", " "))))));
+		for (Identifier dimension : dimensionLandmarks.keySet()) {
+			Collection<Landmark> landmarks = dimensionLandmarks.get(dimension);
+			if (!landmarks.isEmpty()) feedback.accept(indent().append(indent()).append(Text.literal("%s:".formatted(WordUtils.capitalize(dimension.getPath().replaceAll("[/_-]", " "))))));
 			for (Landmark landmark : landmarks) {
 				Text idText = Text.empty().append(Text.literal("%s:".formatted(landmark.id().getNamespace())).formatted(Formatting.GRAY)).append(Text.literal(landmark.id().getPath()));
 				Integer color = landmark.get(LandmarkComponentTypes.COLOR);
-				String command = global ? "/landmarks view %s %s".formatted(dim, landmark.id()) : "/waypoints view %s %s%s".formatted(dim, landmark.id(), player != null && landmark.owner().equals(Surveyor.getUuid(player)) ? "" : " " + landmark.owner());
+				String command = global ? "/landmarks view %s %s".formatted(dimension, landmark.id()) : "/waypoints view %s %s%s".formatted(dimension, landmark.id(), player != null && landmark.owner().equals(Surveyor.getUuid(player)) ? "" : " " + landmark.owner());
 				feedback.accept(
 					indent()
 						.append(player == null || global ? Text.empty() : Text.literal("%s | ".formatted(Optional.ofNullable(ServerSummary.of(server).getPlayer(landmark.owner(), server)).map(PlayerSummary::username).orElse(landmark.owner().toString()))).formatted(Formatting.GRAY))
@@ -340,7 +340,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		summary.landmarks().remove(world, owner, id);
+		summary.landmarks().remove(owner, id);
 		feedback.accept(prefix()
 			.append(Text.literal(owner.equals(WorldLandmarks.GLOBAL) ? "Landmark " : "Waypoint ").formatted(Formatting.GREEN))
 			.append(Text.literal(id.toString()))
@@ -365,7 +365,7 @@ public class SurveyorCommands {
 			return 0;
 		}
 		landmark.components().remove(LandmarkComponentType.getType(componentType));
-		summary.landmarks().put(world, landmark);
+		summary.landmarks().put(landmark);
 		feedback.accept(prefix()
 			.append(Text.literal(owner.equals(WorldLandmarks.GLOBAL) ? "Landmark " : "Waypoint ").formatted(Formatting.GREEN))
 			.append(Text.literal(id.toString()))
@@ -395,7 +395,7 @@ public class SurveyorCommands {
 			return 0;
 		}
 		landmark.components().set(LandmarkComponentTypes.COLOR, color.getRgb());
-		summary.landmarks().put(world, landmark);
+		summary.landmarks().put(landmark);
 		feedback.accept(prefix()
 			.append(Text.literal(owner.equals(WorldLandmarks.GLOBAL) ? "Landmark " : "Waypoint ").formatted(Formatting.GREEN))
 			.append(Text.literal(id.toString()))
@@ -418,7 +418,7 @@ public class SurveyorCommands {
 		if (summary.landmarks().contains(owner, id)) {
 			feedback.accept(prefix().append(Text.literal("A landmark with this ID already exists! Replacing...").formatted(Formatting.YELLOW)));
 		}
-		summary.landmarks().put(world, Landmark.create(owner, id, builder -> LandmarkComponentTypes.forBlock(builder, world, pos)));
+		summary.landmarks().put(Landmark.create(owner, id, builder -> LandmarkComponentTypes.forBlock(builder, world, pos)));
 		feedback.accept(prefix()
 			.append(Text.literal("Added new " + (owner.equals(WorldLandmarks.GLOBAL) ? "Landmark " : "Waypoint ")).formatted(Formatting.GREEN))
 			.append(Text.literal(id.toString()))
@@ -446,7 +446,7 @@ public class SurveyorCommands {
 		if (summary.landmarks().contains(owner, id)) {
 			feedback.accept(prefix().append(Text.literal("A landmark with this ID already exists! Replacing...").formatted(Formatting.YELLOW)));
 		}
-		summary.landmarks().put(world, Landmark.create(owner, id, builder -> builder
+		summary.landmarks().put(Landmark.create(owner, id, builder -> builder
 			.add(LandmarkComponentTypes.POS, pos)
 			.add(LandmarkComponentTypes.STACK, icon)
 			.add(LandmarkComponentTypes.NAME, name)

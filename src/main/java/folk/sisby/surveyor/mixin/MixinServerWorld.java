@@ -7,10 +7,14 @@ import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
+import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import net.minecraft.world.poi.PointOfInterestType;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -31,7 +35,10 @@ public class MixinServerWorld implements SurveyorWorld {
 	@Inject(method = "<init>", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/dimension/DimensionOptions;chunkGenerator()Lnet/minecraft/world/gen/chunk/ChunkGenerator;"))
 	public void loadSummary(CallbackInfo ci) {
 		ServerWorld self = (ServerWorld) (Object) this;
-		surveyor$summary = WorldSummary.load(self, Surveyor.getSavePath(self.getRegistryKey(), self.getServer()), false);
+		MinecraftServer server = self.getServer();
+		RegistryKey<World> dimension = self.getRegistryKey();
+		DynamicRegistryManager manager = self.getRegistryManager();
+		surveyor$summary = new WorldSummary(server, dimension, manager, Surveyor.getSavePath(self.getRegistryKey(), self.getServer()));
 		SurveyorEvents.Invoke.worldLoad(self);
 	}
 
@@ -42,7 +49,7 @@ public class MixinServerWorld implements SurveyorWorld {
 		if (summary.landmarks() == null) return;
 		if (poiType.getKey().isEmpty() || !Surveyor.CONFIG.builtins.poiLandmarks.contains(poiType.getKey().get().getValue().toString())) return;
 		Identifier poi = poiType.getKey().get().getValue();
-		summary.landmarks().put(self, Landmark.global(
+		summary.landmarks().put(Landmark.global(
 			Identifier.of(poi.getNamespace(), "poi/%s/%s/%s/%s".formatted(poi.getPath(), blockPos.getX(), blockPos.getY(), blockPos.getZ())),
 			builder -> LandmarkComponentTypes.forBlock(builder, self, blockPos)
 		));
@@ -53,7 +60,7 @@ public class MixinServerWorld implements SurveyorWorld {
 		ServerWorld self = (ServerWorld) (Object) this;
 		WorldSummary summary = WorldSummary.of(self);
 		if (summary.landmarks() == null) return;
-		summary.landmarks().removeAll(self, l -> l.owner().equals(WorldLandmarks.GLOBAL)
+		summary.landmarks().removeAll(l -> l.owner().equals(WorldLandmarks.GLOBAL)
 			&& l.id().getPath().startsWith("poi")
 			&& l.components().contains(LandmarkComponentTypes.POS)
 			&& l.components().get(LandmarkComponentTypes.POS).equals(blockPos)

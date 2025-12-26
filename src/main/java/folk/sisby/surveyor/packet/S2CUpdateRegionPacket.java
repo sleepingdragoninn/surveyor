@@ -18,11 +18,11 @@ import java.util.BitSet;
 import java.util.Collection;
 import java.util.List;
 
-public record S2CUpdateRegionPacket(RegistryKey<World> dim, boolean shared, RegionPos regionPos, List<Integer> biomePalette, List<Integer> blockPalette, BitSet set, List<ChunkSummary> chunks) implements S2CPacket {
+public record S2CUpdateRegionPacket(RegistryKey<World> dimension, boolean shared, RegionPos regionPos, List<Integer> biomePalette, List<Integer> blockPalette, BitSet set, List<ChunkSummary> chunks) implements S2CPacket {
 	public static final Identifier ID = Surveyor.id("s2c_update_region");
 
-	public static S2CUpdateRegionPacket of(RegistryKey<World> dim, boolean shared, RegionPos regionPos, RegionSummary summary, BitSet keys) {
-		return summary.createUpdatePacket(dim, shared, regionPos, keys);
+	public static S2CUpdateRegionPacket of(RegistryKey<World> dimension, boolean shared, RegionPos regionPos, RegionSummary summary, BitSet keys) {
+		return summary.createUpdatePacket(dimension, shared, regionPos, keys);
 	}
 
 	public static S2CUpdateRegionPacket read(PacketByteBuf buf) {
@@ -39,7 +39,7 @@ public record S2CUpdateRegionPacket(RegistryKey<World> dim, boolean shared, Regi
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
-		buf.writeRegistryKey(dim);
+		buf.writeRegistryKey(dimension);
 		buf.writeBoolean(shared);
 		buf.writeLong(regionPos.toLong());
 		buf.writeCollection(biomePalette, PacketByteBuf::writeVarInt);
@@ -62,7 +62,7 @@ public record S2CUpdateRegionPacket(RegistryKey<World> dim, boolean shared, Regi
 				return List.of();
 			}
 			for (BitSet splitChunks : BitSetUtil.half(set)) {
-				bufs.addAll(new S2CUpdateRegionPacket(dim, shared, regionPos, biomePalette, blockPalette, splitChunks, ListUtil.splitSet(chunks, splitChunks, set)).toBufs());
+				bufs.addAll(new S2CUpdateRegionPacket(dimension, shared, regionPos, biomePalette, blockPalette, splitChunks, ListUtil.splitSet(chunks, splitChunks, set)).toBufs());
 			}
 		}
 		return bufs;

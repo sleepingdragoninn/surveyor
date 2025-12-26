@@ -15,8 +15,8 @@ import java.util.UUID;
 public record C2SKnownLandmarksPacket(Map<RegistryKey<World>, Multimap<UUID, Identifier>> landmarks) implements C2SPacket {
 	public static final Identifier ID = Surveyor.id("c2s_known_landmarks");
 
-	public static C2SPacket of(RegistryKey<World> dim, Multimap<UUID, Identifier> landmarks) {
-		return new C2SKnownLandmarksPacket(Map.of(dim, landmarks));
+	public static C2SPacket of(RegistryKey<World> dimension, Multimap<UUID, Identifier> landmarks) {
+		return new C2SKnownLandmarksPacket(Map.of(dimension, landmarks));
 	}
 
 	public static C2SKnownLandmarksPacket read(PacketByteBuf buf) {

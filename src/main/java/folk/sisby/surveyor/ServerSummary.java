@@ -1,14 +1,11 @@
 package folk.sisby.surveyor;
 
-import com.google.common.collect.Multimap;
+import com.google.common.collect.HashBasedTable;
 import com.mojang.authlib.GameProfile;
 import folk.sisby.surveyor.config.NetworkMode;
-import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
-import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
-import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -19,7 +16,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.crash.CrashException;
 import net.minecraft.world.World;
@@ -128,7 +124,7 @@ public final class ServerSummary {
 			// initial exploration
 			SurveyorExploration groupExploration = serverSummary.groupExploration(uuid, server);
 			Map<UUID, PlayerSummary> groupSummaries = serverSummary.getGroupSummaries(uuid, server);
-			new S2CGroupChangedPacket(groupSummaries, groupExploration.terrain(), groupExploration.structures()).send(player);
+			new S2CGroupChangedPacket(groupSummaries, groupExploration.chunks(), groupExploration.starts()).send(player);
 			// initial offline group positions
 			new S2CGroupUpdatedPacket(groupSummaries).send(player);
 		}
@@ -239,7 +235,7 @@ public final class ServerSummary {
 		}
 		SurveyorExploration groupExploration = groupExploration(player1, server);
 		for (ServerPlayerEntity friend : groupServerPlayers(player1, server)) {
-			new S2CGroupChangedPacket(getGroupSummaries(player1, server), groupExploration.terrain(), groupExploration.structures()).send(friend);
+			new S2CGroupChangedPacket(getGroupSummaries(player1, server), groupExploration.chunks(), groupExploration.starts()).send(friend);
 		}
 		dirty();
 	}
@@ -249,12 +245,12 @@ public final class ServerSummary {
 		getGroup(player).remove(player); // Shares set instance with group members.
 		SurveyorExploration groupExploration = groupExploration(player, server);
 		for (ServerPlayerEntity friend : groupOtherServerPlayers(player, server)) {
-			new S2CGroupChangedPacket(getGroupSummaries(Surveyor.getUuid(friend), server), groupExploration.terrain().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>())).send(friend);
+			new S2CGroupChangedPacket(getGroupSummaries(Surveyor.getUuid(friend), server), groupExploration.chunks(), groupExploration.starts()).send(friend);
 		}
 		shareGroups.put(player, new HashSet<>());
 		getGroup(player).add(player);
 		ServerPlayerEntity serverPlayer = Surveyor.getPlayer(server, player);
-		if (serverPlayer != null) new S2CGroupChangedPacket(getGroupSummaries(player, server), new HashMap<>(), new HashMap<>()).send(serverPlayer);
+		if (serverPlayer != null) new S2CGroupChangedPacket(getGroupSummaries(player, server), HashBasedTable.create(), HashBasedTable.create()).send(serverPlayer);
 		dirty();
 	}
 

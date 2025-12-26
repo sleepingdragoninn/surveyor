@@ -53,6 +53,12 @@ public record RegionPos(int x, int z) {
 		return chunkToBit(regionRelative(pos.x), regionRelative(pos.z));
 	}
 
+	public static BitSet chunkToBitSet(ChunkPos pos) {
+		BitSet chunks = new BitSet(CHUNK_AREA);
+		chunks.set(chunkToBit(pos));
+		return chunks;
+	}
+
 	public static int bitToX(int bit) {
 		return bit >> CHUNK_POWER;
 	}

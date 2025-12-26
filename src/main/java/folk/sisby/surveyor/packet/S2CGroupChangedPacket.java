@@ -13,7 +13,9 @@ import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.Structure;
 
-import java.util.*;
+import java.util.BitSet;
+import java.util.Map;
+import java.util.UUID;
 
 public record S2CGroupChangedPacket(Map<UUID, PlayerSummary> players, Table<RegistryKey<World>, RegionPos, BitSet> regionBits, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structureKeys) implements S2CPacket {
 	public static final Identifier ID = Surveyor.id("s2c_group_changed");

@@ -12,31 +12,28 @@ import folk.sisby.surveyor.SurveyorEvents;
 import folk.sisby.surveyor.SurveyorExploration;
 import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.config.NetworkMode;
+import folk.sisby.surveyor.packet.C2SKnownLandmarksPacket;
 import folk.sisby.surveyor.packet.C2SKnownStructuresPacket;
 import folk.sisby.surveyor.packet.C2SKnownTerrainPacket;
-import folk.sisby.surveyor.terrain.WorldTerrainSummary;
+import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.RegionPos;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.world.ClientWorld;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.Uuids;
 import net.minecraft.util.WorldSavePath;
-import net.minecraft.util.crash.CrashException;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.WorldChunk;
@@ -54,12 +51,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class SurveyorClient implements ClientModInitializer {
 	public static final String SERVERS_FILE_NAME = "servers.txt";
 	private static final Multimap<RegistryKey<World>, WorldChunk> LOADING_CHUNKS = HashMultimap.create();
-	private static final Map<RegistryKey<World>, WorldSummary> SUMMARIES = new ConcurrentHashMap<>();
+
+	public static void clearLoadingChunks() {
+		LOADING_CHUNKS.clear();
+	}
 
 	public static File getSavePath(long biomeSeed) {
 		String saveFolder = String.valueOf(biomeSeed);
@@ -77,13 +77,13 @@ public class SurveyorClient implements ClientModInitializer {
 		return savePath.toFile();
 	}
 
-	public static File getWorldSavePath(RegistryKey<World> dim, long biomeSeed) {
-		String dimNamespace = dim.getValue().getNamespace();
-		String dimPath = dim.getValue().getPath();
+	public static File getWorldSavePath(RegistryKey<World> dimension, long biomeSeed) {
+		String dimNamespace = dimension.getValue().getNamespace();
+		String dimPath = dimension.getValue().getPath();
 		return getSavePath(biomeSeed).toPath().resolve(dimNamespace).resolve(dimPath).toFile();
 	}
 
-	public static @Nullable File getXaerosSavePath(RegistryKey<World> dim) {
+	public static @Nullable File getXaerosSavePath(RegistryKey<World> dimension) {
 		File baseFolder = FabricLoader.getInstance().getGameDir().resolve("xaero").resolve("minimap").toFile();
 		if (!baseFolder.exists()) return null;
 		String id = null;
@@ -92,12 +92,12 @@ public class SurveyorClient implements ClientModInitializer {
 			String sanitized = (MinecraftClient.getInstance().getCurrentServerEntry() != null ? "Multiplayer_" : "") + (id.contains(":") ? id.substring(0, id.indexOf(":")) : id).replace("_", "%us%").replace("\\", "%bs%").replace("/", "%fs%").replace(":", "§").replace("[", "%lb%").replace("]", "%rb%");
 			File saveFolder = baseFolder.toPath().resolve(sanitized).toFile();
 			if (!saveFolder.exists()) return null;
-			String sanitizedDim = dim == World.OVERWORLD ? "dim%0" : dim == World.NETHER ? "dim%-1" : dim == World.END ? "dim%1" : "dim%" + dim.toString().replace(":", "$").replace('/', '%');
+			String sanitizedDim = dimension == World.OVERWORLD ? "dim%0" : dimension == World.NETHER ? "dim%-1" : dimension == World.END ? "dim%1" : "dim%" + dimension.toString().replace(":", "$").replace('/', '%');
 			File dimFolder = saveFolder.toPath().resolve(sanitizedDim).toFile();
 			if (!dimFolder.exists() || dimFolder.toPath().resolve(".surveyor_migrated").toFile().exists()) return null;
 			return dimFolder;
 		} catch (Exception e) {
-			Surveyor.LOGGER.error("[Surveyor] Error fetching xaeros data for {} {}", id,  dim, e);
+			Surveyor.LOGGER.error("[Surveyor] Error fetching xaeros data for {} {}", id,  dimension, e);
 		}
 		return null;
 	}
@@ -113,7 +113,8 @@ public class SurveyorClient implements ClientModInitializer {
 		} else {
 			ClientPlayNetworkHandler handler = MinecraftClient.getInstance().getNetworkHandler();
 			if (handler == null) return new HashMap<>();
-			return NetworkHandlerSummary.of(handler).players(ClientExploration.SHARED.sharedPlayers());
+			NetworkHandlerSummary handlerSummary = NetworkHandlerSummary.of(handler);
+			return handlerSummary.players(handlerSummary.shared.sharedPlayers());
 		}
 	}
 
@@ -122,8 +123,8 @@ public class SurveyorClient implements ClientModInitializer {
 			return SurveyorExploration.ofShared(getClientUuid(), MinecraftClient.getInstance().getServer());
 		} else {
 			Set<SurveyorExploration> set = new HashSet<>();
-			set.add(ClientExploration.INSTANCE);
-			set.add(ClientExploration.SHARED);
+			set.add(NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal);
+			set.add(NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).shared);
 			return PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(set);
 		}
 	}
@@ -132,7 +133,7 @@ public class SurveyorClient implements ClientModInitializer {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
 			return SurveyorExploration.of(getClientUuid(), MinecraftClient.getInstance().getServer());
 		} else {
-			return ClientExploration.INSTANCE;
+			return NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal;
 		}
 	}
 
@@ -140,7 +141,7 @@ public class SurveyorClient implements ClientModInitializer {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
 			throw new IllegalStateException("You can't edit shared exploration in singleplayer!");
 		} else {
-			return ClientExploration.SHARED;
+			return NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).shared;
 		}
 	}
 
@@ -150,113 +151,88 @@ public class SurveyorClient implements ClientModInitializer {
 		return Uuids.getUuidFromProfile(profile);
 	}
 
-	public static ServerWorld stealServerWorld(RegistryKey<World> worldKey) {
+	public static ServerWorld stealServerWorld(RegistryKey<World> dimension) {
 		MinecraftServer integratedServer = MinecraftClient.getInstance().getServer();
 		if (integratedServer == null) return null;
-		return integratedServer.getWorld(worldKey);
+		return integratedServer.getWorld(dimension);
 	}
 
-	public static WorldSummary getSummary(RegistryKey<World> dim, DynamicRegistryManager manager, long biomeSeed) {
+	public static Map<RegistryKey<World>, WorldSummary> getSummaries(ClientPlayNetworkHandler handler) {
+		return handler.getWorldKeys().stream().collect(Collectors.toMap(k -> k, k -> getSummary(k, handler)));
+	}
+
+	public static WorldSummary getSummary(RegistryKey<World> dimension, ClientPlayNetworkHandler handler) {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
-			return WorldSummary.of(SurveyorClient.stealServerWorld(dim));
+			return WorldSummary.of(SurveyorClient.stealServerWorld(dimension));
 		} else {
-			return SUMMARIES.computeIfAbsent(dim, k -> WorldSummary.load(dim, manager, SurveyorClient.getWorldSavePath(dim, biomeSeed), true));
+			return NetworkHandlerSummary.of(handler).getWorld(dimension);
 		}
 	}
 
-	public static @Nullable World getWorld(RegistryKey<World> worldKey) {
+	public static @Nullable WorldSummary tryGetSummary(RegistryKey<World> dimension) {
+		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
+			return WorldSummary.of(SurveyorClient.stealServerWorld(dimension));
+		} else {
+			ClientPlayNetworkHandler handler = MinecraftClient.getInstance().getNetworkHandler();
+			return handler == null ? null : getSummary(dimension, handler);
+		}
+	}
+
+	public static @Nullable World getWorld(RegistryKey<World> dimension) {
 		ClientWorld world = MinecraftClient.getInstance().world;
-		return world != null && world.getRegistryKey().equals(worldKey) ? world : null;
+		return world != null && world.getRegistryKey().equals(dimension) ? world : null;
+	}
+
+	public static void handleInitialLoad(ClientPlayNetworkHandler handler) {
+		SurveyorExploration exploration = getExploration();
+		for (WorldSummary summary : SurveyorClient.getSummaries(handler).values()) {
+			if (summary.terrain() != null) SurveyorClientEvents.Invoke.terrainUpdated(summary, summary.terrain().bitSet(exploration));
+			if (summary.structures() != null) SurveyorClientEvents.Invoke.structuresAdded(summary, summary.structures().keySet(exploration));
+			if (summary.landmarks() != null) SurveyorClientEvents.Invoke.landmarksAdded(summary, summary.landmarks().keySet(exploration));
+		}
+	}
+
+	public static void sendKnownData(ClientPlayNetworkHandler handler) {
+		Table<RegistryKey<World>, RegionPos, BitSet> chunks = HashBasedTable.create();
+		Map<RegistryKey<World>, Multimap<RegistryKey<Structure>, ChunkPos>> starts = new HashMap<>();
+		Map<RegistryKey<World>, Multimap<UUID, Identifier>> landmarks = new HashMap<>();
+		for (WorldSummary summary : SurveyorClient.getSummaries(handler).values()) {
+			if (summary.terrain() != null && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SOLO)) chunks.row(summary.dimension()).putAll(summary.terrain().bitSet(null));
+			if (summary.structures() != null && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SOLO)) starts.put(summary.dimension(), summary.structures().keySet(null));
+			if (summary.landmarks() != null && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) landmarks.put(summary.dimension(), summary.landmarks().keySet(null));
+		}
+		if (!chunks.isEmpty()) new C2SKnownTerrainPacket(chunks).send();
+		if (!starts.isEmpty()) new C2SKnownStructuresPacket(starts).send();
+		if (!landmarks.isEmpty()) new C2SKnownLandmarksPacket(landmarks).send();
 	}
 
 	@Override
 	public void onInitializeClient() {
 		SurveyorClientNetworking.init();
 		ClientCommandRegistrationCallback.EVENT.register(SurveyorClientCommands::registerCommands);
-		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> client.execute(ClientExploration::onLoad));
-		ClientPlayConnectionEvents.DISCONNECT.register(((handler, client) -> {
-			LOADING_CHUNKS.clear();
-			ClientExploration.onUnload();
-		}));
 		ClientChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
-			if (WorldSummary.of(world).isClient()) {
-				LOADING_CHUNKS.put(world.getRegistryKey(), chunk);
-			}
+			if (!MinecraftClient.getInstance().isInSingleplayer()) LOADING_CHUNKS.put(world.getRegistryKey(), chunk);
 		});
 		ClientChunkEvents.CHUNK_UNLOAD.register((world, chunk) -> {
-			if (WorldSummary.of(world).isClient()) WorldTerrainSummary.onChunkUnload(world, chunk);
+			if (!MinecraftClient.getInstance().isInSingleplayer()) WorldTerrain.onChunkUnload(world, chunk);
 		});
 		ClientTickEvents.END_WORLD_TICK.register((world -> {
 			if (MinecraftClient.getInstance().worldRenderer.getCompletedChunkCount() <= 10 || !MinecraftClient.getInstance().worldRenderer.isTerrainRenderComplete()) return;
 			for (WorldChunk chunk : new HashSet<>(LOADING_CHUNKS.get(world.getRegistryKey()))) {
-				WorldTerrainSummary.onChunkLoad(world, chunk);
-				ClientExploration.INSTANCE.addChunk(world.getRegistryKey(), chunk.getPos());
+				WorldTerrain.onChunkLoad(world, chunk);
+				NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal.addChunk(world.getRegistryKey(), chunk.getPos());
 				LOADING_CHUNKS.remove(world.getRegistryKey(), chunk);
 			}
 		}));
-		ClientTickEvents.END_WORLD_TICK.register((world -> {
-			if (!SurveyorClientEvents.INITIALIZING_WORLD) return;
-			if (MinecraftClient.getInstance().player != null && getExploration() != null) {
-				SurveyorClientEvents.INITIALIZING_WORLD = false;
-				if (WorldSummary.of(world).isClient()) {
-					WorldSummary summary = WorldSummary.of(world);
-					if (summary.terrain() != null && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SOLO)) new C2SKnownTerrainPacket(summary.terrain().bitSet(null)).send();
-					if (summary.structures() != null && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SOLO)) new C2SKnownStructuresPacket(summary.structures().keySet(null)).send();
-					if (summary.landmarks() != null) summary.landmarks().clientInitialized();
-				}
-				SurveyorClientEvents.Invoke.worldLoad(MinecraftClient.getInstance().player.clientWorld, MinecraftClient.getInstance().player);
-			}
-		}));
-		SurveyorEvents.Register.landmarksAdded(Surveyor.id("client"), ((world, worldLandmarks, landmarks) -> {
+		SurveyorEvents.Register.landmarksAdded(Surveyor.id("client"), ((summary, landmarks) -> {
 			SurveyorExploration exploration = getExploration();
-			if (exploration != null) SurveyorClientEvents.Invoke.landmarksAdded(world, exploration.limitLandmarkKeySet(world.getRegistryKey(), worldLandmarks, HashMultimap.create(landmarks)));
+			if (exploration != null) SurveyorClientEvents.Invoke.landmarksAdded(summary, exploration.limit(summary.dimension(), summary.landmarks(), HashMultimap.create(landmarks)));
 		}));
-		SurveyorEvents.Register.landmarksRemoved(Surveyor.id("client"), (world, summary, landmarks) -> SurveyorClientEvents.Invoke.landmarksRemoved(world, landmarks));
+		SurveyorEvents.Register.landmarksRemoved(Surveyor.id("client"), SurveyorClientEvents.Invoke::landmarksRemoved);
 		Surveyor.LOGGER.info("[Surveyor Client] is not a map mod either");
 	}
 
-	public record ClientExploration(Set<UUID> groupPlayers, Table<RegistryKey<World>, RegionPos, BitSet> terrain, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures) implements SurveyorExploration {
-		public static final String KEY_SHARED = "shared";
-		public static final ClientExploration INSTANCE = new ClientExploration(new HashSet<>(), HashBasedTable.create(), HashBasedTable.create());
-		public static final ClientExploration SHARED = new ClientExploration(new HashSet<>(), HashBasedTable.create(), HashBasedTable.create());
-		public static File saveFile = null;
-
-		public static void onLoad() {
-			if (WorldSummary.of(MinecraftClient.getInstance().world).isClient()) {
-				saveFile = getSavePath(MinecraftClient.getInstance().world).toPath().resolve(getClientUuid().toString() + ".dat").toFile();
-				NbtCompound explorationNbt = new NbtCompound();
-				if (saveFile.exists()) {
-					try {
-						explorationNbt = NbtIo.readCompressed(saveFile);
-					} catch (IOException | CrashException e) {
-						Surveyor.LOGGER.error("[Surveyor] Error loading client exploration file.", e);
-					}
-				}
-				ClientExploration.INSTANCE.read(explorationNbt);
-				ClientExploration.SHARED.read(explorationNbt.getCompound(KEY_SHARED));
-			}
-		}
-
-		public static void onUnload() {
-			if (saveFile != null) {
-				try {
-					NbtCompound nbt = ClientExploration.INSTANCE.write(new NbtCompound());
-					NbtCompound sharedNbt = ClientExploration.SHARED.write(new NbtCompound());
-					nbt.put(KEY_SHARED, sharedNbt);
-					NbtIo.writeCompressed(nbt, saveFile);
-				} catch (IOException e) {
-					Surveyor.LOGGER.error("[Surveyor] Error saving client exploration file.", e);
-				}
-				saveFile = null;
-			}
-			ClientExploration.INSTANCE.terrain.clear();
-			ClientExploration.INSTANCE.structures.clear();
-			ClientExploration.INSTANCE.groupPlayers.clear();
-			ClientExploration.SHARED.terrain.clear();
-			ClientExploration.SHARED.structures.clear();
-			ClientExploration.SHARED.groupPlayers.clear();
-		}
-
+	public record ClientExploration(Set<UUID> groupPlayers, Table<RegistryKey<World>, RegionPos, BitSet> chunks, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> starts) implements SurveyorExploration {
 		@Override
 		public Set<UUID> sharedPlayers() {
 			Set<UUID> sharedPlayers = new HashSet<>();
@@ -271,21 +247,24 @@ public class SurveyorClient implements ClientModInitializer {
 		}
 
 		@Override
-		public void addStructure(RegistryKey<World> worldKey, RegistryKey<Structure> structureKey, ChunkPos pos) {
-			SurveyorExploration.super.addStructure(worldKey, structureKey, pos);
-			updateClientForAddStructure(MinecraftClient.getInstance().world, structureKey, pos);
+		public void addStructure(RegistryKey<World> dimension, RegistryKey<Structure> structureKey, ChunkPos pos) {
+			SurveyorExploration.super.addStructure(dimension, structureKey, pos);
+			WorldSummary summary = tryGetSummary(dimension);
+			if (summary != null) updateClientForAddStructure(summary, structureKey, pos);
 		}
 
 		@Override
-		public void mergeRegion(RegistryKey<World> worldKey, RegionPos regionPos, BitSet bitSet) {
-			SurveyorExploration.super.mergeRegion(worldKey, regionPos, bitSet);
-			updateClientForMergeRegion(MinecraftClient.getInstance().world, regionPos, bitSet);
+		public void mergeRegion(RegistryKey<World> dimension, RegionPos regionPos, BitSet chunks) {
+			SurveyorExploration.super.mergeRegion(dimension, regionPos, chunks);
+			WorldSummary summary = tryGetSummary(dimension);
+			if (summary != null) updateClientForMergeRegion(summary, regionPos, chunks);
 		}
 
 		@Override
-		public void addChunk(RegistryKey<World> worldKey, ChunkPos pos) {
-			SurveyorExploration.super.addChunk(worldKey, pos);
-			updateClientForAddChunk(MinecraftClient.getInstance().world, pos);
+		public void addChunk(RegistryKey<World> dimension, ChunkPos pos) {
+			SurveyorExploration.super.addChunk(dimension, pos);
+			WorldSummary summary = tryGetSummary(dimension);
+			if (summary != null) updateClientForAddChunk(summary, pos);
 		}
 	}
 }

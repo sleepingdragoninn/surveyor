@@ -12,6 +12,7 @@ import folk.sisby.surveyor.ServerSummary;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.SurveyorEvents;
 import folk.sisby.surveyor.SurveyorExploration;
+import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SystemMode;
@@ -27,9 +28,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.registry.DynamicRegistryManager;
-import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.DyeColor;
 import net.minecraft.util.Identifier;
@@ -71,31 +70,31 @@ public class WorldLandmarks {
 		0xFF_000000, 0xFF_0000AA, 0xFF_00AA00, 0xFF_00AAAA, 0xFF_AA0000, 0xFF_AA00AA, 0xFF_ffAA00, 0xFF_AAAAAA, 0xFF_555555, 0xFF_5555FF, 0xFF_55FF55, 0xFF_55FFFF, 0xFF_FF0000, 0xFF_FF55FF, 0xFF_FFFF55, 0xFF_FFFFFF
 	};
 
-	protected final RegistryKey<World> worldKey;
+	protected final WorldSummary summary;
 	protected final Table<UUID, Identifier, Landmark> landmarks = Tables.synchronizedTable(HashBasedTable.create());
 	protected final @Nullable Multimap<UUID, Identifier> removed;
 	protected boolean dirty;
 
-	public WorldLandmarks(RegistryKey<World> worldKey, Table<UUID, Identifier, Landmark> landmarks, Multimap<UUID, Identifier> removed, boolean dirty) {
-		this.worldKey = worldKey;
+	public WorldLandmarks(WorldSummary summary, Table<UUID, Identifier, Landmark> landmarks, Multimap<UUID, Identifier> removed, boolean dirty) {
+		this.summary = summary;
 		this.landmarks.putAll(landmarks);
 		this.removed = removed == null ? null : Multimaps.synchronizedSetMultimap(HashMultimap.create(removed));
 		if (this.removed != null) this.landmarks.cellSet().forEach(c -> removed.remove(c.getRowKey(), c.getColumnKey()));
 		this.dirty = dirty;
 	}
 
-	public static WorldLandmarks load(RegistryKey<World> dim, DynamicRegistryManager manager, File folder, boolean isClient) {
+	public static WorldLandmarks load(WorldSummary summary, DynamicRegistryManager manager, File folder) {
 		NbtCompound landmarkNbt = new NbtCompound();
 		File landmarksFile = new File(folder, "landmarks.dat");
 		if (landmarksFile.exists()) {
 			try {
 				landmarkNbt = NbtIo.readCompressed(landmarksFile);
 			} catch (IOException | CrashException e) {
-				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", dim.getValue(), e);
+				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", summary.dimension().getValue(), e);
 			}
 		}
-		WorldLandmarks worldLandmarks = fromNbt(dim, manager, landmarkNbt, landmarksFile, isClient);
-		if (!isClient) worldLandmarks.tryMigrateXaeros(false); // for singleplayer
+		WorldLandmarks worldLandmarks = fromNbt(summary, manager, landmarkNbt, landmarksFile);
+		if (!summary.isClient()) worldLandmarks.tryMigrateXaeros(false); // for singleplayer
 		return worldLandmarks;
 	}
 
@@ -105,7 +104,7 @@ public class WorldLandmarks {
 		return nbt;
 	}
 
-	public static WorldLandmarks fromNbt(RegistryKey<World> dim, DynamicRegistryManager manager, NbtCompound nbt, File landmarksFile, boolean isClient) {
+	public static WorldLandmarks fromNbt(WorldSummary summary, DynamicRegistryManager manager, NbtCompound nbt, File landmarksFile) {
 		NbtCompound landmarks = nbt.getCompound(KEY_LANDMARKS);
 		boolean dirty = false;
 		Table<UUID, Identifier, Landmark> outMap = HashBasedTable.create();
@@ -144,12 +143,12 @@ public class WorldLandmarks {
 			}
 		} else {
 			if (!landmarks.isEmpty()) outMap.putAll(CODEC.decode(NbtOps.INSTANCE, landmarks).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst());
-			if (!isClient) {
+			if (!summary.isClient()) {
 				NbtCompound removed = nbt.getCompound(KEY_REMOVED);
 				if (!removed.isEmpty()) removedMap = REMOVED_CODEC.decode(NbtOps.INSTANCE, removed).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst();
 			}
 		}
-		return new WorldLandmarks(dim, outMap, removedMap, dirty);
+		return new WorldLandmarks(summary, outMap, removedMap, dirty);
 	}
 
 	public boolean contains(UUID uuid, Identifier id) {
@@ -162,19 +161,19 @@ public class WorldLandmarks {
 
 	public Map<Identifier, Landmark> asMap(UUID uuid, SurveyorExploration exploration) {
 		Map<Identifier, Landmark> outMap = new HashMap<>(landmarks.row(uuid));
-		if (exploration != null) outMap.values().removeIf(l -> !exploration.exploredLandmark(worldKey, l));
+		if (exploration != null) outMap.values().removeIf(l -> !exploration.exploredLandmark(summary.dimension(), l));
 		return outMap;
 	}
 
 	public Table<UUID, Identifier, Landmark> asMap(SurveyorExploration exploration) {
 		Table<UUID, Identifier, Landmark> outMap = HashBasedTable.create(landmarks);
-		if (exploration != null) outMap.values().removeIf(l -> !exploration.exploredLandmark(worldKey, l));
+		if (exploration != null) outMap.values().removeIf(l -> !exploration.exploredLandmark(summary.dimension(), l));
 		return outMap;
 	}
 
 	public Multimap<UUID, Identifier> keySet(SurveyorExploration exploration) {
 		Multimap<UUID, Identifier> outMap = MapUtil.keyMultiMap(landmarks);
-		if (exploration != null) outMap.entries().removeIf(e -> !exploration.exploredLandmark(worldKey, landmarks.get(e.getKey(), e.getValue())));
+		if (exploration != null) outMap.entries().removeIf(e -> !exploration.exploredLandmark(summary.dimension(), landmarks.get(e.getKey(), e.getValue())));
 		return outMap;
 	}
 
@@ -182,14 +181,14 @@ public class WorldLandmarks {
 		return HashMultimap.create(Objects.requireNonNullElse(removed, HashMultimap.create()));
 	}
 
-	public void handleChanged(World world, Table<UUID, Identifier, Landmark> changed, boolean local, @Nullable ServerPlayerEntity sender) {
+	public void handleChanged(Table<UUID, Identifier, Landmark> changed, boolean local, @Nullable ServerPlayerEntity sender) {
 		if (changed.isEmpty()) return;
 		Table<UUID, Identifier, Landmark> landmarksAddedChanged = HashBasedTable.create(changed);
 		Table<UUID, Identifier, Landmark> landmarksRemoved = HashBasedTable.create(changed);
 		landmarksAddedChanged.cellSet().removeIf(c -> !contains(c.getRowKey(), c.getColumnKey()));
 		landmarksAddedChanged.cellSet().forEach(c -> landmarksRemoved.remove(c.getRowKey(), c.getColumnKey()));
-		if (!landmarksRemoved.isEmpty()) SurveyorEvents.Invoke.landmarksRemoved(world, MapUtil.keyMultiMap(landmarksRemoved));
-		if (!landmarksAddedChanged.isEmpty()) SurveyorEvents.Invoke.landmarksAdded(world, MapUtil.keyMultiMap(landmarksAddedChanged));
+		if (!landmarksRemoved.isEmpty()) SurveyorEvents.Invoke.landmarksRemoved(summary, MapUtil.keyMultiMap(landmarksRemoved));
+		if (!landmarksAddedChanged.isEmpty()) SurveyorEvents.Invoke.landmarksAdded(summary, MapUtil.keyMultiMap(landmarksAddedChanged));
 		if (!local) {
 			Table<UUID, Identifier, Landmark> waypointsRemoved = HashBasedTable.create(landmarksAddedChanged);
 			Table<UUID, Identifier, Landmark> waypointsAddedChanged = HashBasedTable.create(landmarksRemoved);
@@ -198,10 +197,10 @@ public class WorldLandmarks {
 			landmarksAddedChanged.rowKeySet().removeAll(waypointsAddedChanged.rowKeySet());
 			landmarksRemoved.rowKeySet().removeAll(waypointsRemoved.rowKeySet());
 
-			if (!landmarksRemoved.isEmpty()) new SyncLandmarksRemovedPacket(worldKey, MapUtil.keyMultiMap(landmarksRemoved)).send(sender, world, Surveyor.CONFIG.networking.landmarks);
-			if (!landmarksAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(worldKey, landmarksAddedChanged).send(sender, world, Surveyor.CONFIG.networking.landmarks);
-			if (!waypointsRemoved.isEmpty()) new SyncLandmarksRemovedPacket(worldKey, MapUtil.keyMultiMap(waypointsRemoved)).send(sender, world, Surveyor.CONFIG.networking.waypoints);
-			if (!waypointsAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(worldKey, waypointsAddedChanged).send(sender, world, Surveyor.CONFIG.networking.waypoints);
+			if (!landmarksRemoved.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(landmarksRemoved)).send(sender, summary, Surveyor.CONFIG.networking.landmarks);
+			if (!landmarksAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(summary.dimension(), landmarksAddedChanged).send(sender, summary, Surveyor.CONFIG.networking.landmarks);
+			if (!waypointsRemoved.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(waypointsRemoved)).send(sender, summary, Surveyor.CONFIG.networking.waypoints);
+			if (!waypointsAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(summary.dimension(), waypointsAddedChanged).send(sender, summary, Surveyor.CONFIG.networking.waypoints);
 		}
 	}
 
@@ -218,16 +217,16 @@ public class WorldLandmarks {
 		return putForBatch(HashBasedTable.create(), landmark);
 	}
 
-	public void putLocal(World world, Landmark landmark) {
-		handleChanged(world, putForBatch(landmark), true, null);
+	public void putLocal(Landmark landmark) {
+		handleChanged(putForBatch(landmark), true, null);
 	}
 
-	public void put(World world, Landmark landmark) {
-		handleChanged(world, putForBatch(landmark), false, null);
+	public void put(Landmark landmark) {
+		handleChanged(putForBatch(landmark), false, null);
 	}
 
-	public void put(ServerPlayerEntity sender, ServerWorld world, Landmark landmark) {
-		handleChanged(world, putForBatch(landmark), false, sender);
+	public void put(ServerPlayerEntity sender, Landmark landmark) {
+		handleChanged(putForBatch(landmark), false, sender);
 	}
 
 	public Table<UUID, Identifier, Landmark> removeForBatch(Table<UUID, Identifier, Landmark> changed, UUID uuid, Identifier id) {
@@ -244,16 +243,16 @@ public class WorldLandmarks {
 		return removeForBatch(HashBasedTable.create(), uuid, id);
 	}
 
-	public void removeLocal(World world, UUID uuid, Identifier id) {
-		handleChanged(world, removeForBatch(uuid, id), true, null);
+	public void removeLocal(UUID uuid, Identifier id) {
+		handleChanged(removeForBatch(uuid, id), true, null);
 	}
 
-	public void remove(World world, UUID uuid, Identifier id) {
-		handleChanged(world, removeForBatch(uuid, id), false, null);
+	public void remove(UUID uuid, Identifier id) {
+		handleChanged(removeForBatch(uuid, id), false, null);
 	}
 
-	public void remove(ServerPlayerEntity sender, ServerWorld world, UUID uuid, Identifier id) {
-		handleChanged(world, removeForBatch(uuid, id), false, sender);
+	public void remove(ServerPlayerEntity sender, UUID uuid, Identifier id) {
+		handleChanged(removeForBatch(uuid, id), false, sender);
 	}
 
 	public Table<UUID, Identifier, Landmark> removeAllForBatch(Table<UUID, Identifier, Landmark> changed, Predicate<Landmark> predicate) {
@@ -268,11 +267,11 @@ public class WorldLandmarks {
 		return removeAllForBatch(HashBasedTable.create(), predicate);
 	}
 
-	public void removeAll(World world, Predicate<Landmark> predicate) {
-		handleChanged(world, removeAllForBatch(predicate), false, null);
+	public void removeAll(Predicate<Landmark> predicate) {
+		handleChanged(removeAllForBatch(predicate), false, null);
 	}
 
-	public int save(World world, File folder) {
+	public int save(File folder) {
 		if (isDirty()) {
 			File landmarksFile = new File(folder, "landmarks.dat");
 			NbtCompound landmarksCompound = writeNbt(new NbtCompound());
@@ -280,7 +279,7 @@ public class WorldLandmarks {
 				try {
 					NbtIo.writeCompressed(landmarksCompound, landmarksFile);
 				} catch (IOException e) {
-					Surveyor.LOGGER.error("[Surveyor] Error writing landmarks file for {}.", world.getRegistryKey().getValue(), e);
+					Surveyor.LOGGER.error("[Surveyor] Error writing landmarks file for {}.", summary.dimension().getValue(), e);
 				}
 			});
 			dirty = false;
@@ -306,7 +305,7 @@ public class WorldLandmarks {
 				putForBatch(changed, landmark);
 			}
 		});
-		if (!changed.isEmpty()) handleChanged(world, changed, sender == null, sender);
+		if (!changed.isEmpty()) handleChanged(changed, sender == null, sender);
 		return changed;
 	}
 
@@ -320,14 +319,14 @@ public class WorldLandmarks {
 				removeForBatch(changed, uuid, id);
 			}
 		});
-		if (!changed.isEmpty()) handleChanged(world, changed, sender == null, sender);
+		if (!changed.isEmpty()) handleChanged(changed, sender == null, sender);
 		return changed;
 	}
 
 	public SyncLandmarksAddedPacket createUpdatePacket(Multimap<UUID, Identifier> keySet) {
 		Table<UUID, Identifier, Landmark> updated = HashBasedTable.create();
 		keySet.forEach((uuid, id) -> updated.put(uuid, id, get(uuid, id)));
-		return new SyncLandmarksAddedPacket(worldKey, updated);
+		return new SyncLandmarksAddedPacket(summary.dimension(), updated);
 	}
 
 	public boolean isDirty() {
@@ -340,7 +339,7 @@ public class WorldLandmarks {
 
 	private void tryMigrateXaeros(boolean handleChanged) {
 		if (FabricLoader.getInstance().getEnvironmentType() != EnvType.CLIENT) return;
-		File saveFolder = SurveyorClient.getXaerosSavePath(worldKey);
+		File saveFolder = SurveyorClient.getXaerosSavePath(summary.dimension());
 		if (saveFolder != null) {
 			Table<UUID, Identifier, Landmark> changed = HashBasedTable.create();
 			Surveyor.LOGGER.info("[Surveyor] Attempting to parse xaero's waypoints from {}/{}", saveFolder.getParentFile().getName(), saveFolder.getName());
@@ -369,12 +368,12 @@ public class WorldLandmarks {
 				Surveyor.LOGGER.error("[Surveyor] Error parsing xaeros data from {}", saveFolder, e);
 			}
 			Surveyor.LOGGER.info("[Surveyor] Migrated {} waypoints from xaeros data.", changed.size());
-			if (handleChanged) handleChanged(null, changed, Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO), null);
+			if (handleChanged) handleChanged(changed, Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO), null);
 		}
 	}
 
 	public void clientInitialized(DynamicRegistryManager manager) {
 		tryMigrateXaeros(true);
-		if (Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) C2SKnownLandmarksPacket.of(worldKey, keySet(null)).send();
+		if (Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) C2SKnownLandmarksPacket.of(summary.dimension(), keySet(null)).send();
 	}
 }

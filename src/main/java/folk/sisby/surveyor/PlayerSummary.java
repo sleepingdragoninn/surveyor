@@ -6,9 +6,9 @@ import com.google.common.collect.Tables;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
 import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
-import folk.sisby.surveyor.structure.WorldStructureSummary;
+import folk.sisby.surveyor.structure.WorldStructures;
 import folk.sisby.surveyor.terrain.RegionSummary;
-import folk.sisby.surveyor.terrain.WorldTerrainSummary;
+import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.ArrayUtil;
 import folk.sisby.surveyor.util.RegionPos;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -21,7 +21,6 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
@@ -29,12 +28,9 @@ import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.Structure;
 
 import java.util.BitSet;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public interface PlayerSummary {
 	String KEY_DATA = "surveyor";
@@ -120,20 +116,20 @@ public interface PlayerSummary {
 			return 0;
 		}
 
-		public record OfflinePlayerExploration(Set<UUID> sharedPlayers, Table<RegistryKey<World>, RegionPos, BitSet> terrain, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures, boolean personal) implements SurveyorExploration {
+		public record OfflinePlayerExploration(Set<UUID> sharedPlayers, Table<RegistryKey<World>, RegionPos, BitSet> chunks, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> starts, boolean personal) implements SurveyorExploration {
 			public static OfflinePlayerExploration empty(UUID uuid) {
 				return new OfflinePlayerExploration(Set.of(uuid), HashBasedTable.create(), HashBasedTable.create(), true);
 			}
 
 			public static OfflinePlayerExploration ofMerged(Set<SurveyorExploration> explorations) {
 				Set<UUID> sharedPlayers = new HashSet<>();
-				Table<RegistryKey<World>, RegionPos, BitSet> terrain = HashBasedTable.create();
-				Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures = HashBasedTable.create();
-				OfflinePlayerExploration outExploration = new OfflinePlayerExploration(sharedPlayers, terrain, structures, false);
+				Table<RegistryKey<World>, RegionPos, BitSet> chunks = HashBasedTable.create();
+				Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> starts = HashBasedTable.create();
+				OfflinePlayerExploration outExploration = new OfflinePlayerExploration(sharedPlayers, chunks, starts, false);
 				for (SurveyorExploration exploration : explorations) {
 					sharedPlayers.addAll(exploration.sharedPlayers());
-					exploration.terrain().cellSet().forEach(c -> outExploration.mergeRegion(c.getRowKey(), c.getColumnKey(), c.getValue()));
-					exploration.structures().cellSet().forEach(c -> outExploration.mergeStructures(c.getRowKey(), c.getColumnKey(), c.getValue()));
+					exploration.chunks().cellSet().forEach(c -> outExploration.mergeRegion(c.getRowKey(), c.getColumnKey(), c.getValue()));
+					exploration.starts().cellSet().forEach(c -> outExploration.mergeStructures(c.getRowKey(), c.getColumnKey(), c.getValue()));
 				}
 				return outExploration;
 			}
@@ -229,7 +225,7 @@ public interface PlayerSummary {
 			nbt.put(PlayerSummary.KEY_DATA, surveyorNbt);
 		}
 
-		public record ServerPlayerExploration(ServerPlayerEntity player, Table<RegistryKey<World>, RegionPos, BitSet> terrain, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structures) implements SurveyorExploration {
+		public record ServerPlayerExploration(ServerPlayerEntity player, Table<RegistryKey<World>, RegionPos, BitSet> chunks, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> starts) implements SurveyorExploration {
 			@Override
 			public Set<UUID> sharedPlayers() {
 				return Set.of(Surveyor.getUuid(player));
@@ -241,51 +237,55 @@ public interface PlayerSummary {
 			}
 
 			@Override
-			public void mergeRegion(RegistryKey<World> worldKey, RegionPos regionPos, BitSet bitSet) { // This method is currently unused for server players, but its implemented anyway
-				SurveyorExploration.super.mergeRegion(worldKey, regionPos, bitSet);
-				if (player.getServer().isHost(player.getGameProfile())) updateClientForMergeRegion(player.getServerWorld(), regionPos, bitSet);
+			public void mergeRegion(RegistryKey<World> dimension, RegionPos regionPos, BitSet chunks) { // This method is currently unused for server players, but its implemented anyway
+				SurveyorExploration.super.mergeRegion(dimension, regionPos, chunks);
+				WorldSummary summary = WorldSummary.of(player.getServer().getWorld(dimension));
+				if (player.getServer().isHost(player.getGameProfile())) {
+					updateClientForMergeRegion(summary, regionPos, chunks);
+				}
 				if (Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.SOLO)) return;
 				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
-					if (friend.getWorld().getRegistryKey().equals(worldKey)) {
+					if (friend.getWorld().getRegistryKey().equals(dimension)) {
 						SurveyorExploration friendExploration = SurveyorExploration.of(friend);
-						BitSet sendSet = (BitSet) bitSet.clone();
-						if (friendExploration.terrain().contains(worldKey, regionPos)) sendSet.andNot(friendExploration.terrain().get(worldKey, regionPos));
-						WorldTerrainSummary summary = WorldSummary.of(player.getWorld()).terrain();
-						if (!sendSet.isEmpty() && summary != null) S2CUpdateRegionPacket.of(worldKey, true, regionPos, summary.getRegion(regionPos), sendSet).send(friend);
+						BitSet sendSet = (BitSet) chunks.clone();
+						if (friendExploration.chunks().contains(dimension, regionPos)) sendSet.andNot(friendExploration.chunks().get(dimension, regionPos));
+						WorldTerrain terrain = summary.terrain();
+						if (!sendSet.isEmpty() && terrain != null) S2CUpdateRegionPacket.of(dimension, true, regionPos, terrain.getRegion(regionPos), sendSet).send(friend);
 					}
 				}
 			}
 
 			@Override
-			public void addChunk(RegistryKey<World> worldKey, ChunkPos pos) {
-				SurveyorExploration.super.addChunk(worldKey, pos);
-				if (player.getServer().isHost(player.getGameProfile())) updateClientForAddChunk(player.getServerWorld(), pos);
+			public void addChunk(RegistryKey<World> dimension, ChunkPos pos) {
+				SurveyorExploration.super.addChunk(dimension, pos);
+				WorldSummary summary = WorldSummary.of(player.getServer().getWorld(dimension));
+				if (player.getServer().isHost(player.getGameProfile())) updateClientForAddChunk(summary, pos);
 				if (Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.SOLO)) return;
 				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
-					if (friend.getWorld().getRegistryKey().equals(worldKey) && !SurveyorExploration.of(friend).exploredChunk(worldKey, pos)) {
+					if (friend.getWorld().getRegistryKey().equals(dimension) && !SurveyorExploration.of(friend).exploredChunk(dimension, pos)) {
 						RegionPos regionPos = RegionPos.of(pos);
-						WorldTerrainSummary summary = WorldSummary.of(player.getServer().getWorld(worldKey)).terrain();
-						if (summary == null) continue;
-						RegionSummary region = summary.getRegion(regionPos);
+						WorldTerrain terrain = summary.terrain();
+						if (terrain == null) continue;
+						RegionSummary region = terrain.getRegion(regionPos);
 						BitSet sendSet = new BitSet();
 						sendSet.set(RegionPos.chunkToBit(pos));
-						S2CUpdateRegionPacket.of(worldKey, true, regionPos, region, sendSet).send(friend);
+						S2CUpdateRegionPacket.of(dimension, true, regionPos, region, sendSet).send(friend);
 					}
 				}
 			}
 
 			@Override
-			public void addStructure(RegistryKey<World> worldKey, RegistryKey<Structure> structureKey, ChunkPos pos) {
-				SurveyorExploration.super.addStructure(worldKey, structureKey, pos);
-				ServerWorld world = player.getServerWorld();
-				if (player.getServer().isHost(player.getGameProfile())) updateClientForAddStructure(world, structureKey, pos);
-				WorldStructureSummary summary = WorldSummary.of(world).structures();
+			public void addStructure(RegistryKey<World> dimension, RegistryKey<Structure> structureKey, ChunkPos pos) {
+				SurveyorExploration.super.addStructure(dimension, structureKey, pos);
+				WorldSummary summary = WorldSummary.of(player.getServer().getWorld(dimension));
+				if (player.getServer().isHost(player.getGameProfile())) updateClientForAddStructure(summary, structureKey, pos);
+				WorldStructures structures = summary.structures();
 				if (Surveyor.CONFIG.networking.structures.atMost(NetworkMode.NONE)) return;
-				S2CStructuresAddedPacket.of(false, structureKey, pos, summary).send(player);
+				S2CStructuresAddedPacket.of(false, structureKey, pos, structures).send(player);
 				if (Surveyor.CONFIG.networking.structures.atMost(NetworkMode.SOLO)) return;
 				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
-					if (friend.getWorld().getRegistryKey().equals(worldKey) && !SurveyorExploration.of(friend).exploredStructure(worldKey, structureKey, pos)) {
-						S2CStructuresAddedPacket.of(true, structureKey, pos, summary).send(friend);
+					if (friend.getWorld().getRegistryKey().equals(dimension) && !SurveyorExploration.of(friend).exploredStructure(dimension, structureKey, pos)) {
+						S2CStructuresAddedPacket.of(true, structureKey, pos, structures).send(friend);
 					}
 				}
 			}
