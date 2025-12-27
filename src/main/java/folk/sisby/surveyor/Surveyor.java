@@ -34,6 +34,7 @@ import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.gen.structure.Structure;
 import org.apache.commons.lang3.text.WordUtils;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +89,10 @@ public class Surveyor implements ModInitializer {
 				}
 			});
 		}
+	}
+
+	public static boolean canModify(UUID landmark, @Nullable ServerPlayerEntity player) {
+		return player == null || player.hasPermissionLevel(2) || landmark.equals(Surveyor.getUuid(player)) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && ServerSummary.of(player.getServer()).getGroup(Surveyor.getUuid(player)).contains(landmark));
 	}
 
 	public static UUID getUuid(ServerPlayerEntity player) {

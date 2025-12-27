@@ -94,7 +94,7 @@ public class SurveyorClientNetworking {
 	private static void handleLandmarksAdded(ClientPlayNetworkHandler handler, SyncLandmarksAddedPacket packet) {
 		WorldSummary summary = SurveyorClient.getSummary(packet.dimension(), handler);
 		if (summary.landmarks() == null) return;
-		summary.landmarks().readUpdatePacket(null, packet, null);
+		summary.landmarks().readUpdatePacket(packet, null);
 		Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(packet.landmarks());
 		Surveyor.LOGGER.info("[Surveyor] Received {} landmarks from the server - {}", keys.size(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
@@ -102,7 +102,7 @@ public class SurveyorClientNetworking {
 	private static void handleLandmarksRemoved(ClientPlayNetworkHandler handler, SyncLandmarksRemovedPacket packet) {
 		WorldSummary summary = SurveyorClient.getSummary(packet.dimension(), handler);
 		if (summary.landmarks() == null) return;
-		summary.landmarks().readUpdatePacket(null, packet, null);
+		summary.landmarks().readUpdatePacket(packet, null);
 		Surveyor.LOGGER.info("[Surveyor] Received {} landmark removals from the server - {}", packet.landmarks().size(), packet.landmarks().values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 

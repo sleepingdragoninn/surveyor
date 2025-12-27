@@ -307,7 +307,7 @@ public class SurveyorCommands {
 			.append(Text.literal(owner.equals(WorldLandmarks.GLOBAL) ? "Landmark " : "Waypoint ").formatted(Formatting.GRAY))
 			.append(Text.literal(id.toString()))
 			.append(Text.literal(" "))
-			.append(!WorldLandmarks.canModify(landmark.owner(), world, player) ? Text.empty() : Text.empty()
+			.append(!Surveyor.canModify(landmark.owner(), player) ? Text.empty() : Text.empty()
 				.append(Text.literal("<").formatted(Formatting.GRAY))
 				.append(Text.literal("remove").formatted(Formatting.AQUA).styled(s -> s
 					.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal(command).formatted(Formatting.AQUA)))
@@ -335,7 +335,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (!WorldLandmarks.canModify(owner, world, player)) {
+		if (!Surveyor.canModify(owner, player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -359,7 +359,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (!WorldLandmarks.canModify(owner, world, player)) {
+		if (!Surveyor.canModify(owner, player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -384,7 +384,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (!WorldLandmarks.canModify(landmark.owner(), world, player)) {
+		if (!Surveyor.canModify(landmark.owner(), player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to modify that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -409,7 +409,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (!WorldLandmarks.canModify(owner, world, player)) {
+		if (!Surveyor.canModify(owner, player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to add that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
@@ -438,7 +438,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (!WorldLandmarks.canModify(owner, world, player)) {
+		if (!Surveyor.canModify(owner, player)) {
 			feedback.accept(prefix().append(Text.literal("You don't have permission to add that landmark!").formatted(Formatting.YELLOW)));
 			return 0;
 		}

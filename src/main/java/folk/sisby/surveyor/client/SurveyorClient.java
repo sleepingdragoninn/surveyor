@@ -165,8 +165,13 @@ public class SurveyorClient implements ClientModInitializer {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
 			return WorldSummary.of(SurveyorClient.stealServerWorld(dimension));
 		} else {
-			return ClientSummary.of(handler).getWorld(dimension);
+			ClientSummary summary = ClientSummary.of(handler);
+			return summary == null ? null : summary.getWorld(dimension);
 		}
+	}
+
+	public static boolean canModify(UUID landmarkOwner) {
+		return landmarkOwner.equals(SurveyorClient.getClientUuid()) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && SurveyorClient.getSharedExploration().groupPlayers().contains(landmarkOwner));
 	}
 
 	public static @Nullable WorldSummary tryGetSummary(RegistryKey<World> dimension) {

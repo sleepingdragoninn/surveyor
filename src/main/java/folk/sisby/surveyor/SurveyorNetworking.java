@@ -112,7 +112,7 @@ public class SurveyorNetworking {
 		if (world == null) return;
 		WorldSummary summary = WorldSummary.of(world);
 		if (summary.landmarks() == null) return;
-		Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(summary.landmarks().readUpdatePacket(world, packet, player));
+		Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(summary.landmarks().readUpdatePacket(packet, player));
 		if (!keys.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Adding landmark(s) from player {} - {}", player.getGameProfile().getName(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 
@@ -122,7 +122,7 @@ public class SurveyorNetworking {
 		if (world == null) return;
 		WorldSummary summary = WorldSummary.of(world);
 		if (summary.landmarks() == null) return;
-		Table<UUID, Identifier, Landmark> changed = summary.landmarks().readUpdatePacket(world, packet, player);
+		Table<UUID, Identifier, Landmark> changed = summary.landmarks().readUpdatePacket(packet, player);
 		if (!changed.isEmpty()) {
 			summary.landmarks().handleChanged(changed, false, player);
 			Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(changed);

@@ -8,7 +8,6 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Tables;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
-import folk.sisby.surveyor.ServerSummary;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.SurveyorEvents;
 import folk.sisby.surveyor.SurveyorExploration;
@@ -38,7 +37,6 @@ import net.minecraft.util.crash.CrashException;
 import net.minecraft.util.dynamic.Codecs;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -288,20 +286,11 @@ public class WorldLandmarks {
 		return 0;
 	}
 
-	public static boolean canModify(UUID landmark, World world, @Nullable ServerPlayerEntity player) {
-		World serverWorld = world == null ? null : world.isClient() ? SurveyorClient.stealServerWorld(world.getRegistryKey()) : world;
-		if (serverWorld == null) {
-			return landmark.equals(SurveyorClient.getClientUuid()) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && SurveyorClient.getSharedExploration().groupPlayers().contains(landmark));
-		} else {
-			return player == null || player.hasPermissionLevel(2) ||  landmark.equals(Surveyor.getUuid(player)) || ServerSummary.of(serverWorld.getServer()).getGroup(Surveyor.getUuid(player)).contains(landmark);
-		}
-	}
-
-	public Table<UUID, Identifier, Landmark> readUpdatePacket(World world, SyncLandmarksAddedPacket packet, @Nullable ServerPlayerEntity sender) {
+	public Table<UUID, Identifier, Landmark> readUpdatePacket(SyncLandmarksAddedPacket packet, @Nullable ServerPlayerEntity sender) {
 		Table<UUID, Identifier, Landmark> changed = HashBasedTable.create();
 		packet.landmarks().values().forEach(landmark -> {
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
-			if (sender == null || canModify(landmark.owner(), world, sender) && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
+			if (sender == null || Surveyor.canModify(landmark.owner(), sender) && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
 				putForBatch(changed, landmark);
 			}
 		});
@@ -309,13 +298,13 @@ public class WorldLandmarks {
 		return changed;
 	}
 
-	public Table<UUID, Identifier, Landmark>  readUpdatePacket(World world, SyncLandmarksRemovedPacket packet, @Nullable ServerPlayerEntity sender) {
+	public Table<UUID, Identifier, Landmark>  readUpdatePacket(SyncLandmarksRemovedPacket packet, @Nullable ServerPlayerEntity sender) {
 		Table<UUID, Identifier, Landmark> changed = HashBasedTable.create();
 		packet.landmarks().forEach((uuid, id) -> {
 			Landmark landmark = get(uuid, id);
 			if (landmark == null) return;
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
-			if (sender == null || canModify(landmark.owner(), world, sender) && ((waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO)) || (!waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)))) {
+			if (sender == null || Surveyor.canModify(landmark.owner(), sender) && ((waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO)) || (!waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)))) {
 				removeForBatch(changed, uuid, id);
 			}
 		});
