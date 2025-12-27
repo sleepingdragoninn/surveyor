@@ -36,9 +36,10 @@ public class MixinServerWorld {
 		WorldSummary summary = WorldSummary.of(self);
 		if (summary.landmarks() == null) return;
 		summary.landmarks().removeAll(l -> l.owner().equals(WorldLandmarks.GLOBAL)
-			&& l.id().getPath().startsWith("poi")
-			&& l.components().contains(LandmarkComponentTypes.POS)
-			&& l.components().get(LandmarkComponentTypes.POS).equals(blockPos)
+			&& l.id().getPath().startsWith("poi") && (
+			(l.components().contains(LandmarkComponentTypes.POS) && l.components().get(LandmarkComponentTypes.POS).equals(blockPos)) ||
+				(l.components().contains(LandmarkComponentTypes.BOX) && l.components().get(LandmarkComponentTypes.BOX).contains(blockPos))
+			)
 		);
 	}
 }
