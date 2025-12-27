@@ -641,15 +641,17 @@ public class SurveyorCommands {
 				)
 				.then(CommandManager.literal("remove")
 					.requires(c -> c.hasPermissionLevel(2) && Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
-					.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
-						.suggests((c, b) -> suggestLandmarks(c, b, true))
-						.executes(c -> execute(c, (s, p, e, f) -> {
-							try {
-								return removeLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class));
-							} catch (CommandSyntaxException ex) {
-								throw new RuntimeException(ex);
-							}
-						}))
+					.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
+						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+							.suggests((c, b) -> suggestLandmarks(c, b, true))
+							.executes(c -> execute(c, (s, p, e, f) -> {
+								try {
+									return removeLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class));
+								} catch (CommandSyntaxException ex) {
+									throw new RuntimeException(ex);
+								}
+							}))
+						)
 					)
 				)
 		);
