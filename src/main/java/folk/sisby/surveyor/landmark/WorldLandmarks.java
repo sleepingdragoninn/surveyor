@@ -108,7 +108,7 @@ public class WorldLandmarks {
 		NbtCompound landmarks = nbt.getCompound(KEY_LANDMARKS);
 		boolean dirty = false;
 		Table<UUID, Identifier, Landmark> outMap = HashBasedTable.create();
-		Multimap<UUID, Identifier> removedMap = null;
+		Multimap<UUID, Identifier> removedMap = summary.server() == null ? null : HashMultimap.create();
 		if (landmarks.getKeys().stream().anyMatch(k -> k.contains(":"))) { // 0.X
 			Surveyor.LOGGER.warn("[Surveyor] Partially recovering landmarks from 0.X");
 			try {
