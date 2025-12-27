@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientSummary {
 	public static final String KEY_SHARED = "shared";
@@ -35,7 +36,7 @@ public class ClientSummary {
 		this.biomeSeed = biomeSeed;
 		this.handler = handler;
 		this.players = new HashMap<>();
-		this.worlds = new HashMap<>();
+		this.worlds = new ConcurrentHashMap<>();
 		this.personal = new SurveyorClient.ClientExploration(new HashSet<>(), HashBasedTable.create(), HashBasedTable.create());
 		this.shared = new SurveyorClient.ClientExploration(new HashSet<>(), HashBasedTable.create(), HashBasedTable.create());
 		this.saveFile = SurveyorClient.getSavePath(biomeSeed).toPath().resolve(SurveyorClient.getClientUuid().toString() + ".dat").toFile();
