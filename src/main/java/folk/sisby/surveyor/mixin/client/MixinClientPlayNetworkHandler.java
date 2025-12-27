@@ -15,7 +15,6 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.network.packet.s2c.play.DeathMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
-import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -44,8 +43,8 @@ public abstract class MixinClientPlayNetworkHandler implements SurveyorNetworkHa
 		surveyor$summary.connect();
 	}
 
-	@Inject(method = "onDisconnected", at = @At("HEAD"))
-	void saveOnDisconnect(Text reason, CallbackInfo ci) {
+	@Inject(method = "clearWorld", at = @At("HEAD"))
+	void saveOnDisconnect(CallbackInfo ci) {
 		if (surveyor$summary != null) surveyor$summary.disconnect();
 	}
 
