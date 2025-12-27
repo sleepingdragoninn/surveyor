@@ -4,7 +4,6 @@ import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.util.MapUtil;
 import folk.sisby.surveyor.util.RegionPos;
 import net.minecraft.registry.RegistryKey;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.gen.structure.Structure;
@@ -42,13 +41,6 @@ public class SurveyorEvents {
 	}
 
 	public static class Invoke {
-		public static void worldLoad(ServerWorld world) {
-			WorldSummary summary = WorldSummary.of(world);
-			if (summary.terrain() != null) terrainUpdated(summary, summary.terrain().bitSet(null));
-			if (summary.structures() != null) structuresAdded(summary, summary.structures().keySet(null));
-			if (summary.landmarks() != null) landmarksAdded(summary, summary.landmarks().keySet(null));
-		}
-
 		public static void terrainUpdated(WorldSummary summary, Map<RegionPos, BitSet> chunks) {
 			if (terrainUpdated.isEmpty() || chunks.isEmpty()) return;
 			terrainUpdated.forEach((id, handler) -> handler.onTerrainUpdated(summary, chunks));

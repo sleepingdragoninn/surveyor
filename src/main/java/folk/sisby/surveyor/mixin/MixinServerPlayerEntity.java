@@ -37,7 +37,7 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 	public void writeSurveyorData(NbtCompound nbt, CallbackInfo ci) {
 		ServerPlayerEntity self = (ServerPlayerEntity) (Object) this;
 		surveyor$summary.writeNbt(nbt);
-		ServerSummary.of(self.getServer()).updatePlayer(Surveyor.getUuid(self), nbt, false, self.getServer());
+		ServerSummary.of(self.getServer()).updatePlayer(Surveyor.getUuid(self), nbt, false);
 	}
 
 	@Inject(method = "readCustomDataFromNbt", at = @At("TAIL"))

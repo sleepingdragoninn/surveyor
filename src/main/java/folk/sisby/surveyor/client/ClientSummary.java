@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class NetworkHandlerSummary {
+public class ClientSummary {
 	public static final String KEY_SHARED = "shared";
 	private final long biomeSeed;
 	private final ClientPlayNetworkHandler handler;
@@ -31,7 +31,7 @@ public class NetworkHandlerSummary {
 	public final SurveyorClient.ClientExploration shared;
 	public final File saveFile;
 
-	public NetworkHandlerSummary(long biomeSeed, ClientPlayNetworkHandler handler) {
+	public ClientSummary(long biomeSeed, ClientPlayNetworkHandler handler) {
 		this.biomeSeed = biomeSeed;
 		this.handler = handler;
 		this.players = new HashMap<>();
@@ -41,7 +41,7 @@ public class NetworkHandlerSummary {
 		this.saveFile = SurveyorClient.getSavePath(biomeSeed).toPath().resolve(SurveyorClient.getClientUuid().toString() + ".dat").toFile();
 	}
 
-	public static NetworkHandlerSummary of(ClientPlayNetworkHandler handler) {
+	public static ClientSummary of(ClientPlayNetworkHandler handler) {
 		return ((SurveyorNetworkHandler) handler).surveyor$getSummary();
 	}
 

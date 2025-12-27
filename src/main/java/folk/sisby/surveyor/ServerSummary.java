@@ -12,6 +12,7 @@ import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -37,13 +38,17 @@ import java.util.stream.StreamSupport;
 public final class ServerSummary {
 	public static final String KEY_GROUPS = "groups";
 	public static final UUID HOST = UUID.fromString("00000000-0000-0000-0000-000000000000");
+	private final MinecraftServer server;
 	private final Map<UUID, PlayerSummary> offlineSummaries;
 	private final Map<UUID, Set<UUID>> shareGroups;
+	private final Map<RegistryKey<World>, WorldSummary> worlds;
 	private boolean dirty = false;
 
-	public ServerSummary(Map<UUID, PlayerSummary> offlineSummaries, @Nullable Map<UUID, Set<UUID>> shareGroups) {
+	public ServerSummary(MinecraftServer server, Map<UUID, PlayerSummary> offlineSummaries, @Nullable Map<UUID, Set<UUID>> shareGroups) {
+		this.server = server;
 		this.offlineSummaries = offlineSummaries;
 		this.shareGroups = shareGroups;
+		this.worlds = new HashMap<>();
 	}
 
 	public static ServerSummary of(MinecraftServer server) {
@@ -111,7 +116,7 @@ public final class ServerSummary {
 			}
 		}
 
-		return new ServerSummary(offlineSummaries, shareGroups);
+		return new ServerSummary(server, offlineSummaries, shareGroups);
 	}
 
 	public static void onPlayerJoin(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
@@ -145,7 +150,20 @@ public final class ServerSummary {
 		}
 	}
 
-	public void save(MinecraftServer server, boolean force, boolean suppressLogs) {
+	public WorldSummary getWorld(RegistryKey<World> dimension) {
+		return worlds.computeIfAbsent(dimension, dim -> new WorldSummary(server, dim, server.getRegistryManager(), Surveyor.getSavePath(dim, server)));
+	}
+
+	public void loadWorlds() {
+		for (RegistryKey<World> dimension : server.getWorldRegistryKeys()) {
+			WorldSummary summary = getWorld(dimension);
+			if (summary.terrain() != null) SurveyorEvents.Invoke.terrainUpdated(summary, summary.terrain().bitSet(null));
+			if (summary.structures() != null) SurveyorEvents.Invoke.structuresAdded(summary, summary.structures().keySet(null));
+			if (summary.landmarks() != null) SurveyorEvents.Invoke.landmarksAdded(summary, summary.landmarks().keySet(null));
+		}
+	}
+
+	public void save(boolean force, boolean suppressLogs) {
 		if (!isDirty() && StreamSupport.stream(server.getWorlds().spliterator(), false).map(WorldSummary::of).noneMatch(WorldSummary::isDirty)) return;
 		if (!suppressLogs) Surveyor.LOGGER.info("[Surveyor] Saving server data...");
 		for (ServerWorld world : server.getWorlds()) {
@@ -189,7 +207,7 @@ public final class ServerSummary {
 		offlineSummaries.put(Surveyor.getUuid(player), new PlayerSummary.OfflinePlayerSummary(player));
 	}
 
-	public void updatePlayer(UUID uuid, NbtCompound nbt, boolean online, MinecraftServer server) {
+	public void updatePlayer(UUID uuid, NbtCompound nbt, boolean online) {
 		PlayerSummary newSummary = new PlayerSummary.OfflinePlayerSummary(uuid, nbt, online);
 		offlineSummaries.put(uuid, newSummary);
 		S2CGroupUpdatedPacket.of(uuid, newSummary).send(null, server, server.getPlayerManager().getPlayerList(), Surveyor.CONFIG.networking.positions);
@@ -207,7 +225,7 @@ public final class ServerSummary {
 		return shareGroups == null ? new HashSet<>(offlineSummaries.keySet()) : shareGroups.computeIfAbsent(player, p -> new HashSet<>(Set.of(p)));
 	}
 
-	public Map<UUID, PlayerSummary> getAllSummaries(MinecraftServer server) {
+	public Map<UUID, PlayerSummary> getAllSummaries() {
 		Map<UUID, PlayerSummary> map = new HashMap<>();
 		for (UUID u : offlineSummaries.keySet()) {
 			if (getPlayer(u, server) != null) map.put(u, getPlayer(u, server));

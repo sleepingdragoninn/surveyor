@@ -113,8 +113,8 @@ public class SurveyorClient implements ClientModInitializer {
 		} else {
 			ClientPlayNetworkHandler handler = MinecraftClient.getInstance().getNetworkHandler();
 			if (handler == null) return new HashMap<>();
-			NetworkHandlerSummary handlerSummary = NetworkHandlerSummary.of(handler);
-			return handlerSummary.players(handlerSummary.shared.sharedPlayers());
+			ClientSummary clientSummary = ClientSummary.of(handler);
+			return clientSummary.players(clientSummary.shared.sharedPlayers());
 		}
 	}
 
@@ -123,8 +123,8 @@ public class SurveyorClient implements ClientModInitializer {
 			return SurveyorExploration.ofShared(getClientUuid(), MinecraftClient.getInstance().getServer());
 		} else {
 			Set<SurveyorExploration> set = new HashSet<>();
-			set.add(NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal);
-			set.add(NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).shared);
+			set.add(ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal);
+			set.add(ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).shared);
 			return PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(set);
 		}
 	}
@@ -133,7 +133,7 @@ public class SurveyorClient implements ClientModInitializer {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
 			return SurveyorExploration.of(getClientUuid(), MinecraftClient.getInstance().getServer());
 		} else {
-			return NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal;
+			return ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal;
 		}
 	}
 
@@ -141,7 +141,7 @@ public class SurveyorClient implements ClientModInitializer {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
 			throw new IllegalStateException("You can't edit shared exploration in singleplayer!");
 		} else {
-			return NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).shared;
+			return ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).shared;
 		}
 	}
 
@@ -165,7 +165,7 @@ public class SurveyorClient implements ClientModInitializer {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
 			return WorldSummary.of(SurveyorClient.stealServerWorld(dimension));
 		} else {
-			return NetworkHandlerSummary.of(handler).getWorld(dimension);
+			return ClientSummary.of(handler).getWorld(dimension);
 		}
 	}
 
@@ -220,7 +220,7 @@ public class SurveyorClient implements ClientModInitializer {
 			if (MinecraftClient.getInstance().worldRenderer.getCompletedChunkCount() <= 10 || !MinecraftClient.getInstance().worldRenderer.isTerrainRenderComplete()) return;
 			for (WorldChunk chunk : new HashSet<>(LOADING_CHUNKS.get(world.getRegistryKey()))) {
 				WorldTerrain.onChunkLoad(world, chunk);
-				NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal.addChunk(world.getRegistryKey(), chunk.getPos());
+				ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal.addChunk(world.getRegistryKey(), chunk.getPos());
 				LOADING_CHUNKS.remove(world.getRegistryKey(), chunk);
 			}
 		}));

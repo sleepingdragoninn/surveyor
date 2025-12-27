@@ -73,7 +73,7 @@ public class SurveyorClientNetworking {
 			SurveyorClient.getSharedExploration().groupPlayers().clear();
 			SurveyorClient.getSharedExploration().groupPlayers().addAll(packet.players().keySet());
 		}
-		NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).matchSummaries(packet.players());
+		ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).matchSummaries(packet.players());
 		SurveyorClient.getSharedExploration().replaceTerrain(packet.regionBits());
 		SurveyorClient.getSharedExploration().replaceStructures(packet.structureKeys());
 		SurveyorClient.getSummaries(handler).values().forEach(summary -> SurveyorClient.getSharedExploration().updateClientForLandmarks(summary));
@@ -88,7 +88,7 @@ public class SurveyorClientNetworking {
 	}
 
 	private static void handleGroupUpdated(ClientPlayNetworkHandler handler, S2CGroupUpdatedPacket packet) {
-		NetworkHandlerSummary.of(MinecraftClient.getInstance().getNetworkHandler()).mergeSummaries(packet.players());
+		ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).mergeSummaries(packet.players());
 	}
 
 	private static void handleLandmarksAdded(ClientPlayNetworkHandler handler, SyncLandmarksAddedPacket packet) {
