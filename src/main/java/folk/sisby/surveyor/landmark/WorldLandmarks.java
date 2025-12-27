@@ -257,7 +257,7 @@ public class WorldLandmarks {
 
 	public Table<UUID, Identifier, Landmark> removeAllForBatch(Table<UUID, Identifier, Landmark> changed, Predicate<Landmark> predicate) {
 		if (Surveyor.CONFIG.landmarks == SystemMode.FROZEN) return null;
-		Table<UUID, Identifier, Landmark> toRemove = HashBasedTable.create(changed);
+		Table<UUID, Identifier, Landmark> toRemove = HashBasedTable.create(landmarks);
 		toRemove.values().removeIf(predicate.negate());
 		toRemove.cellSet().forEach(c -> removeForBatch(changed, c.getRowKey(), c.getColumnKey()));
 		return changed;
