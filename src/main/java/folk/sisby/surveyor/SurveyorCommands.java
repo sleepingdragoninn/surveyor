@@ -174,7 +174,7 @@ public class SurveyorCommands {
 		return 1;
 	}
 
-	private static int share(MinecraftServer server, @Nullable ServerPlayerEntity player, @Nullable SurveyorExploration exploration, Consumer<Text> feedback, String username) {
+	private static int share(MinecraftServer server, @Nullable ServerPlayerEntity player, Consumer<Text> feedback, String username) {
 		if (playerMissing(player, feedback)) return 0;
 		ServerSummary serverSummary = ServerSummary.of(server);
 		ServerPlayerEntity sharePlayer = server.getPlayerManager().getPlayer(username);
@@ -245,7 +245,7 @@ public class SurveyorCommands {
 		}
 	}
 
-	private static int getLandmarks(MinecraftServer server, @Nullable ServerPlayerEntity player, @Nullable SurveyorExploration exploration, Consumer<Text> feedback, boolean global) {
+	private static int getLandmarks(MinecraftServer server, @Nullable ServerPlayerEntity player, Consumer<Text> feedback, boolean global) {
 		Map<Identifier, Collection<Landmark>> dimensionLandmarks = new LinkedHashMap<>();
 		boolean op = player == null || player.hasPermissionLevel(2);
 		for (ServerWorld world : server.getWorlds()) {
@@ -291,7 +291,7 @@ public class SurveyorCommands {
 		return numLandmarks;
 	}
 
-	private static int viewLandmark(MinecraftServer server, @Nullable ServerPlayerEntity player, @Nullable SurveyorExploration exploration, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id, boolean raw) {
+	private static int viewLandmark(@Nullable ServerPlayerEntity player, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id, boolean raw) {
 		WorldSummary summary = WorldSummary.of(world);
 		if (summary.landmarks() == null) {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
@@ -302,13 +302,12 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		boolean cantModify = player != null && !player.hasPermissionLevel(2) && !landmark.owner().equals(Surveyor.getUuid(player));
 		String command = landmark.owner().equals(WorldLandmarks.GLOBAL) ? "/landmarks remove %s %s".formatted(world.getRegistryKey().getValue(), landmark.id()) : "/waypoints remove %s %s%s".formatted(world.getRegistryKey().getValue(), landmark.id(), (player == null || !landmark.owner().equals(Surveyor.getUuid(player)) ? " " + landmark.owner() : ""));
 		feedback.accept(prefix()
 			.append(Text.literal(owner.equals(WorldLandmarks.GLOBAL) ? "Landmark " : "Waypoint ").formatted(Formatting.GRAY))
 			.append(Text.literal(id.toString()))
 			.append(Text.literal(" "))
-			.append(cantModify ? Text.empty() : Text.empty()
+			.append(!WorldLandmarks.canModify(landmark.owner(), world, player) ? Text.empty() : Text.empty()
 				.append(Text.literal("<").formatted(Formatting.GRAY))
 				.append(Text.literal("remove").formatted(Formatting.AQUA).styled(s -> s
 					.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal(command).formatted(Formatting.AQUA)))
@@ -325,7 +324,7 @@ public class SurveyorCommands {
 		return 1;
 	}
 
-	private static int removeLandmark(MinecraftServer server, @Nullable ServerPlayerEntity player, @Nullable SurveyorExploration exploration, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id) {
+	private static int removeLandmark(@Nullable ServerPlayerEntity player, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id) {
 		WorldSummary summary = WorldSummary.of(world);
 		if (summary.landmarks() == null) {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
@@ -349,7 +348,7 @@ public class SurveyorCommands {
 		return 1;
 	}
 
-	private static int trimLandmark(MinecraftServer server, @Nullable ServerPlayerEntity player, @Nullable SurveyorExploration exploration, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id, Identifier componentType) {
+	private static int trimLandmark(@Nullable ServerPlayerEntity player, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id, Identifier componentType) {
 		WorldSummary summary = WorldSummary.of(world);
 		if (summary.landmarks() == null) {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
@@ -374,7 +373,7 @@ public class SurveyorCommands {
 		return 1;
 	}
 
-	private static int appendColor(MinecraftServer server, @Nullable ServerPlayerEntity player, @Nullable SurveyorExploration exploration, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id, String colorString) {
+	private static int appendColor(@Nullable ServerPlayerEntity player, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id, String colorString) {
 		WorldSummary summary = WorldSummary.of(world);
 		if (summary.landmarks() == null) {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
@@ -404,7 +403,7 @@ public class SurveyorCommands {
 		return 1;
 	}
 
-	private static int addBlockLandmark(MinecraftServer server, @Nullable ServerPlayerEntity player, @Nullable SurveyorExploration exploration, Consumer<Text> feedback, ServerWorld world, UUID owner, BlockPos pos) {
+	private static int addBlockLandmark(@Nullable ServerPlayerEntity player, Consumer<Text> feedback, ServerWorld world, UUID owner, BlockPos pos) {
 		WorldSummary summary = WorldSummary.of(world);
 		if (summary.landmarks() == null) {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
@@ -427,7 +426,7 @@ public class SurveyorCommands {
 		return 1;
 	}
 
-	private static int addIdLandmark(MinecraftServer server, @Nullable ServerPlayerEntity player, @Nullable SurveyorExploration exploration, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id, BlockPos pos, ItemStackArgument stack, Text name, Text lore) {
+	private static int addIdLandmark(@Nullable ServerPlayerEntity player, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id, BlockPos pos, ItemStackArgument stack, Text name, Text lore) {
 		ItemStack icon;
 		try {
 			icon = stack.createStack(1, false);
@@ -520,7 +519,7 @@ public class SurveyorCommands {
 					CommandManager.literal("share")
 						.then(CommandManager.argument("player", StringArgumentType.word())
 							.suggests((c, b) -> CommandSource.suggestMatching(c.getSource().getServer().getPlayerManager().getPlayerList().stream().filter(p -> c.getSource().getPlayer() != p).map(p -> p.getGameProfile().getName()), b))
-							.executes(c -> execute(c, (s, p, e, f) -> share(s, p, e, f, c.getArgument("player", String.class))))
+							.executes(c -> execute(c, (s, p, e, f) -> share(s, p, f, c.getArgument("player", String.class))))
 						)
 				).then(Surveyor.CONFIG.networking.globalSharing ?
 					CommandManager.literal("unshare")
@@ -532,7 +531,7 @@ public class SurveyorCommands {
 		dispatcher.register(
 			CommandManager.literal("landmarks")
 				.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.DISABLED)
-				.executes(c -> execute(c, (s, p, e, f) -> getLandmarks(s, p, e, f, true)))
+				.executes(c -> execute(c, (s, p, e, f) -> getLandmarks(s, p, f, true)))
 				.then(CommandManager.literal("new")
 					.requires(c -> c.hasPermissionLevel(2) && Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
 					.then(CommandManager.literal("block")
@@ -540,7 +539,7 @@ public class SurveyorCommands {
 							.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
-										return addBlockLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
+										return addBlockLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
 									} catch (CommandSyntaxException ex) {
 										throw new RuntimeException(ex);
 									}
@@ -551,7 +550,7 @@ public class SurveyorCommands {
 									f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 									return 0;
 								}
-								return addBlockLandmark(s, p, e, f, p.getServerWorld(), WorldLandmarks.GLOBAL, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
+								return addBlockLandmark(p, f, p.getServerWorld(), WorldLandmarks.GLOBAL, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
 							}))
 						)
 					)
@@ -564,7 +563,7 @@ public class SurveyorCommands {
 											.then(CommandManager.argument("lore", TextArgumentType.text())
 												.executes(c -> execute(c, (s, p, e, f) -> {
 													try {
-														return addIdLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), ItemStackArgumentType.getItemStackArgument(c, "icon"), Text.of(c.getArgument("name", String.class)), c.getArgument("lore", Text.class));
+														return addIdLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), ItemStackArgumentType.getItemStackArgument(c, "icon"), Text.of(c.getArgument("name", String.class)), c.getArgument("lore", Text.class));
 													} catch (CommandSyntaxException ex) {
 														throw new RuntimeException(ex);
 													}
@@ -586,7 +585,7 @@ public class SurveyorCommands {
 								.suggests((c, s) -> CommandSource.suggestMatching(Formatting.getNames(true, false), s))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
-										return appendColor(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
+										return appendColor(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
 									} catch (CommandSyntaxException ex) {
 										throw new RuntimeException(ex);
 									}
@@ -603,7 +602,7 @@ public class SurveyorCommands {
 							.suggests((c, b) -> CommandSource.suggestIdentifiers(LandmarkComponentType.keySet(), b))
 							.executes(c -> execute(c, (s, p, e, f) -> {
 								try {
-									return trimLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
+									return trimLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
 								} catch (CommandSyntaxException ex) {
 									throw new RuntimeException(ex);
 								}
@@ -617,7 +616,7 @@ public class SurveyorCommands {
 							.suggests((c, b) -> suggestLandmarks(c, b, true))
 							.executes(c -> execute(c, (s, p, e, f) -> {
 								try {
-									return viewLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), false);
+									return viewLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), false);
 								} catch (CommandSyntaxException ex) {
 									throw new RuntimeException(ex);
 								}
@@ -632,7 +631,7 @@ public class SurveyorCommands {
 							.suggests((c, b) -> suggestLandmarks(c, b, true))
 							.executes(c -> execute(c, (s, p, e, f) -> {
 								try {
-									return viewLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), true);
+									return viewLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), true);
 								} catch (CommandSyntaxException ex) {
 									throw new RuntimeException(ex);
 								}
@@ -646,7 +645,7 @@ public class SurveyorCommands {
 						.suggests((c, b) -> suggestLandmarks(c, b, true))
 						.executes(c -> execute(c, (s, p, e, f) -> {
 							try {
-								return removeLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class));
+								return removeLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class));
 							} catch (CommandSyntaxException ex) {
 								throw new RuntimeException(ex);
 							}
@@ -657,7 +656,7 @@ public class SurveyorCommands {
 		dispatcher.register(
 			CommandManager.literal("waypoints")
 				.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.DISABLED)
-				.executes(c -> execute(c, (s, p, e, f) -> getLandmarks(s, p, e, f, false)))
+				.executes(c -> execute(c, (s, p, e, f) -> getLandmarks(s, p, f, false)))
 				.then(CommandManager.literal("new")
 					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
 					.then(CommandManager.literal("block")
@@ -668,7 +667,7 @@ public class SurveyorCommands {
 									.requires(c -> c.hasPermissionLevel(2))
 									.executes(c -> execute(c, (s, p, e, f) -> {
 										try {
-											return addBlockLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
+											return addBlockLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
 										} catch (CommandSyntaxException ex) {
 											throw new RuntimeException(ex);
 										}
@@ -680,7 +679,7 @@ public class SurveyorCommands {
 											f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 											return 0;
 										}
-										return addBlockLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
+										return addBlockLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
 									} catch (CommandSyntaxException ex) {
 										throw new RuntimeException(ex);
 									}
@@ -691,7 +690,7 @@ public class SurveyorCommands {
 									f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 									return 0;
 								}
-								return addBlockLandmark(s, p, e, f, p.getServerWorld(), Surveyor.getUuid(p), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
+								return addBlockLandmark(p, f, p.getServerWorld(), Surveyor.getUuid(p), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
 							}))
 						)
 					)
@@ -705,7 +704,7 @@ public class SurveyorCommands {
 												.then(CommandManager.argument("lore", TextArgumentType.text())
 													.executes(c -> execute(c, (s, p, e, f) -> {
 														try {
-															return addIdLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "uuid"), c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), ItemStackArgumentType.getItemStackArgument(c, "icon"), Text.of(c.getArgument("name", String.class)), c.getArgument("lore", Text.class));
+															return addIdLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "uuid"), c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), ItemStackArgumentType.getItemStackArgument(c, "icon"), Text.of(c.getArgument("name", String.class)), c.getArgument("lore", Text.class));
 														} catch (CommandSyntaxException ex) {
 															throw new RuntimeException(ex);
 														}
@@ -729,7 +728,7 @@ public class SurveyorCommands {
 															f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 															return 0;
 														}
-														return addIdLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), ItemStackArgumentType.getItemStackArgument(c, "icon"), Text.of(c.getArgument("name", String.class)), c.getArgument("lore", Text.class));
+														return addIdLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()), ItemStackArgumentType.getItemStackArgument(c, "icon"), Text.of(c.getArgument("name", String.class)), c.getArgument("lore", Text.class));
 													} catch (CommandSyntaxException ex) {
 														throw new RuntimeException(ex);
 													}
@@ -755,7 +754,7 @@ public class SurveyorCommands {
 										.requires(c -> c.hasPermissionLevel(2))
 										.executes(c -> execute(c, (s, p, e, f) -> {
 											try {
-												return appendColor(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
+												return appendColor(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
 											} catch (CommandSyntaxException ex) {
 												throw new RuntimeException(ex);
 											}
@@ -767,7 +766,7 @@ public class SurveyorCommands {
 												f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 												return 0;
 											}
-											return appendColor(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
+											return appendColor(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
 										} catch (CommandSyntaxException ex) {
 											throw new RuntimeException(ex);
 										}
@@ -778,7 +777,7 @@ public class SurveyorCommands {
 										f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 										return 0;
 									}
-									return appendColor(s, p, e, f, p.getServerWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
+									return appendColor(p, f, p.getServerWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
 								}))
 							)
 						)
@@ -796,7 +795,7 @@ public class SurveyorCommands {
 									.requires(c -> c.hasPermissionLevel(2))
 									.executes(c -> execute(c, (s, p, e, f) -> {
 										try {
-											return trimLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
+											return trimLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
 										} catch (CommandSyntaxException ex) {
 											throw new RuntimeException(ex);
 										}
@@ -808,7 +807,7 @@ public class SurveyorCommands {
 											f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 											return 0;
 										}
-										return trimLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
+										return trimLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
 									} catch (CommandSyntaxException ex) {
 										throw new RuntimeException(ex);
 									}
@@ -819,7 +818,7 @@ public class SurveyorCommands {
 									f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 									return 0;
 								}
-								return trimLandmark(s, p, e, f, p.getServerWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
+								return trimLandmark(p, f, p.getServerWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
 							}))
 						)
 					)
@@ -833,7 +832,7 @@ public class SurveyorCommands {
 								.requires(c -> c.hasPermissionLevel(2))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
-										return viewLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), false);
+										return viewLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), false);
 									} catch (CommandSyntaxException ex) {
 										throw new RuntimeException(ex);
 									}
@@ -845,7 +844,7 @@ public class SurveyorCommands {
 										f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 										return 0;
 									}
-									return viewLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), false);
+									return viewLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), false);
 								} catch (CommandSyntaxException ex) {
 									throw new RuntimeException(ex);
 								}
@@ -863,7 +862,7 @@ public class SurveyorCommands {
 								.requires(c -> c.hasPermissionLevel(2))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
-										return viewLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), true);
+										return viewLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), true);
 									} catch (CommandSyntaxException ex) {
 										throw new RuntimeException(ex);
 									}
@@ -875,7 +874,7 @@ public class SurveyorCommands {
 										f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 										return 0;
 									}
-									return viewLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), true);
+									return viewLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), true);
 								} catch (CommandSyntaxException ex) {
 									throw new RuntimeException(ex);
 								}
@@ -893,7 +892,7 @@ public class SurveyorCommands {
 								.requires(c -> c.hasPermissionLevel(2))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
-										return removeLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class));
+										return removeLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class));
 									} catch (CommandSyntaxException ex) {
 										throw new RuntimeException(ex);
 									}
@@ -905,7 +904,7 @@ public class SurveyorCommands {
 										f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 										return 0;
 									}
-									return removeLandmark(s, p, e, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class));
+									return removeLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), Surveyor.getUuid(p), c.getArgument("id", Identifier.class));
 								} catch (CommandSyntaxException ex) {
 									throw new RuntimeException(ex);
 								}
