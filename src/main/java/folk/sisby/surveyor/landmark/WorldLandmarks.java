@@ -289,7 +289,7 @@ public class WorldLandmarks {
 		Table<UUID, Identifier, Landmark> changed = HashBasedTable.create();
 		packet.landmarks().values().forEach(landmark -> {
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
-			if (sender == null || Surveyor.canModify(landmark.owner(), sender) && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
+			if ((sender == null || Surveyor.canModify(landmark.owner(), sender)) && (waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO) || !waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO))) {
 				putForBatch(changed, landmark);
 			}
 		});
@@ -303,7 +303,7 @@ public class WorldLandmarks {
 			Landmark landmark = get(uuid, id);
 			if (landmark == null) return;
 			boolean waypoint = !landmark.owner().equals(GLOBAL);
-			if (sender == null || Surveyor.canModify(landmark.owner(), sender) && ((waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO)) || (!waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)))) {
+			if ((sender == null || Surveyor.canModify(landmark.owner(), sender)) && ((waypoint && Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SOLO)) || (!waypoint && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)))) {
 				removeForBatch(changed, uuid, id);
 			}
 		});
