@@ -190,8 +190,8 @@ public class WorldLandmarks {
 		if (!landmarksRemoved.isEmpty()) SurveyorEvents.Invoke.landmarksRemoved(summary, MapUtil.keyMultiMap(landmarksRemoved));
 		if (!landmarksAdded.isEmpty()) SurveyorEvents.Invoke.landmarksAdded(summary, MapUtil.keyMultiMap(landmarksAdded));
 		if (!local) {
-			Table<UUID, Identifier, Landmark> globalRemoved = MapUtil.asTable(Map.of(WorldLandmarks.GLOBAL, landmarksAdded.row(GLOBAL)));
-			Table<UUID, Identifier, Landmark> globalAdded = MapUtil.asTable(Map.of(WorldLandmarks.GLOBAL, landmarksRemoved.row(GLOBAL)));
+			Table<UUID, Identifier, Landmark> globalRemoved = MapUtil.asTable(Map.of(WorldLandmarks.GLOBAL, landmarksRemoved.row(GLOBAL)));
+			Table<UUID, Identifier, Landmark> globalAdded = MapUtil.asTable(Map.of(WorldLandmarks.GLOBAL, landmarksAdded.row(GLOBAL)));
 			landmarksRemoved.rowMap().remove(WorldLandmarks.GLOBAL);
 			landmarksAdded.rowMap().remove(WorldLandmarks.GLOBAL);
 			if (!globalRemoved.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(globalRemoved)).send(sender, summary, Surveyor.CONFIG.networking.landmarks, false);
