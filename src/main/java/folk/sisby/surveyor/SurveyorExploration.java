@@ -47,7 +47,7 @@ public interface SurveyorExploration {
 	}
 
 	static SurveyorExploration ofShared(UUID player, MinecraftServer server) {
-		return ServerSummary.of(server).groupExploration(player, server, NetworkMode.GROUP);
+		return ServerSummary.of(server).groupExploration(player, server, NetworkMode.GROUP, true);
 	}
 
 	Table<RegistryKey<World>, RegionPos, BitSet> chunks();

@@ -1,6 +1,5 @@
 package folk.sisby.surveyor;
 
-import com.google.common.collect.HashBasedTable;
 import com.mojang.authlib.GameProfile;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
@@ -128,7 +127,7 @@ public final class ServerSummary {
 		if (serverSummary.getGroup(uuid).size() > 1) {
 			// initial exploration
 			Map<UUID, PlayerSummary> groupSummaries = serverSummary.getGroupSummaries(uuid, server);
-			new S2CGroupChangedPacket(groupSummaries, serverSummary.groupExploration(uuid, server, Surveyor.CONFIG.networking.terrain).chunks(), serverSummary.groupExploration(uuid, server, Surveyor.CONFIG.networking.structures).starts()).send(player);
+			new S2CGroupChangedPacket(groupSummaries, serverSummary.groupExploration(uuid, server, Surveyor.CONFIG.networking.terrain, false).chunks(), serverSummary.groupExploration(uuid, server, Surveyor.CONFIG.networking.structures, false).starts()).send(player);
 			// initial offline group positions
 			new S2CGroupUpdatedPacket(groupSummaries).send(player);
 		}
@@ -252,22 +251,21 @@ public final class ServerSummary {
 		}
 		for (ServerPlayerEntity friend : serverPlayers(player1, server, NetworkMode.GROUP, true)) {
 			UUID uuid = Surveyor.getUuid(friend);
-			new S2CGroupChangedPacket(getGroupSummaries(uuid, server), groupExploration(uuid, server, Surveyor.CONFIG.networking.terrain).chunks(), groupExploration(uuid, server, Surveyor.CONFIG.networking.structures).starts()).send(friend);
+			new S2CGroupChangedPacket(getGroupSummaries(uuid, server), groupExploration(uuid, server, Surveyor.CONFIG.networking.terrain, false).chunks(), groupExploration(uuid, server, Surveyor.CONFIG.networking.structures, false).starts()).send(friend);
 		}
 		dirty();
 	}
 
 	public void leaveGroup(UUID player, MinecraftServer server) {
 		if (shareGroups == null) return;
+		Set<ServerPlayerEntity> groupPlayers = serverPlayers(player, server, NetworkMode.GROUP, true);
 		getGroup(player).remove(player); // Shares set instance with group members.
-		for (ServerPlayerEntity friend : serverPlayers(player, server, NetworkMode.GROUP, true)) {
-			UUID uuid = Surveyor.getUuid(friend);
-			new S2CGroupChangedPacket(getGroupSummaries(uuid, server), groupExploration(uuid, server, Surveyor.CONFIG.networking.terrain).chunks(), groupExploration(uuid, server, Surveyor.CONFIG.networking.structures).starts()).send(friend);
-		}
 		shareGroups.put(player, new HashSet<>());
 		getGroup(player).add(player);
-		ServerPlayerEntity serverPlayer = Surveyor.getPlayer(server, player);
-		if (serverPlayer != null) new S2CGroupChangedPacket(getGroupSummaries(player, server), HashBasedTable.create(), HashBasedTable.create()).send(serverPlayer);
+		for (ServerPlayerEntity friend : groupPlayers) {
+			UUID uuid = Surveyor.getUuid(friend);
+			new S2CGroupChangedPacket(getGroupSummaries(uuid, server), groupExploration(uuid, server, Surveyor.CONFIG.networking.terrain, false).chunks(), groupExploration(uuid, server, Surveyor.CONFIG.networking.structures, false).starts()).send(friend);
+		}
 		dirty();
 	}
 
@@ -279,8 +277,8 @@ public final class ServerSummary {
 		return getGroup(player).stream().map(u -> getPlayer(u, server)).collect(Collectors.toSet());
 	}
 
-	public SurveyorExploration groupExploration(UUID player, MinecraftServer server, NetworkMode mode) {
-		return mode.atMost(NetworkMode.SOLO) ? PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.empty(player) : mode.atMost(NetworkMode.SOLO) ? getExploration(player, server) : PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(getGroup(player).stream().map(u -> getExploration(u, server)).filter(Objects::nonNull).collect(Collectors.toSet()));
+	public SurveyorExploration groupExploration(UUID player, MinecraftServer server, NetworkMode mode, boolean withSelf) {
+		return mode.atMost(NetworkMode.SOLO) && !withSelf ? PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.empty(player) : mode.atMost(NetworkMode.SOLO) ? getExploration(player, server) : PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged((mode.atLeast(NetworkMode.SERVER) ? offlineSummaries.keySet() : getGroup(player)).stream().map(u -> getExploration(u, server)).filter(Objects::nonNull).collect(Collectors.toSet()));
 	}
 
 	public Set<ServerPlayerEntity> serverPlayers(UUID player, MinecraftServer server, NetworkMode mode, boolean withSelf) {
