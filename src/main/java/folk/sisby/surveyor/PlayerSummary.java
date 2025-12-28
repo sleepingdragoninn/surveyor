@@ -7,7 +7,6 @@ import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
 import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
 import folk.sisby.surveyor.structure.WorldStructures;
-import folk.sisby.surveyor.terrain.RegionSummary;
 import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.ArrayUtil;
 import folk.sisby.surveyor.util.RegionPos;
@@ -244,14 +243,12 @@ public interface PlayerSummary {
 					updateClientForMergeRegion(summary, regionPos, chunks);
 				}
 				if (Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.SOLO)) return;
-				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
-					if (friend.getWorld().getRegistryKey().equals(dimension)) {
-						SurveyorExploration friendExploration = SurveyorExploration.of(friend);
-						BitSet sendSet = (BitSet) chunks.clone();
-						if (friendExploration.chunks().contains(dimension, regionPos)) sendSet.andNot(friendExploration.chunks().get(dimension, regionPos));
-						WorldTerrain terrain = summary.terrain();
-						if (!sendSet.isEmpty() && terrain != null) S2CUpdateRegionPacket.of(dimension, true, regionPos, terrain.getRegion(regionPos), sendSet).send(friend);
-					}
+				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).serverPlayers(Surveyor.getUuid(player), player.getServer(), Surveyor.CONFIG.networking.terrain, false)) {
+					SurveyorExploration friendExploration = SurveyorExploration.of(friend);
+					BitSet sendSet = (BitSet) chunks.clone();
+					if (friendExploration.chunks().contains(dimension, regionPos)) sendSet.andNot(friendExploration.chunks().get(dimension, regionPos));
+					WorldTerrain terrain = summary.terrain();
+					if (!sendSet.isEmpty() && terrain != null) S2CUpdateRegionPacket.of(dimension, true, regionPos, terrain.getRegion(regionPos), sendSet).send(friend);
 				}
 			}
 
@@ -261,15 +258,11 @@ public interface PlayerSummary {
 				WorldSummary summary = WorldSummary.of(player.getServer().getWorld(dimension));
 				if (player.getServer().isHost(player.getGameProfile())) updateClientForAddChunk(summary, pos);
 				if (Surveyor.CONFIG.networking.terrain.atMost(NetworkMode.SOLO)) return;
-				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
-					if (friend.getWorld().getRegistryKey().equals(dimension) && !SurveyorExploration.of(friend).exploredChunk(dimension, pos)) {
+				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).serverPlayers(Surveyor.getUuid(player), player.getServer(), Surveyor.CONFIG.networking.terrain, false)) {
+					if (!SurveyorExploration.of(friend).exploredChunk(dimension, pos)) {
 						RegionPos regionPos = RegionPos.of(pos);
 						WorldTerrain terrain = summary.terrain();
-						if (terrain == null) continue;
-						RegionSummary region = terrain.getRegion(regionPos);
-						BitSet sendSet = new BitSet();
-						sendSet.set(RegionPos.chunkToBit(pos));
-						S2CUpdateRegionPacket.of(dimension, true, regionPos, region, sendSet).send(friend);
+						if (terrain != null) S2CUpdateRegionPacket.of(dimension, true, regionPos, terrain.getRegion(regionPos), RegionPos.chunkToBitSet(pos)).send(friend);
 					}
 				}
 			}
@@ -283,8 +276,8 @@ public interface PlayerSummary {
 				if (Surveyor.CONFIG.networking.structures.atMost(NetworkMode.NONE)) return;
 				S2CStructuresAddedPacket.of(false, structureKey, pos, structures).send(player);
 				if (Surveyor.CONFIG.networking.structures.atMost(NetworkMode.SOLO)) return;
-				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
-					if (friend.getWorld().getRegistryKey().equals(dimension) && !SurveyorExploration.of(friend).exploredStructure(dimension, structureKey, pos)) {
+				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).serverPlayers(Surveyor.getUuid(player), player.getServer(), Surveyor.CONFIG.networking.structures, true)) {
+					if (!SurveyorExploration.of(friend).exploredStructure(dimension, structureKey, pos)) {
 						S2CStructuresAddedPacket.of(true, structureKey, pos, structures).send(friend);
 					}
 				}

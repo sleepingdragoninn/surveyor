@@ -127,14 +127,13 @@ public final class ServerSummary {
 		if (!known) serverSummary.createPlayer(player);
 		if (serverSummary.getGroup(uuid).size() > 1) {
 			// initial exploration
-			SurveyorExploration groupExploration = serverSummary.groupExploration(uuid, server);
 			Map<UUID, PlayerSummary> groupSummaries = serverSummary.getGroupSummaries(uuid, server);
-			new S2CGroupChangedPacket(groupSummaries, groupExploration.chunks(), groupExploration.starts()).send(player);
+			new S2CGroupChangedPacket(groupSummaries, serverSummary.groupExploration(uuid, server, Surveyor.CONFIG.networking.terrain).chunks(), serverSummary.groupExploration(uuid, server, Surveyor.CONFIG.networking.structures).starts()).send(player);
 			// initial offline group positions
 			new S2CGroupUpdatedPacket(groupSummaries).send(player);
 		}
 		// update global group members
-		if (!known && Surveyor.CONFIG.networking.globalSharing) new S2CGroupAmendedPacket(uuid).send(player, server, server.getPlayerManager().getPlayerList(), NetworkMode.GROUP);
+		if (!known && Surveyor.CONFIG.networking.globalSharing) new S2CGroupAmendedPacket(uuid).send(uuid, server, server.getPlayerManager().getPlayerList(), NetworkMode.GROUP, false);
 	}
 
 	public static void onTick(MinecraftServer server) {
@@ -146,7 +145,7 @@ public final class ServerSummary {
 				var player = server.getPlayerManager().getPlayer(uuid);
 				if (player != null) onlinePlayers.put(uuid, PlayerSummary.of(player));
 			}
-			if (onlinePlayers.size() > 1) new S2CGroupUpdatedPacket(onlinePlayers).send(null, server, onlinePlayers.keySet().stream().map(server.getPlayerManager()::getPlayer).toList(), Surveyor.CONFIG.networking.positions);
+			if (onlinePlayers.size() > 1) new S2CGroupUpdatedPacket(onlinePlayers).send(null, server, onlinePlayers.keySet().stream().map(server.getPlayerManager()::getPlayer).toList(), Surveyor.CONFIG.networking.positions, true);
 		}
 	}
 
@@ -210,7 +209,7 @@ public final class ServerSummary {
 	public void updatePlayer(UUID uuid, NbtCompound nbt, boolean online) {
 		PlayerSummary newSummary = new PlayerSummary.OfflinePlayerSummary(uuid, nbt, online);
 		offlineSummaries.put(uuid, newSummary);
-		S2CGroupUpdatedPacket.of(uuid, newSummary).send(null, server, server.getPlayerManager().getPlayerList(), Surveyor.CONFIG.networking.positions);
+		S2CGroupUpdatedPacket.of(uuid, newSummary).send(null, server, serverPlayers(uuid, server, Surveyor.CONFIG.networking.positions, false), Surveyor.CONFIG.networking.positions, false);
 	}
 
 	public Set<Set<UUID>> getPositionGroups() {
@@ -251,9 +250,9 @@ public final class ServerSummary {
 			getGroup(player2).add(player1);
 			shareGroups.put(player1, getGroup(player2));
 		}
-		SurveyorExploration groupExploration = groupExploration(player1, server);
-		for (ServerPlayerEntity friend : groupServerPlayers(player1, server)) {
-			new S2CGroupChangedPacket(getGroupSummaries(player1, server), groupExploration.chunks(), groupExploration.starts()).send(friend);
+		for (ServerPlayerEntity friend : serverPlayers(player1, server, NetworkMode.GROUP, true)) {
+			UUID uuid = Surveyor.getUuid(friend);
+			new S2CGroupChangedPacket(getGroupSummaries(uuid, server), groupExploration(uuid, server, Surveyor.CONFIG.networking.terrain).chunks(), groupExploration(uuid, server, Surveyor.CONFIG.networking.structures).starts()).send(friend);
 		}
 		dirty();
 	}
@@ -261,9 +260,9 @@ public final class ServerSummary {
 	public void leaveGroup(UUID player, MinecraftServer server) {
 		if (shareGroups == null) return;
 		getGroup(player).remove(player); // Shares set instance with group members.
-		SurveyorExploration groupExploration = groupExploration(player, server);
-		for (ServerPlayerEntity friend : groupOtherServerPlayers(player, server)) {
-			new S2CGroupChangedPacket(getGroupSummaries(Surveyor.getUuid(friend), server), groupExploration.chunks(), groupExploration.starts()).send(friend);
+		for (ServerPlayerEntity friend : serverPlayers(player, server, NetworkMode.GROUP, true)) {
+			UUID uuid = Surveyor.getUuid(friend);
+			new S2CGroupChangedPacket(getGroupSummaries(uuid, server), groupExploration(uuid, server, Surveyor.CONFIG.networking.terrain).chunks(), groupExploration(uuid, server, Surveyor.CONFIG.networking.structures).starts()).send(friend);
 		}
 		shareGroups.put(player, new HashSet<>());
 		getGroup(player).add(player);
@@ -280,20 +279,12 @@ public final class ServerSummary {
 		return getGroup(player).stream().map(u -> getPlayer(u, server)).collect(Collectors.toSet());
 	}
 
-	public SurveyorExploration groupExploration(UUID player, MinecraftServer server) {
-		return PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(getGroup(player).stream().map(u -> getExploration(u, server)).filter(Objects::nonNull).collect(Collectors.toSet()));
+	public SurveyorExploration groupExploration(UUID player, MinecraftServer server, NetworkMode mode) {
+		return mode.atMost(NetworkMode.SOLO) ? PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.empty(player) : mode.atMost(NetworkMode.SOLO) ? getExploration(player, server) : PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(getGroup(player).stream().map(u -> getExploration(u, server)).filter(Objects::nonNull).collect(Collectors.toSet()));
 	}
 
-	public Set<ServerPlayerEntity> groupServerPlayers(UUID player, MinecraftServer server) {
-		return getGroup(player).stream().map(uuid -> Surveyor.getPlayer(server, uuid)).filter(Objects::nonNull).collect(Collectors.toSet());
-	}
-
-	public Set<ServerPlayerEntity> allOtherServerPlayers(UUID player, MinecraftServer server) {
-		return server.getPlayerManager().getPlayerList().stream().filter(p -> !Surveyor.getUuid(p).equals(player)).collect(Collectors.toSet());
-	}
-
-	public Set<ServerPlayerEntity> groupOtherServerPlayers(UUID player, MinecraftServer server) {
-		return getGroup(player).stream().filter(u -> !u.equals(player)).map(server.getPlayerManager()::getPlayer).filter(Objects::nonNull).collect(Collectors.toSet());
+	public Set<ServerPlayerEntity> serverPlayers(UUID player, MinecraftServer server, NetworkMode mode, boolean withSelf) {
+		return mode.atMost(NetworkMode.NONE) || (mode.atMost(NetworkMode.SOLO) && (!withSelf || server.getPlayerManager().getPlayer(player) == null)) ? Set.of() : mode.atMost(NetworkMode.SOLO) ? Set.of(server.getPlayerManager().getPlayer(player)) : server.getPlayerManager().getPlayerList().stream().filter(p -> (mode.atLeast(NetworkMode.SERVER) || getGroup(player).contains(Surveyor.getUuid(p))) && (!withSelf || !player.equals(Surveyor.getUuid(p)))).collect(Collectors.toSet());
 	}
 
 	public boolean isDirty() {

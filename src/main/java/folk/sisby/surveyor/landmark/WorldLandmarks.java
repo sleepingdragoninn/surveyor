@@ -179,7 +179,7 @@ public class WorldLandmarks {
 		return HashMultimap.create(Objects.requireNonNullElse(removed, HashMultimap.create()));
 	}
 
-	public void handleChanged(Table<UUID, Identifier, Landmark> changed, boolean local, @Nullable ServerPlayerEntity sender) {
+	public void handleChanged(Table<UUID, Identifier, Landmark> changed, boolean local, @Nullable UUID sender) {
 		if (changed.isEmpty()) return;
 		Table<UUID, Identifier, Landmark> landmarksAddedChanged = HashBasedTable.create(changed);
 		Table<UUID, Identifier, Landmark> landmarksRemoved = HashBasedTable.create(changed);
@@ -195,10 +195,10 @@ public class WorldLandmarks {
 			landmarksAddedChanged.rowKeySet().removeAll(waypointsAddedChanged.rowKeySet());
 			landmarksRemoved.rowKeySet().removeAll(waypointsRemoved.rowKeySet());
 
-			if (!landmarksRemoved.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(landmarksRemoved)).send(sender, summary, Surveyor.CONFIG.networking.landmarks);
-			if (!landmarksAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(summary.dimension(), landmarksAddedChanged).send(sender, summary, Surveyor.CONFIG.networking.landmarks);
-			if (!waypointsRemoved.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(waypointsRemoved)).send(sender, summary, Surveyor.CONFIG.networking.waypoints);
-			if (!waypointsAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(summary.dimension(), waypointsAddedChanged).send(sender, summary, Surveyor.CONFIG.networking.waypoints);
+			if (!landmarksRemoved.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(landmarksRemoved)).send(sender, summary, Surveyor.CONFIG.networking.landmarks, false);
+			if (!landmarksAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(summary.dimension(), landmarksAddedChanged).send(sender, summary, Surveyor.CONFIG.networking.landmarks, false);
+			if (!waypointsRemoved.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(waypointsRemoved)).send(sender, summary, Surveyor.CONFIG.networking.waypoints, false);
+			if (!waypointsAddedChanged.isEmpty()) new SyncLandmarksAddedPacket(summary.dimension(), waypointsAddedChanged).send(sender, summary, Surveyor.CONFIG.networking.waypoints, false);
 		}
 	}
 
@@ -223,7 +223,7 @@ public class WorldLandmarks {
 		handleChanged(putForBatch(landmark), false, null);
 	}
 
-	public void put(ServerPlayerEntity sender, Landmark landmark) {
+	public void put(UUID sender, Landmark landmark) {
 		handleChanged(putForBatch(landmark), false, sender);
 	}
 
@@ -249,7 +249,7 @@ public class WorldLandmarks {
 		handleChanged(removeForBatch(uuid, id), false, null);
 	}
 
-	public void remove(ServerPlayerEntity sender, UUID uuid, Identifier id) {
+	public void remove(UUID sender, UUID uuid, Identifier id) {
 		handleChanged(removeForBatch(uuid, id), false, sender);
 	}
 
@@ -294,7 +294,7 @@ public class WorldLandmarks {
 				putForBatch(changed, landmark);
 			}
 		});
-		if (!changed.isEmpty()) handleChanged(changed, sender == null, sender);
+		if (!changed.isEmpty()) handleChanged(changed, sender == null, sender == null ? null : Surveyor.getUuid(sender));
 		return changed;
 	}
 
@@ -308,7 +308,7 @@ public class WorldLandmarks {
 				removeForBatch(changed, uuid, id);
 			}
 		});
-		if (!changed.isEmpty()) handleChanged(changed, sender == null, sender);
+		if (!changed.isEmpty()) handleChanged(changed, sender == null, sender == null ? null : Surveyor.getUuid(sender));
 		return changed;
 	}
 

@@ -2,16 +2,16 @@ package folk.sisby.surveyor.packet;
 
 import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.config.NetworkMode;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
+
+import java.util.UUID;
 
 public interface SyncPacket extends C2SPacket, S2CPacket {
-	default void send(ServerPlayerEntity sender, WorldSummary summary, NetworkMode mode) {
+	default void send(UUID sender, WorldSummary summary, NetworkMode mode, boolean withSelf) {
 		if (mode.atMost(NetworkMode.NONE)) return;
 		if (summary.isClient()) {
 			send();
 		} else {
-			send(sender, (ServerWorld) summary.world(), mode);
+			send(sender, summary.server(), mode, withSelf);
 		}
 	}
 }

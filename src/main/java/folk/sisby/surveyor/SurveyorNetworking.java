@@ -116,17 +116,17 @@ public class SurveyorNetworking {
 		if (!keys.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Adding landmark(s) from player {} - {}", player.getGameProfile().getName(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 
-	private static void handleLandmarksRemoved(MinecraftServer server, ServerPlayerEntity player, SyncLandmarksRemovedPacket packet) {
+	private static void handleLandmarksRemoved(MinecraftServer server, ServerPlayerEntity sender, SyncLandmarksRemovedPacket packet) {
 		if (Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.NONE)) return;
 		ServerWorld world = server.getWorld(packet.dimension());
 		if (world == null) return;
 		WorldSummary summary = WorldSummary.of(world);
 		if (summary.landmarks() == null) return;
-		Table<UUID, Identifier, Landmark> changed = summary.landmarks().readUpdatePacket(packet, player);
+		Table<UUID, Identifier, Landmark> changed = summary.landmarks().readUpdatePacket(packet, sender);
 		if (!changed.isEmpty()) {
-			summary.landmarks().handleChanged(changed, false, player);
+			summary.landmarks().handleChanged(changed, false, sender == null ? null : Surveyor.getUuid(sender));
 			Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(changed);
-			Surveyor.LOGGER.info("[Surveyor] Removing landmark(s) for player {} - {}", player.getGameProfile().getName(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
+			Surveyor.LOGGER.info("[Surveyor] Removing landmark(s) for player {} - {}", sender.getGameProfile().getName(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 		}
 	}
 

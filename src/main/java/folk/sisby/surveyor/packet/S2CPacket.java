@@ -7,12 +7,12 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public interface S2CPacket extends SurveyorPacket {
 	default void send(Collection<ServerPlayerEntity> players) {
@@ -28,38 +28,27 @@ public interface S2CPacket extends SurveyorPacket {
 		send(List.of(player));
 	}
 
-	default void send(ServerWorld world) {
-		send(world.getPlayers());
-	}
-
-	default void send(ServerPlayerEntity sender, ServerWorld world) {
-		List<ServerPlayerEntity> players = new ArrayList<>(world.getPlayers());
-		players.remove(sender);
+	default void send(UUID sender, MinecraftServer server) {
+		List<ServerPlayerEntity> players = new ArrayList<>(server.getPlayerManager().getPlayerList());
+		players.removeIf(p -> Surveyor.getUuid(p).equals(sender));
 		send(players);
 	}
 
-	default void send(ServerPlayerEntity sender, MinecraftServer server, Collection<ServerPlayerEntity> allPlayers, NetworkMode mode) {
+	default void send(UUID sender, MinecraftServer server, Collection<ServerPlayerEntity> allPlayers, NetworkMode mode, boolean withSelf) {
 		if (mode.atMost(NetworkMode.NONE) || (sender != null && mode.atMost(NetworkMode.SOLO))) return;
 		List<ServerPlayerEntity> players = new ArrayList<>(allPlayers);
-		players.remove(sender);
-		if (sender != null && mode.atMost(NetworkMode.GROUP)) { // reduce to just group members
-			Set<ServerPlayerEntity> group = ServerSummary.of(server).groupOtherServerPlayers(Surveyor.getUuid(sender), server);
+		if (sender != null) {
+			Set<ServerPlayerEntity> group = ServerSummary.of(server).serverPlayers(sender, server, mode, withSelf);
 			players.removeIf(p -> !group.contains(p));
 		}
 		send(players);
 	}
 
-	default void send(ServerPlayerEntity sender, ServerWorld world, NetworkMode mode) {
-		send(sender, world.getServer(), world.getPlayers(), mode);
+	default void send(UUID sender, MinecraftServer server, NetworkMode mode, boolean withSelf) {
+		send(sender, server, server.getPlayerManager().getPlayerList(), mode, withSelf);
 	}
 
 	default void send(MinecraftServer server) {
 		send(server.getPlayerManager().getPlayerList());
-	}
-
-	default void send(ServerPlayerEntity sender, MinecraftServer server) {
-		List<ServerPlayerEntity> players = new ArrayList<>(server.getPlayerManager().getPlayerList());
-		players.remove(sender);
-		send(players);
 	}
 }

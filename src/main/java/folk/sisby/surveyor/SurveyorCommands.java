@@ -196,7 +196,7 @@ public class SurveyorCommands {
 			ServerSummary.of(player.getServer()).joinGroup(Surveyor.getUuid(player), Surveyor.getUuid(sharePlayer), player.getServer());
 			feedback.accept(prefix().append(Text.literal("You're now sharing map exploration with ").formatted(Formatting.GREEN)).append(Text.literal("%d".formatted(serverSummary.groupSize(Surveyor.getUuid(player)) - 1)).formatted(Formatting.WHITE)).append(Text.literal((serverSummary.groupSize(Surveyor.getUuid(player)) - 1) > 1 ? " players:" : " player:").formatted(Formatting.GREEN)));
 			feedback.accept(TextUtil.highlightStrings(serverSummary.groupPlayers(Surveyor.getUuid(player), player.getServer()).stream().map(PlayerSummary::username).filter(u -> !u.equals(player.getGameProfile().getName())).toList(), s -> Formatting.WHITE).formatted(Formatting.GREEN));
-			for (ServerPlayerEntity friend : serverSummary.groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer())) {
+			for (ServerPlayerEntity friend : serverSummary.serverPlayers(Surveyor.getUuid(player), player.getServer(), NetworkMode.GROUP, false)) {
 				friend.sendMessage(prefix().append(player.getDisplayName().copy().formatted(Formatting.WHITE)).append(Text.literal(" is now sharing their map with you.").formatted(Formatting.AQUA)));
 				friend.sendMessage(prefix().append(Text.literal("You're now sharing map exploration with ").formatted(Formatting.AQUA)).append(Text.literal("%d".formatted(serverSummary.groupSize(Surveyor.getUuid(player)) - 1)).formatted(Formatting.WHITE)).append(Text.literal((serverSummary.groupSize(Surveyor.getUuid(player)) - 1) > 1 ? " players:" : " player:").formatted(Formatting.AQUA)));
 				friend.sendMessage(TextUtil.highlightStrings(serverSummary.groupPlayers(Surveyor.getUuid(player), player.getServer()).stream().map(PlayerSummary::username).filter(u -> !u.equals(friend.getGameProfile().getName())).toList(), s -> Formatting.WHITE).formatted(Formatting.AQUA));
@@ -232,7 +232,7 @@ public class SurveyorCommands {
 			feedback.accept(prefix().append(Text.literal("You're not sharing map exploration with anyone!").formatted(Formatting.YELLOW)));
 			return 0;
 		} else {
-			Set<ServerPlayerEntity> friends = serverSummary.groupOtherServerPlayers(Surveyor.getUuid(player), player.getServer());
+			Set<ServerPlayerEntity> friends = serverSummary.serverPlayers(Surveyor.getUuid(player), player.getServer(), NetworkMode.GROUP, false);
 			ServerSummary.of(player.getServer()).leaveGroup(Surveyor.getUuid(player), player.getServer());
 			feedback.accept(prefix().append(Text.literal("Stopped sharing map exploration with ").formatted(Formatting.GREEN)).append(Text.literal("%d".formatted(shareNumber)).formatted(Formatting.WHITE)).append(Text.literal(shareNumber > 1 ? " players." : " player.").formatted(Formatting.GREEN)));
 			for (ServerPlayerEntity friend : friends) {
