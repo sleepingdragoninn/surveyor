@@ -204,14 +204,26 @@ public class SurveyorClient implements ClientModInitializer {
 		Table<RegistryKey<World>, RegionPos, BitSet> chunks = HashBasedTable.create();
 		Map<RegistryKey<World>, Multimap<RegistryKey<Structure>, ChunkPos>> starts = new HashMap<>();
 		Map<RegistryKey<World>, Multimap<UUID, Identifier>> landmarks = new HashMap<>();
+		boolean hasTerrain = false;
+		boolean hasStructures = false;
+		boolean hasLandmarks = false;
 		for (WorldSummary summary : SurveyorClient.getSummaries(handler).values()) {
-			if (summary.terrain() != null && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SOLO)) chunks.row(summary.dimension()).putAll(summary.terrain().bitSet(null));
-			if (summary.structures() != null && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SOLO)) starts.put(summary.dimension(), summary.structures().keySet(null));
-			if (summary.landmarks() != null && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) landmarks.put(summary.dimension(), summary.landmarks().keySet(null));
+			if (summary.terrain() != null && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SOLO)) {
+				chunks.row(summary.dimension()).putAll(summary.terrain().bitSet(null));
+				hasTerrain = true;
+			}
+			if (summary.structures() != null && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SOLO)) {
+				starts.put(summary.dimension(), summary.structures().keySet(null));
+				hasStructures = true;
+			}
+			if (summary.landmarks() != null && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) {
+				landmarks.put(summary.dimension(), summary.landmarks().keySet(null));
+				hasLandmarks = true;
+			}
 		}
-		if (!chunks.isEmpty()) new C2SKnownTerrainPacket(chunks).send();
-		if (!starts.isEmpty()) new C2SKnownStructuresPacket(starts).send();
-		if (!landmarks.isEmpty()) new C2SKnownLandmarksPacket(landmarks).send();
+		if (hasTerrain) new C2SKnownTerrainPacket(chunks).send();
+		if (hasStructures) new C2SKnownStructuresPacket(starts).send();
+		if (hasLandmarks) new C2SKnownLandmarksPacket(landmarks).send();
 	}
 
 	@Override
