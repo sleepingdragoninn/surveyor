@@ -192,12 +192,12 @@ public class WorldLandmarks {
 		if (!local) {
 			Table<UUID, Identifier, Landmark> globalRemoved = MapUtil.asTable(Map.of(WorldLandmarks.GLOBAL, landmarksAdded.row(GLOBAL)));
 			Table<UUID, Identifier, Landmark> globalAdded = MapUtil.asTable(Map.of(WorldLandmarks.GLOBAL, landmarksRemoved.row(GLOBAL)));
-			landmarksAdded.rowMap().remove(WorldLandmarks.GLOBAL);
 			landmarksRemoved.rowMap().remove(WorldLandmarks.GLOBAL);
+			landmarksAdded.rowMap().remove(WorldLandmarks.GLOBAL);
 			if (!globalRemoved.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(globalRemoved)).send(sender, summary, Surveyor.CONFIG.networking.landmarks, false);
 			if (!globalAdded.isEmpty()) new SyncLandmarksAddedPacket(summary.dimension(), globalAdded).send(sender, summary, Surveyor.CONFIG.networking.landmarks, false);
-			if (!landmarksAdded.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(landmarksAdded)).send(sender, summary, Surveyor.CONFIG.networking.waypoints, false);
-			if (!landmarksRemoved.isEmpty()) new SyncLandmarksAddedPacket(summary.dimension(), landmarksRemoved).send(sender, summary, Surveyor.CONFIG.networking.waypoints, false);
+			if (!landmarksRemoved.isEmpty()) new SyncLandmarksRemovedPacket(summary.dimension(), MapUtil.keyMultiMap(landmarksRemoved)).send(sender, summary, Surveyor.CONFIG.networking.waypoints, false);
+			if (!landmarksAdded.isEmpty()) new SyncLandmarksAddedPacket(summary.dimension(), landmarksAdded).send(sender, summary, Surveyor.CONFIG.networking.waypoints, false);
 		}
 	}
 
