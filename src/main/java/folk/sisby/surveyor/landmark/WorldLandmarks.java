@@ -181,11 +181,11 @@ public class WorldLandmarks {
 
 	public void handleChanged(Table<UUID, Identifier, Landmark> changed, boolean local, @Nullable UUID sender) {
 		if (changed.isEmpty()) return;
-		Table<UUID, Identifier, Landmark> landmarksAdded = HashBasedTable.create(changed);
-		landmarksAdded.cellSet().removeAll(landmarks.cellSet());
-
 		Table<UUID, Identifier, Landmark> landmarksRemoved = HashBasedTable.create(changed);
-		landmarksRemoved.cellSet().removeAll(landmarksAdded.cellSet());
+		landmarksRemoved.cellSet().removeAll(landmarks.cellSet());
+
+		Table<UUID, Identifier, Landmark> landmarksAdded = HashBasedTable.create(changed);
+		landmarksAdded.cellSet().removeAll(landmarksRemoved.cellSet());
 
 		if (!landmarksRemoved.isEmpty()) SurveyorEvents.Invoke.landmarksRemoved(summary, MapUtil.keyMultiMap(landmarksRemoved));
 		if (!landmarksAdded.isEmpty()) SurveyorEvents.Invoke.landmarksAdded(summary, MapUtil.keyMultiMap(landmarksAdded));
