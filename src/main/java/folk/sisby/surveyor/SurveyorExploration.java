@@ -157,7 +157,10 @@ public interface SurveyorExploration {
 	}
 
 	default void replaceTerrain(Table<RegistryKey<World>, RegionPos, BitSet> chunks) {
-		chunks().putAll(chunks);
+		for (RegistryKey<World> dimension : chunks.rowKeySet()) { // merge first for client updates
+			chunks.row(dimension).forEach((regionPos, bitSet) -> mergeRegion(dimension, regionPos, bitSet));
+		}
+		chunks().putAll(chunks); // then replace to ditch anything else
 	}
 
 	default void updateClientForAddChunk(WorldSummary summary, ChunkPos chunkPos) {
@@ -191,7 +194,10 @@ public interface SurveyorExploration {
 	}
 
 	default void replaceStructures(Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> starts) {
-		starts().putAll(starts);
+		for (RegistryKey<World> dimension : starts.rowKeySet()) { // merge first for client updates
+			starts.row(dimension).forEach((key, startSet) -> mergeStructures(dimension, key, startSet));
+		}
+		starts.putAll(starts); // then replace to ditch anything else
 	}
 
 	default NbtCompound write(NbtCompound nbt) {
