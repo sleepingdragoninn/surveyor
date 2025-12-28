@@ -109,7 +109,7 @@ public class SurveyorClient implements ClientModInitializer {
 	public static Map<UUID, PlayerSummary> getFriends() {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
 			MinecraftServer server = MinecraftClient.getInstance().getServer();
-			return ServerSummary.of(server).getGroupSummaries(getClientUuid(), server);
+			return ServerSummary.of(server).getGroupSummaries(getClientUuid());
 		} else {
 			ClientPlayNetworkHandler handler = MinecraftClient.getInstance().getNetworkHandler();
 			if (handler == null) return new HashMap<>();

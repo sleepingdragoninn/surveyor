@@ -39,7 +39,7 @@ public interface SurveyorExploration {
 	}
 
 	static SurveyorExploration of(UUID player, MinecraftServer server) {
-		return ServerSummary.of(server).getExploration(player, server);
+		return ServerSummary.of(server).getExploration(player);
 	}
 
 	static SurveyorExploration ofShared(ServerPlayerEntity player) {
@@ -47,7 +47,7 @@ public interface SurveyorExploration {
 	}
 
 	static SurveyorExploration ofShared(UUID player, MinecraftServer server) {
-		return ServerSummary.of(server).groupExploration(player, server, NetworkMode.GROUP, true);
+		return ServerSummary.of(server).getSharingExploration(player, NetworkMode.GROUP, true);
 	}
 
 	Table<RegistryKey<World>, RegionPos, BitSet> chunks();

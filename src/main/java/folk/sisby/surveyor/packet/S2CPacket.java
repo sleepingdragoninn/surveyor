@@ -38,7 +38,7 @@ public interface S2CPacket extends SurveyorPacket {
 		if (mode.atMost(NetworkMode.NONE) || (sender != null && mode.atMost(NetworkMode.SOLO))) return;
 		List<ServerPlayerEntity> players = new ArrayList<>(allPlayers);
 		if (sender != null) {
-			Set<ServerPlayerEntity> group = ServerSummary.of(server).serverPlayers(sender, server, mode, withSelf);
+			Set<ServerPlayerEntity> group = ServerSummary.of(server).getSharingPlayers(sender, mode, withSelf);
 			players.removeIf(p -> !group.contains(p));
 		}
 		send(players);
