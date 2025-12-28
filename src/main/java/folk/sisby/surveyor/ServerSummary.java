@@ -282,7 +282,7 @@ public final class ServerSummary {
 	}
 
 	public Set<ServerPlayerEntity> serverPlayers(UUID player, MinecraftServer server, NetworkMode mode, boolean withSelf) {
-		return mode.atMost(NetworkMode.NONE) || (mode.atMost(NetworkMode.SOLO) && (!withSelf || server.getPlayerManager().getPlayer(player) == null)) ? Set.of() : mode.atMost(NetworkMode.SOLO) ? Set.of(server.getPlayerManager().getPlayer(player)) : server.getPlayerManager().getPlayerList().stream().filter(p -> (mode.atLeast(NetworkMode.SERVER) || getGroup(player).contains(Surveyor.getUuid(p))) && (!withSelf || !player.equals(Surveyor.getUuid(p)))).collect(Collectors.toSet());
+		return mode.atMost(NetworkMode.NONE) || (mode.atMost(NetworkMode.SOLO) && (!withSelf || server.getPlayerManager().getPlayer(player) == null)) ? Set.of() : mode.atMost(NetworkMode.SOLO) ? Set.of(server.getPlayerManager().getPlayer(player)) : server.getPlayerManager().getPlayerList().stream().filter(p -> (mode.atLeast(NetworkMode.SERVER) || getGroup(player).contains(Surveyor.getUuid(p))) && (withSelf || !player.equals(Surveyor.getUuid(p)))).collect(Collectors.toSet());
 	}
 
 	public boolean isDirty() {
