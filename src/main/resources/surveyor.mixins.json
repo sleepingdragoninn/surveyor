@@ -12,9 +12,7 @@
     "MixinStructureStart"
   ],
   "client": [
-    "client.MixinClientPlayNetworkHandler",
-    "client.MixinClientWorld",
-    "client.MixinMinecraftClient"
+    "client.MixinClientPlayNetworkHandler"
   ],
   "injectors": {
     "defaultRequire": 1

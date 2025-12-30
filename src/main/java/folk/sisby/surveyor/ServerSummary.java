@@ -1,14 +1,12 @@
 package folk.sisby.surveyor;
 
-import com.google.common.collect.Multimap;
 import com.mojang.authlib.GameProfile;
 import folk.sisby.surveyor.config.NetworkMode;
-import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
-import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
-import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
+import folk.sisby.surveyor.util.MapUtil;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -16,13 +14,14 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.nbt.NbtString;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.nbt.NbtCrashException;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,7 +30,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -42,13 +40,17 @@ import java.util.stream.StreamSupport;
 public final class ServerSummary {
 	public static final String KEY_GROUPS = "groups";
 	public static final UUID HOST = UUID.fromString("00000000-0000-0000-0000-000000000000");
+	private final MinecraftServer server;
 	private final Map<UUID, PlayerSummary> offlineSummaries;
 	private final Map<UUID, Set<UUID>> shareGroups;
+	private final Map<RegistryKey<World>, WorldSummary> worlds;
 	private boolean dirty = false;
 
-	public ServerSummary(Map<UUID, PlayerSummary> offlineSummaries, @Nullable Map<UUID, Set<UUID>> shareGroups) {
+	public ServerSummary(MinecraftServer server, Map<UUID, PlayerSummary> offlineSummaries, @Nullable Map<UUID, Set<UUID>> shareGroups) {
+		this.server = server;
 		this.offlineSummaries = offlineSummaries;
 		this.shareGroups = shareGroups;
+		this.worlds = new HashMap<>();
 	}
 
 	public static ServerSummary of(MinecraftServer server) {
@@ -116,7 +118,7 @@ public final class ServerSummary {
 			}
 		}
 
-		return new ServerSummary(offlineSummaries, shareGroups);
+		return new ServerSummary(server, offlineSummaries, shareGroups);
 	}
 
 	public static void onPlayerJoin(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
@@ -127,14 +129,13 @@ public final class ServerSummary {
 		if (!known) serverSummary.createPlayer(player);
 		if (serverSummary.getGroup(uuid).size() > 1) {
 			// initial exploration
-			SurveyorExploration groupExploration = serverSummary.groupExploration(uuid, server);
-			Map<UUID, PlayerSummary> groupSummaries = serverSummary.getGroupSummaries(uuid, server);
-			new S2CGroupChangedPacket(groupSummaries, groupExploration.terrain().getOrDefault(player.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(player.getWorld().getRegistryKey(), new HashMap<>())).send(player);
+			Map<UUID, PlayerSummary> groupSummaries = serverSummary.getGroupSummaries(uuid);
+			new S2CGroupChangedPacket(groupSummaries, serverSummary.getSharingExploration(uuid, Surveyor.CONFIG.networking.terrain, false).chunks(), serverSummary.getSharingExploration(uuid, Surveyor.CONFIG.networking.structures, false).starts()).send(player);
 			// initial offline group positions
 			new S2CGroupUpdatedPacket(groupSummaries).send(player);
 		}
 		// update global group members
-		if (!known && Surveyor.CONFIG.networking.globalSharing) new S2CGroupAmendedPacket(uuid).send(player, server, server.getPlayerManager().getPlayerList(), NetworkMode.GROUP);
+		if (!known && Surveyor.CONFIG.networking.globalSharing) new S2CGroupAmendedPacket(uuid).send(uuid, server, server.getPlayerManager().getPlayerList(), NetworkMode.GROUP, false);
 	}
 
 	public static void onTick(MinecraftServer server) {
@@ -146,11 +147,24 @@ public final class ServerSummary {
 				var player = server.getPlayerManager().getPlayer(uuid);
 				if (player != null) onlinePlayers.put(uuid, PlayerSummary.of(player));
 			}
-			if (onlinePlayers.size() > 1) new S2CGroupUpdatedPacket(onlinePlayers).send(null, server, onlinePlayers.keySet().stream().map(server.getPlayerManager()::getPlayer).toList(), Surveyor.CONFIG.networking.positions);
+			if (onlinePlayers.size() > 1) new S2CGroupUpdatedPacket(onlinePlayers).send(null, server, onlinePlayers.keySet().stream().map(server.getPlayerManager()::getPlayer).toList(), Surveyor.CONFIG.networking.positions, true);
 		}
 	}
 
-	public void save(MinecraftServer server, boolean force, boolean suppressLogs) {
+	public WorldSummary getWorld(RegistryKey<World> dimension) {
+		return worlds.computeIfAbsent(dimension, dim -> new WorldSummary(server, dim, server.getRegistryManager(), Surveyor.getSavePath(dim, server)));
+	}
+
+	public void loadWorlds() {
+		for (RegistryKey<World> dimension : server.getWorldRegistryKeys()) {
+			WorldSummary summary = getWorld(dimension);
+			if (summary.terrain() != null) SurveyorEvents.Invoke.terrainUpdated(summary, summary.terrain().bitSet(null));
+			if (summary.structures() != null) SurveyorEvents.Invoke.structuresAdded(summary, summary.structures().keySet(null));
+			if (summary.landmarks() != null) SurveyorEvents.Invoke.landmarksAdded(summary, summary.landmarks().keySet(null));
+		}
+	}
+
+	public void save(boolean force, boolean suppressLogs) {
 		if (!isDirty() && StreamSupport.stream(server.getWorlds().spliterator(), false).map(WorldSummary::of).noneMatch(WorldSummary::isDirty)) return;
 		if (!suppressLogs) Surveyor.LOGGER.info("[Surveyor] Saving server data...");
 		for (ServerWorld world : server.getWorlds()) {
@@ -176,7 +190,7 @@ public final class ServerSummary {
 		return nbt;
 	}
 
-	public PlayerSummary getPlayer(UUID uuid, MinecraftServer server) {
+	public PlayerSummary getPlayer(UUID uuid) {
 		ServerPlayerEntity player = Surveyor.getPlayer(server, uuid);
 		if (player != null) {
 			return PlayerSummary.of(player);
@@ -185,8 +199,8 @@ public final class ServerSummary {
 		}
 	}
 
-	public SurveyorExploration getExploration(UUID player, MinecraftServer server) {
-		PlayerSummary summary = getPlayer(player, server);
+	public SurveyorExploration getExploration(UUID player) {
+		PlayerSummary summary = getPlayer(player);
 		return summary == null ? null : summary.exploration();
 	}
 
@@ -194,10 +208,10 @@ public final class ServerSummary {
 		offlineSummaries.put(Surveyor.getUuid(player), new PlayerSummary.OfflinePlayerSummary(player));
 	}
 
-	public void updatePlayer(UUID uuid, NbtCompound nbt, boolean online, MinecraftServer server) {
+	public void updatePlayer(UUID uuid, NbtCompound nbt, boolean online) {
 		PlayerSummary newSummary = new PlayerSummary.OfflinePlayerSummary(uuid, nbt, online);
 		offlineSummaries.put(uuid, newSummary);
-		S2CGroupUpdatedPacket.of(uuid, newSummary).send(null, server, server.getPlayerManager().getPlayerList(), Surveyor.CONFIG.networking.positions);
+		S2CGroupUpdatedPacket.of(uuid, newSummary).send(null, server, getSharingPlayers(uuid, Surveyor.CONFIG.networking.positions, false), Surveyor.CONFIG.networking.positions, false);
 	}
 
 	public Set<Set<UUID>> getPositionGroups() {
@@ -212,23 +226,23 @@ public final class ServerSummary {
 		return shareGroups == null ? new HashSet<>(offlineSummaries.keySet()) : shareGroups.computeIfAbsent(player, p -> new HashSet<>(Set.of(p)));
 	}
 
-	public Map<UUID, PlayerSummary> getAllSummaries(MinecraftServer server) {
+	public Map<UUID, PlayerSummary> getAllSummaries() {
 		Map<UUID, PlayerSummary> map = new HashMap<>();
 		for (UUID u : offlineSummaries.keySet()) {
-			if (getPlayer(u, server) != null) map.put(u, getPlayer(u, server));
+			if (getPlayer(u) != null) map.put(u, getPlayer(u));
 		}
 		return map;
 	}
 
-	public Map<UUID, PlayerSummary> getGroupSummaries(UUID player, MinecraftServer server) {
+	public Map<UUID, PlayerSummary> getGroupSummaries(UUID player) {
 		Map<UUID, PlayerSummary> map = new HashMap<>();
 		for (UUID u : getGroup(player)) {
-			if (getPlayer(u, server) != null) map.put(u, getPlayer(u, server));
+			if (getPlayer(u) != null) map.put(u, getPlayer(u));
 		}
 		return map;
 	}
 
-	public void joinGroup(UUID player1, UUID player2, MinecraftServer server) {
+	public void joinGroup(UUID player1, UUID player2) {
 		if (shareGroups == null) return;
 		if (getGroup(player1).size() > 1 && getGroup(player2).size() > 1) throw new IllegalStateException("Can't merge two groups!");
 		if (getGroup(player1).size() > 1) {
@@ -238,32 +252,23 @@ public final class ServerSummary {
 			getGroup(player2).add(player1);
 			shareGroups.put(player1, getGroup(player2));
 		}
-		SurveyorExploration groupExploration = groupExploration(player1, server);
-		for (ServerPlayerEntity friend : groupServerPlayers(player1, server)) {
-			new S2CGroupChangedPacket(getGroupSummaries(player1, server), groupExploration.terrain().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>())).send(friend);
-			WorldLandmarks landmarks = WorldSummary.of(friend.getWorld()).landmarks();
-			if (landmarks == null || Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO)) continue;
-			Multimap<UUID, Identifier> sharedLandmarks = landmarks.keySet(groupExploration);
-			landmarks.keySet(SurveyorExploration.of(friend)).forEach(sharedLandmarks::remove);
-			if (!sharedLandmarks.isEmpty()) SyncLandmarksAddedPacket.of(sharedLandmarks, landmarks).send(friend);
-			Multimap<UUID, Identifier> removedLandmarks = landmarks.removed();
-			removedLandmarks.keySet().removeIf(uuid -> !groupExploration.sharedPlayers().contains(uuid));
-			if (!removedLandmarks.isEmpty()) new SyncLandmarksRemovedPacket(removedLandmarks).send(friend);
+		for (ServerPlayerEntity friend : getSharingPlayers(player1, NetworkMode.GROUP, true)) {
+			UUID uuid = Surveyor.getUuid(friend);
+			new S2CGroupChangedPacket(getGroupSummaries(uuid), getSharingExploration(uuid, Surveyor.CONFIG.networking.terrain, false).chunks(), getSharingExploration(uuid, Surveyor.CONFIG.networking.structures, false).starts()).send(friend);
 		}
 		dirty();
 	}
 
-	public void leaveGroup(UUID player, MinecraftServer server) {
+	public void leaveGroup(UUID player) {
 		if (shareGroups == null) return;
+		Set<ServerPlayerEntity> groupPlayers = getSharingPlayers(player, NetworkMode.GROUP, true);
 		getGroup(player).remove(player); // Shares set instance with group members.
-		SurveyorExploration groupExploration = groupExploration(player, server);
-		for (ServerPlayerEntity friend : groupOtherServerPlayers(player, server)) {
-			new S2CGroupChangedPacket(getGroupSummaries(Surveyor.getUuid(friend), server), groupExploration.terrain().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>()), groupExploration.structures().getOrDefault(friend.getWorld().getRegistryKey(), new HashMap<>())).send(friend);
-		}
 		shareGroups.put(player, new HashSet<>());
 		getGroup(player).add(player);
-		ServerPlayerEntity serverPlayer = Surveyor.getPlayer(server, player);
-		if (serverPlayer != null) new S2CGroupChangedPacket(getGroupSummaries(player, server), new HashMap<>(), new HashMap<>()).send(serverPlayer);
+		for (ServerPlayerEntity friend : groupPlayers) {
+			UUID uuid = Surveyor.getUuid(friend);
+			new S2CGroupChangedPacket(getGroupSummaries(uuid), getSharingExploration(uuid, Surveyor.CONFIG.networking.terrain, false).chunks(), getSharingExploration(uuid, Surveyor.CONFIG.networking.structures, false).starts()).send(friend);
+		}
 		dirty();
 	}
 
@@ -271,24 +276,27 @@ public final class ServerSummary {
 		return getGroup(player).size();
 	}
 
-	public Set<PlayerSummary> groupPlayers(UUID player, MinecraftServer server) {
-		return getGroup(player).stream().map(u -> getPlayer(u, server)).collect(Collectors.toSet());
+	public Set<PlayerSummary> groupPlayers(UUID player) {
+		return getGroup(player).stream().map(this::getPlayer).collect(Collectors.toSet());
 	}
 
-	public SurveyorExploration groupExploration(UUID player, MinecraftServer server) {
-		return PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(getGroup(player).stream().map(u -> getExploration(u, server)).filter(Objects::nonNull).collect(Collectors.toSet()));
+	public Set<UUID> getSharing(UUID player, NetworkMode mode, boolean withSelf) {
+		return mode.atMost(NetworkMode.SOLO) && !withSelf ? Set.of() : mode.atMost(NetworkMode.SOLO) ? Set.of(player) : mode.atMost(NetworkMode.GROUP) ? getGroup(player) : offlineSummaries.keySet();
 	}
 
-	public Set<ServerPlayerEntity> groupServerPlayers(UUID player, MinecraftServer server) {
-		return getGroup(player).stream().map(uuid -> Surveyor.getPlayer(server, uuid)).filter(Objects::nonNull).collect(Collectors.toSet());
+	public SurveyorExploration getSharingExploration(UUID player, NetworkMode mode, boolean withSelf) {
+		Set<UUID> sharing = getSharing(player, mode, withSelf);
+		if (mode.atLeast(NetworkMode.SERVER)) return new PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration(sharing,
+			MapUtil.asTable(worlds.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> Optional.ofNullable(e.getValue().terrain()).map(t -> t.bitSet(null)).orElse(Map.of())))),
+			MapUtil.asTable(worlds.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> Optional.ofNullable(e.getValue().structures()).map(t -> MapUtil.asListMap(t.keySet(null)).entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e2 -> LongSet.of(e2.getValue().stream().mapToLong(ChunkPos::toLong).toArray())))).orElse(Map.of())))),
+			false
+		);
+		return PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(sharing.stream().map(this::getExploration).collect(Collectors.toSet()));
 	}
 
-	public Set<ServerPlayerEntity> allOtherServerPlayers(UUID player, MinecraftServer server) {
-		return server.getPlayerManager().getPlayerList().stream().filter(p -> !Surveyor.getUuid(p).equals(player)).collect(Collectors.toSet());
-	}
-
-	public Set<ServerPlayerEntity> groupOtherServerPlayers(UUID player, MinecraftServer server) {
-		return getGroup(player).stream().filter(u -> !u.equals(player)).map(server.getPlayerManager()::getPlayer).filter(Objects::nonNull).collect(Collectors.toSet());
+	public Set<ServerPlayerEntity> getSharingPlayers(UUID player, NetworkMode mode, boolean withSelf) {
+		Set<UUID> sharing = getSharing(player, mode, withSelf);
+		return server.getPlayerManager().getPlayerList().stream().filter(p -> sharing.contains(Surveyor.getUuid(p))).collect(Collectors.toSet());
 	}
 
 	public boolean isDirty() {

@@ -2,6 +2,7 @@ package folk.sisby.surveyor.packet;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Table;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
@@ -11,16 +12,22 @@ import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.packet.CustomPayload;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
-public record SyncLandmarksAddedPacket(Map<UUID, Map<Identifier, Landmark>> landmarks) implements SyncPacket {
+public record SyncLandmarksAddedPacket(RegistryKey<World> dimension, Table<UUID, Identifier, Landmark> landmarks) implements SyncPacket {
 	public static final CustomPayload.Id<SyncLandmarksAddedPacket> ID = new CustomPayload.Id<>(Surveyor.id("landmarks_added"));
-	public static final PacketCodec<ByteBuf, SyncLandmarksAddedPacket> CODEC = SurveyorPacketCodecs.LANDMARK_SUMMARIES.xmap(SyncLandmarksAddedPacket::new, SyncLandmarksAddedPacket::landmarks);
+	public static final PacketCodec<ByteBuf, SyncLandmarksAddedPacket> CODEC = PacketCodec.tuple(
+		RegistryKey.createPacketCodec(RegistryKeys.WORLD), SyncLandmarksAddedPacket::dimension,
+		SurveyorPacketCodecs.LANDMARK_SUMMARIES, SyncLandmarksAddedPacket::landmarks,
+		SyncLandmarksAddedPacket::new
+	);
 
 	public static SyncLandmarksAddedPacket of(Multimap<UUID, Identifier> keySet, WorldLandmarks summary) {
 		return summary.createUpdatePacket(keySet);
@@ -48,8 +55,8 @@ public record SyncLandmarksAddedPacket(Map<UUID, Map<Identifier, Landmark>> land
 					secondHalf.put(key, pos);
 				}
 			});
-			payloads.addAll(new SyncLandmarksAddedPacket(MapUtil.splitByKeyMap(landmarks, firstHalf)).toPayloads());
-			payloads.addAll(new SyncLandmarksAddedPacket(MapUtil.splitByKeyMap(landmarks, secondHalf)).toPayloads());
+			payloads.addAll(new SyncLandmarksAddedPacket(dimension, MapUtil.splitByKeyMap(landmarks, firstHalf)).toPayloads());
+			payloads.addAll(new SyncLandmarksAddedPacket(dimension, MapUtil.splitByKeyMap(landmarks, secondHalf)).toPayloads());
 		}
 		return payloads;
 	}

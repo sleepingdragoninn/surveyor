@@ -30,14 +30,14 @@ public class RegionStructureSummary {
 	public static final String KEY_STARTS = "starts";
 	public static final String KEY_PIECES = "pieces";
 
-	protected final Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> structures = new ConcurrentHashMap<>();
+	protected final Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> starts = new ConcurrentHashMap<>();
 	protected boolean dirty = false;
 
 	RegionStructureSummary() {
 	}
 
-	RegionStructureSummary(Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> structures) {
-		this.structures.putAll(structures);
+	RegionStructureSummary(Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> starts) {
+		this.starts.putAll(starts);
 	}
 
 	protected static StructureStartSummary summarisePieces(StructureContext context, StructureStart start) {
@@ -87,38 +87,38 @@ public class RegionStructureSummary {
 			Surveyor.LOGGER.error("Encountered an unregistered structure! {} | {}", start, start.getStructure());
 			return true;
 		}
-		return structures.containsKey(key) && structures.get(key).containsKey(start.getPos());
+		return starts.containsKey(key) && starts.get(key).containsKey(start.getPos());
 	}
 
 	public boolean contains(RegistryKey<Structure> key, ChunkPos pos) {
-		return structures.containsKey(key) && structures.get(key).containsKey(pos);
+		return starts.containsKey(key) && starts.get(key).containsKey(pos);
 	}
 
 	public StructureStartSummary get(RegistryKey<Structure> key, ChunkPos pos) {
-		return structures.get(key).get(pos);
+		return starts.get(key).get(pos);
 	}
 
 	public Multimap<RegistryKey<Structure>, ChunkPos> keySet() {
-		return MapUtil.keyMultiMap(structures);
+		return MapUtil.keyMultiMap(starts);
 	}
 
 	public void put(ServerWorld world, StructureStart start) {
 		RegistryKey<Structure> key = world.getRegistryManager().get(RegistryKeys.STRUCTURE).getKey(start.getStructure()).orElseThrow();
-		structures.computeIfAbsent(key, k -> new ConcurrentHashMap<>());
+		starts.computeIfAbsent(key, k -> new ConcurrentHashMap<>());
 		ChunkPos pos = start.getPos();
 		StructureStartSummary summary = summarisePieces(StructureContext.from(world), start);
-		structures.get(key).put(pos, summary);
+		starts.get(key).put(pos, summary);
 		dirty();
 	}
 
 	public void put(RegistryKey<Structure> key, ChunkPos pos, StructureStartSummary summary) {
-		structures.computeIfAbsent(key, k -> new ConcurrentHashMap<>()).put(pos, summary);
+		starts.computeIfAbsent(key, k -> new ConcurrentHashMap<>()).put(pos, summary);
 		dirty();
 	}
 
 	protected NbtCompound writeNbt(NbtCompound nbt) {
 		NbtCompound structuresCompound = new NbtCompound();
-		structures.forEach((key, starts) -> {
+		starts.forEach((key, starts) -> {
 			NbtCompound structureCompound = new NbtCompound();
 			NbtCompound startsCompound = new NbtCompound();
 			starts.forEach((pos, summary) -> {

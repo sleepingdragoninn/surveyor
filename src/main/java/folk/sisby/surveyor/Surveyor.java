@@ -4,8 +4,8 @@ import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SurveyorConfig;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
-import folk.sisby.surveyor.structure.WorldStructureSummary;
-import folk.sisby.surveyor.terrain.WorldTerrainSummary;
+import folk.sisby.surveyor.structure.WorldStructures;
+import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.MapUtil;
 import folk.sisby.surveyor.util.RaycastUtil;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -34,6 +34,7 @@ import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.gen.structure.Structure;
 import org.apache.commons.lang3.text.WordUtils;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,13 +53,13 @@ public class Surveyor implements ModInitializer {
 		return Identifier.of(ID, path);
 	}
 
-	public static File getSavePath(RegistryKey<World> worldKey, MinecraftServer server) {
-		return DimensionType.getSaveDirectory(worldKey, server.getSavePath(WorldSavePath.ROOT)).resolve(DATA_SUBFOLDER).resolve(Surveyor.ID).toFile();
+	public static File getSavePath(RegistryKey<World> dimension, MinecraftServer server) {
+		return DimensionType.getSaveDirectory(dimension, server.getSavePath(WorldSavePath.ROOT)).resolve(DATA_SUBFOLDER).resolve(Surveyor.ID).toFile();
 	}
 
 	public static void checkStructureExploration(ServerWorld world, ServerPlayerEntity player, BlockPos pos) {
 		if (!world.isChunkLoaded(pos.getX() >> 4, pos.getZ() >> 4)) return;
-		WorldStructureSummary worldStructures = WorldSummary.of(world).structures();
+		WorldStructures worldStructures = WorldSummary.of(world).structures();
 		if (worldStructures == null) return;
 		Registry<Structure> structureRegistry = world.getRegistryManager().get(RegistryKeys.STRUCTURE);
 		SurveyorExploration exploration = SurveyorExploration.of(player);
@@ -90,6 +91,10 @@ public class Surveyor implements ModInitializer {
 		}
 	}
 
+	public static boolean canModify(UUID landmark, @Nullable ServerPlayerEntity player) {
+		return player == null || player.hasPermissionLevel(2) || landmark.equals(Surveyor.getUuid(player)) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && ServerSummary.of(player.getServer()).getGroup(Surveyor.getUuid(player)).contains(landmark));
+	}
+
 	public static UUID getUuid(ServerPlayerEntity player) {
 		return player.getServer() != null && player.getServer().isHost(player.getGameProfile()) ? ServerSummary.HOST : player.getUuid();
 	}
@@ -108,11 +113,11 @@ public class Surveyor implements ModInitializer {
 		LandmarkComponentTypes.touch();
 		CommandRegistrationCallback.EVENT.register(SurveyorCommands::registerCommands);
 		ServerPlayConnectionEvents.JOIN.register(ServerSummary::onPlayerJoin);
-		ServerChunkEvents.CHUNK_LOAD.register(WorldTerrainSummary::onChunkLoad);
-		ServerChunkEvents.CHUNK_LOAD.register(WorldStructureSummary::onChunkLoad);
-		ServerChunkEvents.CHUNK_UNLOAD.register(WorldTerrainSummary::onChunkUnload);
+		ServerChunkEvents.CHUNK_LOAD.register(WorldTerrain::onChunkLoad);
+		ServerChunkEvents.CHUNK_LOAD.register(WorldStructures::onChunkLoad);
+		ServerChunkEvents.CHUNK_UNLOAD.register(WorldTerrain::onChunkUnload);
 		ServerTickEvents.END_SERVER_TICK.register(ServerSummary::onTick);
-		ServerTickEvents.END_WORLD_TICK.register(WorldTerrainSummary::onTick);
+		ServerTickEvents.END_WORLD_TICK.register(WorldTerrain::onTick);
 		ServerTickEvents.END_WORLD_TICK.register((world -> {
 			if ((world.getTime() & 7) != 0) return;
 			for (ServerPlayerEntity player : world.getPlayers()) {
