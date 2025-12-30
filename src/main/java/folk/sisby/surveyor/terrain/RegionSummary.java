@@ -1,6 +1,7 @@
 package folk.sisby.surveyor.terrain;
 
 import folk.sisby.surveyor.Surveyor;
+import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
 import folk.sisby.surveyor.util.RegionPos;
@@ -13,7 +14,6 @@ import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
-import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -47,7 +47,7 @@ public class RegionSummary {
 
 	protected final RegionPos regionPos;
 	protected final File saveFile;
-	protected final DynamicRegistryManager manager;
+	protected final WorldSummary summary;
 	protected @Nullable RegistryPalette<Biome> biomePalette;
 	protected @Nullable RegistryPalette<Block> blockPalette;
 	protected @Nullable ChunkSummary[][] chunks;
@@ -56,8 +56,8 @@ public class RegionSummary {
 	protected boolean dirty = false;
 	protected boolean saving = false;
 
-	private RegionSummary(DynamicRegistryManager manager, File saveFile, RegionPos regionPos, ChunkSummary[][] chunks, @Nullable BitSet bitSet, @Nullable RegistryPalette<Biome> biomePalette, @Nullable RegistryPalette<Block> blockPalette) {
-		this.manager = manager;
+	private RegionSummary(WorldSummary summary, File saveFile, RegionPos regionPos, ChunkSummary[][] chunks, @Nullable BitSet bitSet, @Nullable RegistryPalette<Biome> biomePalette, @Nullable RegistryPalette<Block> blockPalette) {
+		this.summary = summary;
 		this.biomePalette = biomePalette;
 		this.blockPalette = blockPalette;
 		this.saveFile = saveFile;
@@ -75,17 +75,17 @@ public class RegionSummary {
 		return list;
 	}
 
-	public static RegionSummary fromEmpty(File folder, RegionPos regionPos, DynamicRegistryManager manager) {
-		return new RegionSummary(manager, new File(folder, "c.%d.%d.dat".formatted(regionPos.x(), regionPos.z())), regionPos, new ChunkSummary[RegionPos.CHUNK_SIZE][RegionPos.CHUNK_SIZE], new BitSet(RegionPos.CHUNK_AREA), new RegistryPalette<>(manager.get(RegistryKeys.BIOME)), new RegistryPalette<>(manager.get(RegistryKeys.BLOCK)));
+	public static RegionSummary fromEmpty(File folder, WorldSummary summary, RegionPos regionPos) {
+		return new RegionSummary(summary, new File(folder, "c.%d.%d.dat".formatted(regionPos.x(), regionPos.z())), regionPos, new ChunkSummary[RegionPos.CHUNK_SIZE][RegionPos.CHUNK_SIZE], new BitSet(RegionPos.CHUNK_AREA), new RegistryPalette<>(summary.manager().get(RegistryKeys.BIOME)), new RegistryPalette<>(summary.manager().get(RegistryKeys.BLOCK)));
 	}
 
-	public static RegionSummary fromFile(File file, DynamicRegistryManager manager, RegionPos regionPos) {
-		return new RegionSummary(manager, file, regionPos, null, null, null, null);
+	public static RegionSummary fromFile(File file, WorldSummary summary, RegionPos regionPos) {
+		return new RegionSummary(summary, file, regionPos, null, null, null, null);
 	}
 
 	protected void readNbt(RegionPos pos, boolean bitsOnly) {
-		Registry<Biome> biomeRegistry = manager.get(RegistryKeys.BIOME);
-		Registry<Block> blockRegistry = manager.get(RegistryKeys.BLOCK);
+		Registry<Biome> biomeRegistry = summary.manager().get(RegistryKeys.BIOME);
+		Registry<Block> blockRegistry = summary.manager().get(RegistryKeys.BLOCK);
 		NbtCompound nbt = new NbtCompound();
 		try {
 			nbt = NbtIo.readCompressed(saveFile);
@@ -104,8 +104,8 @@ public class RegionSummary {
 			if (oldSet != null && oldSet.cardinality() > bitSet.cardinality()) Surveyor.LOGGER.warn("[Surveyor] Reloading region {} caused {} chunks to be dropped.", regionPos, oldSet.cardinality() - bitSet.cardinality());
 			return;
 		}
-		this.biomePalette = new RegistryPalette<>(manager.get(RegistryKeys.BIOME));
-		this.blockPalette = new RegistryPalette<>(manager.get(RegistryKeys.BLOCK));
+		this.biomePalette = new RegistryPalette<>(summary.manager().get(RegistryKeys.BIOME));
+		this.blockPalette = new RegistryPalette<>(summary.manager().get(RegistryKeys.BLOCK));
 		this.chunks = new ChunkSummary[RegionPos.CHUNK_SIZE][RegionPos.CHUNK_SIZE];
 		NbtList biomeList = nbt.getList(KEY_BIOMES, NbtElement.STRING_TYPE);
 		Map<Integer, Integer> biomeRemap = new Int2IntArrayMap(biomeList.size());
@@ -191,8 +191,8 @@ public class RegionSummary {
 			return;
 		}
 		NbtCompound nbt = new NbtCompound();
-		Registry<Biome> biomeRegistry = manager.get(RegistryKeys.BIOME);
-		Registry<Block> blockRegistry = manager.get(RegistryKeys.BLOCK);
+		Registry<Biome> biomeRegistry = summary.manager().get(RegistryKeys.BIOME);
+		Registry<Block> blockRegistry = summary.manager().get(RegistryKeys.BLOCK);
 		nbt.put(KEY_BIOMES, new NbtList(mapIterable(biomePalette.view(), b -> NbtString.of(biomeRegistry.getId(b).toString())), NbtElement.STRING_TYPE));
 		nbt.put(KEY_BLOCKS, new NbtList(mapIterable(blockPalette.view(), b -> NbtString.of(blockRegistry.getId(b).toString())), NbtElement.STRING_TYPE));
 		nbt.putIntArray(KEY_BIOME_WATER, mapIterable(biomePalette.view(), Biome::getWaterColor));
@@ -228,8 +228,8 @@ public class RegionSummary {
 		if (Surveyor.CONFIG.terrain == SystemMode.FROZEN) return new BitSet();
 		if (chunks == null) readNbt(regionPos, false);
 		if (packet.biomePalette().isEmpty() || packet.blockPalette().isEmpty()) return new BitSet(); // nonsense
-		Registry<Biome> biomeRegistry = manager.get(RegistryKeys.BIOME);
-		Registry<Block> blockRegistry = manager.get(RegistryKeys.BLOCK);
+		Registry<Biome> biomeRegistry = summary.manager().get(RegistryKeys.BIOME);
+		Registry<Block> blockRegistry = summary.manager().get(RegistryKeys.BLOCK);
 		Map<Integer, Integer> biomeRemap = new Int2IntArrayMap();
 		for (int i = 0; i < packet.biomePalette().size(); i++) {
 			biomeRemap.put(i, biomePalette.findOrAdd(biomeRegistry.get(packet.biomePalette().get(i))));
