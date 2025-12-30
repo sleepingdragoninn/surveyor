@@ -20,7 +20,6 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.nbt.NbtString;
-import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -91,7 +90,7 @@ public class WorldStructures {
 		return new WorldStructures(summary, regions, structureTypes, structureTags);
 	}
 
-	public static WorldStructures load(WorldSummary summary, DynamicRegistryManager manager, File folder) {
+	public static WorldStructures load(WorldSummary summary, File folder) {
 		File structuresFile = new File(folder, "structures.dat");
 		NbtCompound worldNbt = new NbtCompound();
 		if (structuresFile.exists()) {

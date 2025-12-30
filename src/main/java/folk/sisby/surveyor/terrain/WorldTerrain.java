@@ -10,7 +10,6 @@ import folk.sisby.surveyor.util.ChunkUtil;
 import folk.sisby.surveyor.util.RegionPos;
 import folk.sisby.surveyor.util.RegistryPalette;
 import net.minecraft.block.Block;
-import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.ChunkPos;
@@ -34,14 +33,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class WorldTerrain {
 	protected final WorldSummary summary;
-	protected final DynamicRegistryManager registryManager;
 	protected final Map<RegionPos, RegionSummary> regions = new ConcurrentHashMap<>();
 	protected final File folder;
 	protected final Map<RegionPos, Map<UUID, BitSet>> queuedUpdates = new LinkedHashMap<>();
 
-	public WorldTerrain(WorldSummary summary, DynamicRegistryManager registryManager, Map<RegionPos, RegionSummary> regions, File folder) {
+	public WorldTerrain(WorldSummary summary, Map<RegionPos, RegionSummary> regions, File folder) {
 		this.summary = summary;
-		this.registryManager = registryManager;
 		this.regions.putAll(regions);
 		this.folder = folder;
 	}
@@ -61,10 +58,10 @@ public class WorldTerrain {
 		return set;
 	}
 
-	public static WorldTerrain load(WorldSummary summary, DynamicRegistryManager manager, File folder) {
+	public static WorldTerrain load(WorldSummary summary, File folder) {
 		Map<RegionPos, RegionSummary> regions = new HashMap<>();
-		ChunkUtil.getRegionFiles(folder, "c").forEach((pos, file) -> regions.put(pos, RegionSummary.fromFile(file, manager, pos)));
-		return new WorldTerrain(summary, manager, regions, folder);
+		ChunkUtil.getRegionFiles(folder, "c").forEach((pos, file) -> regions.put(pos, RegionSummary.fromFile(file, summary, pos)));
+		return new WorldTerrain(summary, regions, folder);
 	}
 
 	public static void onChunkLoad(World world, WorldChunk chunk) {
@@ -97,7 +94,7 @@ public class WorldTerrain {
 	}
 
 	public RegionSummary getRegion(RegionPos regionPos) {
-		return regions.computeIfAbsent(regionPos, k -> RegionSummary.fromEmpty(folder, regionPos, registryManager));
+		return regions.computeIfAbsent(regionPos, k -> RegionSummary.fromEmpty(folder, summary, regionPos));
 	}
 
 	public RegistryPalette<Biome>.ValueView getBiomePalette(ChunkPos pos) {
@@ -118,7 +115,7 @@ public class WorldTerrain {
 
 	public void put(World world, WorldChunk chunk) {
 		if (Surveyor.CONFIG.terrain == SystemMode.FROZEN) return;
-		regions.computeIfAbsent(RegionPos.of(chunk.getPos()), k -> RegionSummary.fromEmpty(folder, RegionPos.of(chunk.getPos()), registryManager)).putChunk(world, chunk);
+		regions.computeIfAbsent(RegionPos.of(chunk.getPos()), k -> RegionSummary.fromEmpty(folder, summary, RegionPos.of(chunk.getPos()))).putChunk(world, chunk);
 		SurveyorEvents.Invoke.terrainUpdated(WorldSummary.of(world), chunk.getPos());
 	}
 
