@@ -39,7 +39,7 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 	public void writeSurveyorData(WriteView view, CallbackInfo ci) {
 		ServerPlayerEntity self = (ServerPlayerEntity) (Object) this;
 		surveyor$summary.writeNbt(view);
-		ServerSummary.of(self.getServer()).updatePlayer(Surveyor.getUuid(self), view, false, self.getServer());
+		ServerSummary.of(self.getServer()).updatePlayer(Surveyor.getUuid(self), view, false);
 	}
 
 	@Inject(method = "readCustomData", at = @At("TAIL"))
@@ -53,15 +53,12 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 		ServerPlayerEntity self = (ServerPlayerEntity) (Object) this;
 		WorldLandmarks summary = WorldSummary.of(self.getWorld()).landmarks();
 		if (summary == null) return;
-		summary.put(
-			self.getWorld(),
-			Landmark.createIncremental(summary, Surveyor.getUuid(self), Surveyor.id("grave"), builder -> builder
-				.add(LandmarkComponentTypes.POS, self.getBlockPos())
-				.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()))
-				.add(LandmarkComponentTypes.TIME, self.getWorld().getTimeOfDay())
-				.add(LandmarkComponentTypes.SEED, self.getRandom().nextInt())
-			)
-		);
+		summary.put(Landmark.createIncremental(summary, Surveyor.getUuid(self), Surveyor.id("grave"), builder -> builder
+			.add(LandmarkComponentTypes.POS, self.getBlockPos())
+			.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()))
+			.add(LandmarkComponentTypes.TIME, self.getWorld().getTimeOfDay())
+			.add(LandmarkComponentTypes.SEED, self.getRandom().nextInt())
+		));
 	}
 
 	@Inject(method = "copyFrom", at = @At("TAIL"))

@@ -35,7 +35,7 @@ public class MixinNetherPortal {
 		WorldSummary summary = WorldSummary.of(serverWorld);
 		if (summary.landmarks() == null) return;
 		Identifier id = Identifier.of(PointOfInterestTypes.NETHER_PORTAL.getValue().getNamespace(), "poi/%s/%s/%s/%s".formatted(PointOfInterestTypes.NETHER_PORTAL.getValue().getPath(), lowerCorner.getX(), lowerCorner.getY(), lowerCorner.getZ()));
-		summary.landmarks().put(serverWorld, Landmark.global(id, builder -> LandmarkComponentTypes.forBlock(builder, serverWorld, lowerCorner)
+		summary.landmarks().put(Landmark.global(id, builder -> LandmarkComponentTypes.forBlock(builder, serverWorld, lowerCorner)
 			.add(LandmarkComponentTypes.COLOR, DyeColor.PURPLE.getFireworkColor())
 			.add(LandmarkComponentTypes.BOX, BlockBox.create(lowerCorner, this.lowerCorner.offset(Direction.UP, this.height - 1).offset(negativeDir, width - 1)))
 		));

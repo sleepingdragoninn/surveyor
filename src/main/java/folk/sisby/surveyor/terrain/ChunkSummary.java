@@ -85,7 +85,9 @@ public class ChunkSummary {
 									walkspaceHeight = 0;
 									waterDepth = 0;
 								} else if (walkspaceHeight >= MINIMUM_AIR_DEPTH && state.getMapColor(world, pos) != MapColor.CLEAR) {
-									foundFloor = new LayerSummary.FloorSummary(y, biomePalette.findOrAdd(section.getBiomeEntry(x, y, z, world.getBottomY(), world.getTopYInclusive()).value()), blockPalette.findOrAdd(state.getBlock()), world.getLightLevel(LightType.BLOCK, pos.up()), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
+									int biome = biomePalette.findOrAdd(section.getBiomeEntry(x, y, z, world.getBottomY(), world.getTopYInclusive()).value());
+									int block = blockPalette.findOrAdd(state.getBlock());
+									foundFloor = new LayerSummary.FloorSummary(y, biome, block, world.getLightLevel(LightType.BLOCK, pos.up()), waterDepth, waterDepth == 0 ? 0 : world.getLightLevel(LightType.BLOCK, pos.up().up(waterDepth)));
 								}
 							}
 							if (state.getMapColor(world, pos) != MapColor.CLEAR) { // Don't reset walkspace for glass/barriers/etc.

@@ -1,35 +1,45 @@
 package folk.sisby.surveyor;
 
+import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
-import folk.sisby.surveyor.structure.WorldStructureSummary;
-import folk.sisby.surveyor.terrain.WorldTerrainSummary;
+import folk.sisby.surveyor.structure.WorldStructures;
+import folk.sisby.surveyor.terrain.WorldTerrain;
+import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 
-public record WorldSummary(@Nullable WorldTerrainSummary terrain, @Nullable WorldStructureSummary structures, @Nullable WorldLandmarks landmarks, boolean isClient) {
+public class WorldSummary {
 	private static boolean ENABLE_TERRAIN = false;
 	private static boolean ENABLE_STRUCTURES = false;
 	private static boolean ENABLE_LANDMARKS = false;
+	private final RegistryKey<World> dimension;
+	private final @Nullable MinecraftServer server;
+	private final @Nullable WorldTerrain terrain;
+	private final @Nullable WorldStructures structures;
+	private final @Nullable WorldLandmarks landmarks;
 
-	public static WorldSummary of(World world) {
-		return ((SurveyorWorld) world).surveyor$getSummary();
+	public WorldSummary(@Nullable MinecraftServer server, RegistryKey<World> dimension, DynamicRegistryManager manager, File folder) {
+		this.dimension = dimension;
+		this.server = server;
+		boolean disableTerrain = (Surveyor.CONFIG.terrain == SystemMode.DISABLED || Surveyor.CONFIG.terrain == SystemMode.DYNAMIC && !ENABLE_TERRAIN && (server == null || server.isSingleplayer()));
+		boolean disableStructures = (Surveyor.CONFIG.structures == SystemMode.DISABLED || Surveyor.CONFIG.structures == SystemMode.DYNAMIC && !ENABLE_STRUCTURES && (server == null || server.isSingleplayer()));
+		boolean disableLandmarks = (Surveyor.CONFIG.landmarks == SystemMode.DISABLED || Surveyor.CONFIG.landmarks == SystemMode.DYNAMIC && !ENABLE_LANDMARKS && (server == null || server.isSingleplayer()));
+		Surveyor.LOGGER.info("[Surveyor] Loading data for {}", dimension.getValue());
+		if (!disableTerrain || !disableStructures || !disableLandmarks) folder.mkdirs();
+		this.terrain = disableTerrain ? null : WorldTerrain.load(this, manager, folder);
+		this.structures = disableStructures ? null : WorldStructures.load(this, manager, folder);
+		this.landmarks = disableLandmarks ? null : WorldLandmarks.load(this, manager, folder);
+		Surveyor.LOGGER.info("[Surveyor] Finished loading data for {}", dimension.getValue());
 	}
 
-	public static WorldSummary load(World world, File folder, boolean isClient) {
-		boolean disableTerrain = (Surveyor.CONFIG.terrain == SystemMode.DISABLED || Surveyor.CONFIG.terrain == SystemMode.DYNAMIC && !ENABLE_TERRAIN && (isClient || world.getServer().isSingleplayer()));
-		boolean disableStructures = (Surveyor.CONFIG.structures == SystemMode.DISABLED || Surveyor.CONFIG.structures == SystemMode.DYNAMIC && !ENABLE_STRUCTURES && (isClient || world.getServer().isSingleplayer()));
-		boolean disableLandmarks = (Surveyor.CONFIG.landmarks == SystemMode.DISABLED || Surveyor.CONFIG.landmarks == SystemMode.DYNAMIC && !ENABLE_LANDMARKS && (isClient || world.getServer().isSingleplayer()));
-		if (disableTerrain && disableStructures && disableLandmarks) return new WorldSummary(null, null, null, isClient);
-		Surveyor.LOGGER.info("[Surveyor] Loading data for {}", world.getRegistryKey().getValue());
-		folder.mkdirs();
-		WorldTerrainSummary terrain = disableTerrain ? null : WorldTerrainSummary.load(world, folder);
-		WorldStructureSummary structures = disableStructures ? null : WorldStructureSummary.load(world, folder);
-		WorldLandmarks landmarks = disableLandmarks ? null : WorldLandmarks.load(world, folder, isClient);
-		Surveyor.LOGGER.info("[Surveyor] Finished loading data for {}", world.getRegistryKey().getValue());
-		return new WorldSummary(terrain, structures, landmarks, isClient);
+	public static WorldSummary of(World world) {
+		if (world.isClient()) return SurveyorClient.tryGetSummary(world.getRegistryKey());
+		return ServerSummary.of(world.getServer()).getWorld(world.getRegistryKey());
 	}
 
 	public static void enableTerrain() {
@@ -44,16 +54,44 @@ public record WorldSummary(@Nullable WorldTerrainSummary terrain, @Nullable Worl
 		ENABLE_LANDMARKS = true;
 	}
 
-	public void save(World world, File folder, boolean suppressLogs) {
+	public void save(@Nullable World world, File folder, boolean suppressLogs) {
 		if (!isDirty()) return;
 		folder.mkdirs();
 		int chunks = terrain == null ? 0 : terrain.save(world);
-		int keys = structures == null ? 0 : structures.save(world, folder);
-		int marks = landmarks == null ? 0 : landmarks.save(world, folder);
-		if (!suppressLogs && (chunks > 0 || keys > 0 || marks > 0)) Surveyor.LOGGER.info("[Surveyor] Finished saving data for {} | cleaned {} terrain regions, {} structure regions, {} landmarks", world.getRegistryKey().getValue(), chunks, keys, marks);
+		int keys = structures == null ? 0 : structures.save(folder);
+		int marks = landmarks == null ? 0 : landmarks.save(folder);
+		if (!suppressLogs && (chunks > 0 || keys > 0 || marks > 0)) Surveyor.LOGGER.info("[Surveyor] Finished saving data for {} | cleaned {} terrain regions, {} structure regions, {} landmarks", dimension, chunks, keys, marks);
 	}
 
 	public boolean isDirty() {
 		return (terrain != null && terrain.isDirty()) || (structures != null && structures.isDirty()) || (landmarks != null && landmarks.isDirty());
+	}
+
+	public boolean isClient() {
+		return server == null;
+	}
+
+	public @Nullable World world() {
+		return server != null ? server.getWorld(dimension) : SurveyorClient.getWorld(dimension);
+	}
+
+	public RegistryKey<World> dimension() {
+		return dimension;
+	}
+
+	public @Nullable MinecraftServer server() {
+		return server;
+	}
+
+	public @Nullable WorldTerrain terrain() {
+		return terrain;
+	}
+
+	public @Nullable WorldStructures structures() {
+		return structures;
+	}
+
+	public @Nullable WorldLandmarks landmarks() {
+		return landmarks;
 	}
 }

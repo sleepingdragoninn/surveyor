@@ -92,18 +92,18 @@ public class SurveyorClientCommands {
 		return 1;
 	}
 
-	private static int removeLandmark(WorldSummary summary, World world, Consumer<Text> feedback, Identifier type, boolean global) {
+	private static int removeLandmark(WorldSummary summary, Consumer<Text> feedback, Identifier id, boolean global) {
 		if (summary.landmarks() == null) {
 			feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		if (!summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), type)) {
+		if (!summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), id)) {
 			feedback.accept(prefix().append(Text.literal("No landmark exists of that id!").formatted(Formatting.YELLOW)));
 			return 0;
 		}
-		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), type);
-		summary.landmarks().remove(world, global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), type);
-		feedback.accept(prefix().append(Text.literal("%s %s removed successfully!".formatted(landmark.owner().equals(WorldLandmarks.GLOBAL) ? "Landmark" : "Waypoint")).formatted(Formatting.GREEN)));
+		Landmark landmark = summary.landmarks().get(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), id);
+		summary.landmarks().remove(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), id);
+		feedback.accept(prefix().append(Text.literal("%s %s removed successfully!".formatted(landmark.owner().equals(WorldLandmarks.GLOBAL) ? "Landmark" : "Waypoint", id)).formatted(Formatting.GREEN)));
 		return 1;
 	}
 
@@ -116,7 +116,7 @@ public class SurveyorClientCommands {
 		if (summary.landmarks().contains(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), id)) {
 			feedback.accept(prefix().append(Text.literal("A landmark with this ID already exists! Replacing...").formatted(Formatting.YELLOW)));
 		}
-		summary.landmarks().put(world, Landmark.create(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), id, builder -> LandmarkComponentTypes.forBlock(builder, world, pos)));
+		summary.landmarks().put(Landmark.create(global ? WorldLandmarks.GLOBAL : SurveyorClient.getClientUuid(), id, builder -> LandmarkComponentTypes.forBlock(builder, world, pos)));
 		feedback.accept(prefix().append(Text.literal("Added new %s %s!".formatted(global ? "Landmark" : "Waypoint", id)).formatted(Formatting.GREEN)));
 		return 1;
 	}
@@ -172,7 +172,7 @@ public class SurveyorClientCommands {
 					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
 					.then(ClientCommandManager.argument("id", IdentifierArgumentType.identifier())
 						.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(SurveyorClient.getClientUuid(), p.hasPermissionLevel(2) ? null : e).keySet(), false), b))
-						.executes(c -> execute(c, (w, p, sw, e, f) -> removeLandmark(w, sw, f, c.getArgument("id", Identifier.class), false)))
+						.executes(c -> execute(c, (w, p, sw, e, f) -> removeLandmark(w, f, c.getArgument("id", Identifier.class), false)))
 					)
 				)
 		);
