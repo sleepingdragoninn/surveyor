@@ -28,6 +28,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
@@ -206,7 +207,9 @@ public class SurveyorClient implements ClientModInitializer {
 		boolean hasTerrain = false;
 		boolean hasStructures = false;
 		boolean hasLandmarks = false;
+		DynamicRegistryManager manager = null;
 		for (WorldSummary summary : SurveyorClient.getSummaries(handler).values()) {
+			manager = summary.manager();
 			if (summary.terrain() != null && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SOLO)) {
 				chunks.row(summary.dimension()).putAll(summary.terrain().bitSet(null));
 				hasTerrain = true;
@@ -220,9 +223,9 @@ public class SurveyorClient implements ClientModInitializer {
 				hasLandmarks = true;
 			}
 		}
-		if (hasTerrain) new C2SKnownTerrainPacket(chunks).send();
-		if (hasStructures) new C2SKnownStructuresPacket(starts).send();
-		if (hasLandmarks) new C2SKnownLandmarksPacket(landmarks).send();
+		if (hasTerrain) new C2SKnownTerrainPacket(chunks).send(manager);
+		if (hasStructures) new C2SKnownStructuresPacket(starts).send(manager);
+		if (hasLandmarks) new C2SKnownLandmarksPacket(landmarks).send(manager);
 	}
 
 	@Override

@@ -18,6 +18,7 @@ public class WorldSummary {
 	private static boolean ENABLE_STRUCTURES = false;
 	private static boolean ENABLE_LANDMARKS = false;
 	private final RegistryKey<World> dimension;
+	private final DynamicRegistryManager manager;
 	private final @Nullable MinecraftServer server;
 	private final @Nullable WorldTerrain terrain;
 	private final @Nullable WorldStructures structures;
@@ -25,15 +26,16 @@ public class WorldSummary {
 
 	public WorldSummary(@Nullable MinecraftServer server, RegistryKey<World> dimension, DynamicRegistryManager manager, File folder) {
 		this.dimension = dimension;
+		this.manager = manager;
 		this.server = server;
 		boolean disableTerrain = (Surveyor.CONFIG.terrain == SystemMode.DISABLED || Surveyor.CONFIG.terrain == SystemMode.DYNAMIC && !ENABLE_TERRAIN && (server == null || server.isSingleplayer()));
 		boolean disableStructures = (Surveyor.CONFIG.structures == SystemMode.DISABLED || Surveyor.CONFIG.structures == SystemMode.DYNAMIC && !ENABLE_STRUCTURES && (server == null || server.isSingleplayer()));
 		boolean disableLandmarks = (Surveyor.CONFIG.landmarks == SystemMode.DISABLED || Surveyor.CONFIG.landmarks == SystemMode.DYNAMIC && !ENABLE_LANDMARKS && (server == null || server.isSingleplayer()));
 		Surveyor.LOGGER.info("[Surveyor] Loading data for {}", dimension.getValue());
 		if (!disableTerrain || !disableStructures || !disableLandmarks) folder.mkdirs();
-		this.terrain = disableTerrain ? null : WorldTerrain.load(this, manager, folder);
-		this.structures = disableStructures ? null : WorldStructures.load(this, manager, folder);
-		this.landmarks = disableLandmarks ? null : WorldLandmarks.load(this, manager, folder);
+		this.terrain = disableTerrain ? null : WorldTerrain.load(this, folder);
+		this.structures = disableStructures ? null : WorldStructures.load(this, folder);
+		this.landmarks = disableLandmarks ? null : WorldLandmarks.load(this, folder);
 		Surveyor.LOGGER.info("[Surveyor] Finished loading data for {}", dimension.getValue());
 	}
 
@@ -77,6 +79,10 @@ public class WorldSummary {
 
 	public RegistryKey<World> dimension() {
 		return dimension;
+	}
+
+	public DynamicRegistryManager manager() {
+		return manager;
 	}
 
 	public @Nullable MinecraftServer server() {

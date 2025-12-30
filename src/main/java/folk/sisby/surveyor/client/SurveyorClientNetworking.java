@@ -108,7 +108,7 @@ public class SurveyorClientNetworking {
 	private static void handleLandmarksRequested(ClientPlayNetworkHandler handler, SyncLandmarksRequestedPacket packet) {
 		WorldSummary summary = SurveyorClient.getSummary(packet.dimension(), handler);
 		if (summary.landmarks() == null) return;
-		summary.landmarks().createUpdatePacket(packet.landmarks()).send(manager);
+		summary.landmarks().createUpdatePacket(packet.landmarks()).send(summary.manager());
 		Surveyor.LOGGER.info("[Surveyor] Received {} landmark requests from the server - {}", packet.landmarks().size(), packet.landmarks().values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 

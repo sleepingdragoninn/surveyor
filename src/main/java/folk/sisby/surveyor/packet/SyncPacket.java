@@ -9,7 +9,7 @@ public interface SyncPacket extends C2SPacket, S2CPacket {
 	default void send(UUID sender, WorldSummary summary, NetworkMode mode, boolean withSelf) {
 		if (mode.atMost(NetworkMode.NONE)) return;
 		if (summary.isClient()) {
-			send(summary);
+			send(summary.manager());
 		} else {
 			send(sender, summary.server(), mode, withSelf);
 		}

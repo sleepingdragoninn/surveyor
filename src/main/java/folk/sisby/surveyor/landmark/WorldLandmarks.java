@@ -27,7 +27,6 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtSizeTracker;
-import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.text.TextCodecs;
@@ -81,7 +80,7 @@ public class WorldLandmarks {
 		this.dirty = dirty;
 	}
 
-	public static WorldLandmarks load(WorldSummary summary, DynamicRegistryManager manager, File folder) {
+	public static WorldLandmarks load(WorldSummary summary, File folder) {
 		NbtCompound landmarkNbt = new NbtCompound();
 		File landmarksFile = new File(folder, "landmarks.dat");
 		if (landmarksFile.exists()) {
@@ -91,7 +90,7 @@ public class WorldLandmarks {
 				Surveyor.LOGGER.error("[Surveyor] Error loading landmarks file for {}.", summary.dimension().getValue(), e);
 			}
 		}
-		WorldLandmarks worldLandmarks = fromNbt(summary, manager, landmarkNbt, landmarksFile);
+		WorldLandmarks worldLandmarks = fromNbt(summary, landmarkNbt, landmarksFile);
 		if (!summary.isClient()) worldLandmarks.tryMigrateXaeros(false); // for singleplayer
 		return worldLandmarks;
 	}
@@ -102,7 +101,7 @@ public class WorldLandmarks {
 		return nbt;
 	}
 
-	public static WorldLandmarks fromNbt(WorldSummary summary, DynamicRegistryManager manager, NbtCompound nbt, File landmarksFile) {
+	public static WorldLandmarks fromNbt(WorldSummary summary, NbtCompound nbt, File landmarksFile) {
 		NbtCompound landmarks = nbt.getCompound(KEY_LANDMARKS).orElse(new NbtCompound());
 		boolean dirty = false;
 		Table<UUID, Identifier, Landmark> outMap = HashBasedTable.create();
@@ -360,8 +359,8 @@ public class WorldLandmarks {
 		}
 	}
 
-	public void clientInitialized(DynamicRegistryManager manager) {
+	public void clientInitialized() {
 		tryMigrateXaeros(true);
-		if (Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) C2SKnownLandmarksPacket.of(summary.dimension(), keySet(null)).send(manager);
+		if (Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) C2SKnownLandmarksPacket.of(summary.dimension(), keySet(null)).send(summary.manager());
 	}
 }
