@@ -17,7 +17,7 @@ import java.util.BitSet;
 import java.util.Map;
 import java.util.UUID;
 
-public record S2CGroupChangedPacket(Map<UUID, PlayerSummary> players, Table<RegistryKey<World>, RegionPos, BitSet> regionBits, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> structureKeys) implements S2CPacket {
+public record S2CGroupChangedPacket(Map<UUID, PlayerSummary> players, Table<RegistryKey<World>, RegionPos, BitSet> chunks, Table<RegistryKey<World>, RegistryKey<Structure>, LongSet> starts) implements S2CPacket {
 	public static final Identifier ID = Surveyor.id("s2c_group_changed");
 
 	public static S2CGroupChangedPacket read(PacketByteBuf buf) {
@@ -39,13 +39,13 @@ public record S2CGroupChangedPacket(Map<UUID, PlayerSummary> players, Table<Regi
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
 		buf.writeMap(players, PacketByteBuf::writeUuid, PlayerSummary.OfflinePlayerSummary::writeBuf);
-		buf.writeMap(regionBits.rowMap(),
+		buf.writeMap(chunks.rowMap(),
 			PacketByteBuf::writeRegistryKey,
 			(b, m) -> b.writeMap(m,
 				(b2, r) -> b2.writeLong(r.toLong()),
 				PacketByteBuf::writeBitSet
 			));
-		buf.writeMap(structureKeys.rowMap(),
+		buf.writeMap(starts.rowMap(),
 			PacketByteBuf::writeRegistryKey,
 			(b, m) -> b.writeMap(m,
 				PacketByteBuf::writeRegistryKey,

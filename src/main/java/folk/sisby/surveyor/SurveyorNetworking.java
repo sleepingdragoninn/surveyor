@@ -54,7 +54,7 @@ public class SurveyorNetworking {
 		for (ServerWorld world : server.getWorlds()) {
 			WorldSummary summary = WorldSummary.of(world);
 			Map<RegionPos, BitSet> serverBits = summary.terrain().bitSet(Surveyor.explorationForMode(Surveyor.CONFIG.networking.terrain, player));
-			Map<RegionPos, BitSet> clientBits = packet.regionBits().row(world.getRegistryKey());
+			Map<RegionPos, BitSet> clientBits = packet.chunks().row(world.getRegistryKey());
 			for (RegionPos regionPos : serverBits.keySet()) {
 				BitSet set = serverBits.get(regionPos);
 				if (clientBits.containsKey(regionPos)) set.andNot(clientBits.get(regionPos));

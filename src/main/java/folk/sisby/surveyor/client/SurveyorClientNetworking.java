@@ -74,8 +74,8 @@ public class SurveyorClientNetworking {
 			SurveyorClient.getSharedExploration().groupPlayers().addAll(packet.players().keySet());
 		}
 		ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).matchSummaries(packet.players());
-		SurveyorClient.getSharedExploration().replaceTerrain(packet.regionBits());
-		SurveyorClient.getSharedExploration().replaceStructures(packet.structureKeys());
+		SurveyorClient.getSharedExploration().replaceTerrain(packet.chunks());
+		SurveyorClient.getSharedExploration().replaceStructures(packet.starts());
 		SurveyorClient.getSummaries(handler).values().forEach(summary -> SurveyorClient.getSharedExploration().updateClientForLandmarks(summary));
 		SurveyorClient.sendKnownData(handler);
 		Surveyor.LOGGER.info("[Surveyor] Received updated share group of {} from the server - {}", packet.players().size(), packet.players().values().stream().map(PlayerSummary::username).collect(Collectors.joining(", ")));

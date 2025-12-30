@@ -12,7 +12,7 @@ import net.minecraft.world.World;
 
 import java.util.BitSet;
 
-public record C2SKnownTerrainPacket(Table<RegistryKey<World>, RegionPos, BitSet> regionBits) implements C2SPacket {
+public record C2SKnownTerrainPacket(Table<RegistryKey<World>, RegionPos, BitSet> chunks) implements C2SPacket {
 	public static final Identifier ID = Surveyor.id("known_terrain");
 
 	public static C2SKnownTerrainPacket read(PacketByteBuf buf) {
@@ -23,7 +23,7 @@ public record C2SKnownTerrainPacket(Table<RegistryKey<World>, RegionPos, BitSet>
 
 	@Override
 	public void writeBuf(PacketByteBuf buf) {
-		buf.writeMap(regionBits.rowMap(),
+		buf.writeMap(chunks.rowMap(),
 			PacketByteBuf::writeRegistryKey,
 			(b, m) -> b.writeMap(m,
 				(b2, r) -> b2.writeLong(r.toLong()),

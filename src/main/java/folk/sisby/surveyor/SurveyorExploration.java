@@ -209,9 +209,9 @@ public interface SurveyorExploration {
 				if (entry.getValue().cardinality() == RegionPos.CHUNK_AREA) {
 					regionLongs.add(-1);
 				} else {
-					long[] regionBits = entry.getValue().toLongArray();
-					regionLongs.add(regionBits.length);
-					regionLongs.addAll(LongList.of(regionBits));
+					long[] chunks = entry.getValue().toLongArray();
+					regionLongs.add(chunks.length);
+					regionLongs.addAll(LongList.of(chunks));
 				}
 			}
 			terrainCompound.putLongArray(dimension.getValue().toString(), regionLongs.toLongArray());
