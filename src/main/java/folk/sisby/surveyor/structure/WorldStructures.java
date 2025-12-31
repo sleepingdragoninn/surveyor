@@ -57,6 +57,10 @@ public class WorldStructures {
 	protected final Multimap<RegistryKey<Structure>, TagKey<Structure>> structureTags = Multimaps.synchronizedSetMultimap(HashMultimap.create());
 	protected boolean dirty = false;
 
+	public static WorldStructures of(World world) {
+		return Optional.ofNullable(world).map(WorldSummary::of).map(WorldSummary::structures).orElse(null);
+	}
+
 	public WorldStructures(WorldSummary summary, Map<RegionPos, RegionStructureSummary> regions, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> structureTypes, Multimap<RegistryKey<Structure>, TagKey<Structure>> structureTags) {
 		this.summary = summary;
 		this.regions.putAll(regions);
@@ -113,14 +117,15 @@ public class WorldStructures {
 	}
 
 	public static void onChunkLoad(ServerWorld world, WorldChunk chunk) {
-		WorldStructures structures = WorldSummary.of(world).structures();
+		WorldStructures structures = WorldStructures.of(world);
+		if (structures == null) return;
 		chunk.getStructureStarts().forEach((structure, start) -> {
-			if (structures != null && !structures.contains(world, start)) structures.put(world, start);
+			if (!structures.contains(world, start)) structures.put(world, start);
 		});
 	}
 
 	public static void onStructurePlace(ServerWorld world, StructureStart start) {
-		WorldStructures structures = WorldSummary.of(world).structures();
+		WorldStructures structures = WorldStructures.of(world);
 		if (structures != null && !structures.contains(world, start)) structures.put(world, start);
 	}
 

@@ -37,6 +37,7 @@ import net.minecraft.nbt.NbtCrashException;
 import net.minecraft.util.Uuids;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -46,6 +47,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -71,6 +73,10 @@ public class WorldLandmarks {
 	protected final Table<UUID, Identifier, Landmark> landmarks = Tables.synchronizedTable(HashBasedTable.create());
 	protected final @Nullable Multimap<UUID, Identifier> removed;
 	protected boolean dirty;
+
+	public static WorldLandmarks of(World world) {
+		return Optional.ofNullable(world).map(WorldSummary::of).map(WorldSummary::landmarks).orElse(null);
+	}
 
 	public WorldLandmarks(WorldSummary summary, Table<UUID, Identifier, Landmark> landmarks, Multimap<UUID, Identifier> removed, boolean dirty) {
 		this.summary = summary;

@@ -1,7 +1,6 @@
 package folk.sisby.surveyor.mixin;
 
 import folk.sisby.surveyor.Surveyor;
-import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
@@ -20,11 +19,11 @@ public class MixinServerWorld {
 	@Inject(method = "method_66017(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/registry/entry/RegistryEntry;)V", at = @At("HEAD"))
 	public void onPointOfInterestAdded(BlockPos blockPos, RegistryEntry<PointOfInterestType> poiType, CallbackInfo ci) {
 		ServerWorld self = (ServerWorld) (Object) this;
-		WorldSummary summary = WorldSummary.of(self);
-		if (summary.landmarks() == null) return;
+		WorldLandmarks landmarks = WorldLandmarks.of(self);
+		if (landmarks == null) return;
 		if (poiType.getKey().isEmpty() || !Surveyor.CONFIG.builtins.poiLandmarks.contains(poiType.getKey().get().getValue().toString())) return;
 		Identifier poi = poiType.getKey().get().getValue();
-		summary.landmarks().put(Landmark.global(
+		landmarks.put(Landmark.global(
 			Identifier.of(poi.getNamespace(), "poi/%s/%s/%s/%s".formatted(poi.getPath(), blockPos.getX(), blockPos.getY(), blockPos.getZ())),
 			builder -> LandmarkComponentTypes.forBlock(builder, self, blockPos)
 		));
@@ -33,9 +32,9 @@ public class MixinServerWorld {
 	@Inject(method = "method_66019(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/registry/entry/RegistryEntry;)V", at = @At("HEAD"))
 	public void onPointOfInterestRemoved(BlockPos blockPos, RegistryEntry<PointOfInterestType> oldPoiType, CallbackInfo ci) {
 		ServerWorld self = (ServerWorld) (Object) this;
-		WorldSummary summary = WorldSummary.of(self);
-		if (summary.landmarks() == null) return;
-		summary.landmarks().removeAll(l -> l.owner().equals(WorldLandmarks.GLOBAL)
+		WorldLandmarks landmarks = WorldLandmarks.of(self);
+		if (landmarks == null) return;
+		landmarks.removeAll(l -> l.owner().equals(WorldLandmarks.GLOBAL)
 			&& l.id().getPath().startsWith("poi")
 			&& l.components().contains(LandmarkComponentTypes.POS)
 			&& l.components().get(LandmarkComponentTypes.POS).equals(blockPos)

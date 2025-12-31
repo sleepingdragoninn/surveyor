@@ -5,7 +5,6 @@ import folk.sisby.surveyor.PlayerSummary;
 import folk.sisby.surveyor.ServerSummary;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.SurveyorPlayer;
-import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
@@ -51,9 +50,9 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 	public void onDeath(DamageSource damageSource, CallbackInfo ci) {
 		if (!Surveyor.CONFIG.builtins.playerDeathWaypoints) return;
 		ServerPlayerEntity self = (ServerPlayerEntity) (Object) this;
-		WorldLandmarks summary = WorldSummary.of(self.getWorld()).landmarks();
-		if (summary == null) return;
-		summary.put(Landmark.createIncremental(summary, Surveyor.getUuid(self), Surveyor.id("grave"), builder -> builder
+		WorldLandmarks landmarks = WorldLandmarks.of(self.getWorld());
+		if (landmarks == null) return;
+		landmarks.put(Landmark.createIncremental(landmarks, Surveyor.getUuid(self), Surveyor.id("grave"), builder -> builder
 			.add(LandmarkComponentTypes.POS, self.getBlockPos())
 			.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()))
 			.add(LandmarkComponentTypes.TIME, self.getWorld().getTimeOfDay())

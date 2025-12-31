@@ -242,7 +242,7 @@ public interface PlayerSummary {
 					SurveyorExploration friendExploration = SurveyorExploration.of(friend);
 					BitSet sendSet = (BitSet) chunks.clone();
 					if (friendExploration.chunks().contains(dimension, regionPos)) sendSet.andNot(friendExploration.chunks().get(dimension, regionPos));
-					WorldTerrain terrain = summary.terrain();
+					WorldTerrain terrain = summary == null ? null : summary.terrain();
 					if (!sendSet.isEmpty() && terrain != null) S2CUpdateRegionPacket.of(dimension, true, regionPos, terrain.getRegion(regionPos), sendSet).send(friend);
 				}
 			}
@@ -256,7 +256,7 @@ public interface PlayerSummary {
 				for (ServerPlayerEntity friend : ServerSummary.of(player.getServer()).getSharingPlayers(Surveyor.getUuid(player), Surveyor.CONFIG.networking.terrain, false)) {
 					if (!SurveyorExploration.of(friend).exploredChunk(dimension, pos)) {
 						RegionPos regionPos = RegionPos.of(pos);
-						WorldTerrain terrain = summary.terrain();
+						WorldTerrain terrain = summary == null ? null : summary.terrain();
 						if (terrain != null) S2CUpdateRegionPacket.of(dimension, true, regionPos, terrain.getRegion(regionPos), RegionPos.chunkToBitSet(pos)).send(friend);
 					}
 				}

@@ -41,7 +41,8 @@ public class WorldSummary {
 
 	public static WorldSummary of(World world) {
 		if (world.isClient()) return SurveyorClient.tryGetSummary(world.getRegistryKey());
-		return ServerSummary.of(world.getServer()).getWorld(world.getRegistryKey());
+		ServerSummary summary = ServerSummary.of(world.getServer());
+		return summary == null ? null : summary.getWorld(world.getRegistryKey());
 	}
 
 	public static void enableTerrain() {

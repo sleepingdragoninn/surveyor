@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +37,10 @@ public class WorldTerrain {
 	protected final Map<RegionPos, RegionSummary> regions = new ConcurrentHashMap<>();
 	protected final File folder;
 	protected final Map<RegionPos, Map<UUID, BitSet>> queuedUpdates = new LinkedHashMap<>();
+
+	public static WorldTerrain of(World world) {
+		return Optional.ofNullable(world).map(WorldSummary::of).map(WorldSummary::terrain).orElse(null);
+	}
 
 	public WorldTerrain(WorldSummary summary, Map<RegionPos, RegionSummary> regions, File folder) {
 		this.summary = summary;
@@ -65,21 +70,19 @@ public class WorldTerrain {
 	}
 
 	public static void onChunkLoad(World world, WorldChunk chunk) {
-		WorldSummary summary = WorldSummary.of(world);
-		if (summary.terrain() != null) {
-			ChunkSummary chunkSummary = summary.terrain().get(chunk.getPos());
-			if (chunkSummary == null || !Surveyor.CONFIG.lazyClientUpdating || !ChunkUtil.airCount(chunk).equals(chunkSummary.getAirCount())) {
-				summary.terrain().put(world, chunk);
-			}
+		WorldTerrain terrain = WorldTerrain.of(world);
+		if (terrain == null) return;
+		ChunkSummary chunkSummary = terrain.get(chunk.getPos());
+		if (chunkSummary == null || !Surveyor.CONFIG.lazyClientUpdating || !ChunkUtil.airCount(chunk).equals(chunkSummary.getAirCount())) {
+			terrain.put(world, chunk);
 		}
 	}
 
 	public static void onChunkUnload(World world, WorldChunk chunk) {
-		WorldSummary summary = WorldSummary.of(world);
-		if (summary.terrain() != null) {
-			if (chunk.needsSaving()) {
-				summary.terrain().put(world, chunk);
-			}
+		WorldTerrain terrain = WorldTerrain.of(world);
+		if (terrain == null) return;
+		if (chunk.needsSaving()) {
+			terrain.put(world, chunk);
 		}
 	}
 
@@ -120,7 +123,7 @@ public class WorldTerrain {
 	}
 
 	public static void onTick(ServerWorld world) {
-		WorldTerrain terrain = WorldSummary.of(world).terrain();
+		WorldTerrain terrain = WorldTerrain.of(world);
 		if (terrain != null) terrain.serverTick(world);
 	}
 

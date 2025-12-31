@@ -12,9 +12,11 @@ import folk.sisby.surveyor.SurveyorEvents;
 import folk.sisby.surveyor.SurveyorExploration;
 import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.config.NetworkMode;
+import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.packet.C2SKnownLandmarksPacket;
 import folk.sisby.surveyor.packet.C2SKnownStructuresPacket;
 import folk.sisby.surveyor.packet.C2SKnownTerrainPacket;
+import folk.sisby.surveyor.structure.WorldStructures;
 import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.RegionPos;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -194,38 +196,44 @@ public class SurveyorClient implements ClientModInitializer {
 	public static void handleInitialLoad(ClientPlayNetworkHandler handler) {
 		SurveyorExploration exploration = getExploration();
 		for (WorldSummary summary : SurveyorClient.getSummaries(handler).values()) {
-			if (summary.terrain() != null) SurveyorClientEvents.Invoke.terrainUpdated(summary, summary.terrain().bitSet(exploration));
-			if (summary.structures() != null) SurveyorClientEvents.Invoke.structuresAdded(summary, summary.structures().keySet(exploration));
-			if (summary.landmarks() != null) SurveyorClientEvents.Invoke.landmarksAdded(summary, summary.landmarks().keySet(exploration));
+			WorldTerrain terrain = summary.terrain();
+			if (terrain != null) SurveyorClientEvents.Invoke.terrainUpdated(summary, terrain.bitSet(exploration));
+			WorldStructures structures = summary.structures();
+			if (structures != null) SurveyorClientEvents.Invoke.structuresAdded(summary, structures.keySet(exploration));
+			WorldLandmarks landmarks = summary.landmarks();
+			if (landmarks != null) SurveyorClientEvents.Invoke.landmarksAdded(summary, landmarks.keySet(exploration));
 		}
 	}
 
 	public static void sendKnownData(ClientPlayNetworkHandler handler) {
 		Table<RegistryKey<World>, RegionPos, BitSet> chunks = HashBasedTable.create();
 		Map<RegistryKey<World>, Multimap<RegistryKey<Structure>, ChunkPos>> starts = new HashMap<>();
-		Map<RegistryKey<World>, Multimap<UUID, Identifier>> landmarks = new HashMap<>();
+		Map<RegistryKey<World>, Multimap<UUID, Identifier>> landmarkKeys = new HashMap<>();
 		boolean hasTerrain = false;
 		boolean hasStructures = false;
 		boolean hasLandmarks = false;
 		DynamicRegistryManager manager = null;
 		for (WorldSummary summary : SurveyorClient.getSummaries(handler).values()) {
 			manager = summary.manager();
-			if (summary.terrain() != null && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SOLO)) {
-				chunks.row(summary.dimension()).putAll(summary.terrain().bitSet(null));
+			WorldTerrain terrain = summary.terrain();
+			if (terrain != null && Surveyor.CONFIG.networking.terrain.atLeast(NetworkMode.SOLO)) {
+				chunks.row(summary.dimension()).putAll(terrain.bitSet(null));
 				hasTerrain = true;
 			}
-			if (summary.structures() != null && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SOLO)) {
-				starts.put(summary.dimension(), summary.structures().keySet(null));
+			WorldStructures structures = summary.structures();
+			if (structures != null && Surveyor.CONFIG.networking.structures.atLeast(NetworkMode.SOLO)) {
+				starts.put(summary.dimension(), structures.keySet(null));
 				hasStructures = true;
 			}
-			if (summary.landmarks() != null && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) {
-				landmarks.put(summary.dimension(), summary.landmarks().keySet(null));
+			WorldLandmarks landmarks = summary.landmarks();
+			if (landmarks != null && Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) {
+				landmarkKeys.put(summary.dimension(), landmarks.keySet(null));
 				hasLandmarks = true;
 			}
 		}
 		if (hasTerrain) new C2SKnownTerrainPacket(chunks).send(manager);
 		if (hasStructures) new C2SKnownStructuresPacket(starts).send(manager);
-		if (hasLandmarks) new C2SKnownLandmarksPacket(landmarks).send(manager);
+		if (hasLandmarks) new C2SKnownLandmarksPacket(landmarkKeys).send(manager);
 	}
 
 	@Override
