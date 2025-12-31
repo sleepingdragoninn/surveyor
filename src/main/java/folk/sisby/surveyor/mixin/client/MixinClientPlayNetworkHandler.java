@@ -7,6 +7,7 @@ import folk.sisby.surveyor.client.ClientSummary;
 import folk.sisby.surveyor.client.SurveyorClient;
 import folk.sisby.surveyor.client.SurveyorNetworkHandler;
 import folk.sisby.surveyor.landmark.Landmark;
+import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.TextUtil;
 import net.minecraft.client.MinecraftClient;
@@ -60,10 +61,12 @@ public abstract class MixinClientPlayNetworkHandler implements SurveyorNetworkHa
 		ClientPlayerEntity player = MinecraftClient.getInstance().player;
 		if (player == null || player.getWorld() == null) return;
 		WorldSummary summary = WorldSummary.of(player.getWorld());
+		if (summary == null) return;
 		if (summary.isClient()) {
-			if (summary.landmarks() == null) return;
-			summary.landmarks().put(
-                    Landmark.createIncremental(summary.landmarks(), SurveyorClient.getClientUuid(), Surveyor.id("grave"), builder -> builder
+			WorldLandmarks landmarks = summary.landmarks();
+			if (landmarks == null) return;
+			landmarks.put(
+                    Landmark.createIncremental(landmarks, SurveyorClient.getClientUuid(), Surveyor.id("grave"), builder -> builder
 					.add(LandmarkComponentTypes.POS, player.getBlockPos())
 					.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(packet.getMessage()))
 					.add(LandmarkComponentTypes.TIME, player.getWorld().getTimeOfDay())
