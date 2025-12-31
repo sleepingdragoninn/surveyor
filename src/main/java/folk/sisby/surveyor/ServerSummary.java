@@ -2,9 +2,12 @@ package folk.sisby.surveyor;
 
 import com.mojang.authlib.GameProfile;
 import folk.sisby.surveyor.config.NetworkMode;
+import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
+import folk.sisby.surveyor.structure.WorldStructures;
+import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.MapUtil;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
@@ -30,6 +33,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -123,14 +127,15 @@ public final class ServerSummary {
 
 	public static void onPlayerJoin(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
 		ServerPlayerEntity player = handler.getPlayer();
-		ServerSummary serverSummary = ServerSummary.of(server);
+		ServerSummary summary = ServerSummary.of(server);
+		if (summary == null) return;
 		UUID uuid = Surveyor.getUuid(player);
-		boolean known = serverSummary.offlineSummaries.containsKey(uuid);
-		if (!known) serverSummary.createPlayer(player);
-		if (serverSummary.getGroup(uuid).size() > 1) {
+		boolean known = summary.offlineSummaries.containsKey(uuid);
+		if (!known) summary.createPlayer(player);
+		if (summary.getGroup(uuid).size() > 1) {
 			// initial exploration
-			Map<UUID, PlayerSummary> groupSummaries = serverSummary.getGroupSummaries(uuid);
-			new S2CGroupChangedPacket(groupSummaries, serverSummary.getSharingExploration(uuid, Surveyor.CONFIG.networking.terrain, false).chunks(), serverSummary.getSharingExploration(uuid, Surveyor.CONFIG.networking.structures, false).starts()).send(player);
+			Map<UUID, PlayerSummary> groupSummaries = summary.getGroupSummaries(uuid);
+			new S2CGroupChangedPacket(groupSummaries, summary.getSharingExploration(uuid, Surveyor.CONFIG.networking.terrain, false).chunks(), summary.getSharingExploration(uuid, Surveyor.CONFIG.networking.structures, false).starts()).send(player);
 			// initial offline group positions
 			new S2CGroupUpdatedPacket(groupSummaries).send(player);
 		}
@@ -140,8 +145,9 @@ public final class ServerSummary {
 
 	public static void onTick(MinecraftServer server) {
 		if ((server.getTicks() % Surveyor.CONFIG.networking.positionTicks) != 0) return;
-		ServerSummary serverSummary = ServerSummary.of(server);
-		for (Set<UUID> group : serverSummary.getPositionGroups()) {
+		ServerSummary summary = ServerSummary.of(server);
+		if (summary == null) return;
+		for (Set<UUID> group : summary.getPositionGroups()) {
 			Map<UUID, PlayerSummary> onlinePlayers = new HashMap<>();
 			for (UUID uuid : group) {
 				var player = server.getPlayerManager().getPlayer(uuid);
@@ -158,18 +164,22 @@ public final class ServerSummary {
 	public void loadWorlds() {
 		for (RegistryKey<World> dimension : server.getWorldRegistryKeys()) {
 			WorldSummary summary = getWorld(dimension);
-			if (summary.terrain() != null) SurveyorEvents.Invoke.terrainUpdated(summary, summary.terrain().bitSet(null));
-			if (summary.structures() != null) SurveyorEvents.Invoke.structuresAdded(summary, summary.structures().keySet(null));
-			if (summary.landmarks() != null) SurveyorEvents.Invoke.landmarksAdded(summary, summary.landmarks().keySet(null));
+			WorldTerrain terrain = summary.terrain();
+			if (terrain != null) SurveyorEvents.Invoke.terrainUpdated(summary, terrain.bitSet(null));
+			WorldStructures structures = summary.structures();
+			if (structures != null) SurveyorEvents.Invoke.structuresAdded(summary, structures.keySet(null));
+			WorldLandmarks landmarks = summary.landmarks();
+			if (landmarks != null) SurveyorEvents.Invoke.landmarksAdded(summary, landmarks.keySet(null));
 		}
 	}
 
 	public void save(boolean force, boolean suppressLogs) {
-		if (!isDirty() && StreamSupport.stream(server.getWorlds().spliterator(), false).map(WorldSummary::of).noneMatch(WorldSummary::isDirty)) return;
+		if (!isDirty() && StreamSupport.stream(server.getWorlds().spliterator(), false).map(WorldSummary::of).filter(Objects::nonNull).noneMatch(WorldSummary::isDirty)) return;
 		if (!suppressLogs) Surveyor.LOGGER.info("[Surveyor] Saving server data...");
 		for (ServerWorld world : server.getWorlds()) {
 			if (!world.savingDisabled || force) {
-				WorldSummary.of(world).save(world, Surveyor.getSavePath(world.getRegistryKey(), server), suppressLogs);
+				WorldSummary summary = WorldSummary.of(world);
+				if (summary != null) summary.save(world, Surveyor.getSavePath(world.getRegistryKey(), server), suppressLogs);
 			}
 		}
 		File folder = Surveyor.getSavePath(World.OVERWORLD, server);

@@ -7,6 +7,7 @@ import folk.sisby.kaleido.lib.quiltconfig.api.values.ValueList;
 
 import java.util.List;
 
+@SuppressWarnings("CanBeFinal")
 public class SurveyorConfig extends WrappedConfig {
 	@Comment("Terrain system - records layers of blocks and biomes for maps to render")
 	@Comment("DISABLED prevents loading, FROZEN loads but prevents updates, DYNAMIC loads with addons or on servers, ENABLED always loads")

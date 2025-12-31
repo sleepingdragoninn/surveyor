@@ -6,6 +6,7 @@ import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.SurveyorExploration;
 import folk.sisby.surveyor.SurveyorNetworking;
 import folk.sisby.surveyor.WorldSummary;
+import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
 import folk.sisby.surveyor.packet.S2CGroupChangedPacket;
 import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
@@ -15,6 +16,8 @@ import folk.sisby.surveyor.packet.S2CUpdateRegionPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRequestedPacket;
+import folk.sisby.surveyor.structure.WorldStructures;
+import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.MapUtil;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
@@ -48,8 +51,9 @@ public class SurveyorClientNetworking {
 
 	private static void handleTerrainAdded(ClientPlayNetworkHandler handler, S2CUpdateRegionPacket packet) {
 		WorldSummary summary = SurveyorClient.getSummary(packet.dimension(), handler);
-		if (summary.terrain() == null) return;
-		BitSet changed = summary.terrain().getRegion(packet.regionPos()).readUpdatePacket(packet);
+		WorldTerrain terrain = summary == null ? null : summary.terrain();
+		if (terrain == null) return;
+		BitSet changed = terrain.getRegion(packet.regionPos()).readUpdatePacket(packet);
 		(packet.shared() ? SurveyorClient.getSharedExploration() : SurveyorClient.getPersonalExploration()).mergeRegion(packet.dimension(), packet.regionPos(), packet.set());
 		if (changed.cardinality() > 1) {
 			Surveyor.LOGGER.info("[Surveyor] Received {} chunks in {} from the server.", changed.cardinality(), packet.regionPos());
@@ -58,8 +62,9 @@ public class SurveyorClientNetworking {
 
 	private static void handleStructuresAdded(ClientPlayNetworkHandler handler, S2CStructuresAddedPacket packet) {
 		WorldSummary summary = SurveyorClient.getSummary(packet.dimension(), handler);
-		if (summary.structures() == null) return;
-		Multimap<RegistryKey<Structure>, ChunkPos> starts = summary.structures().readUpdatePacket(packet);
+		WorldStructures structures = summary == null ? null : summary.structures();
+		if (structures == null) return;
+		Multimap<RegistryKey<Structure>, ChunkPos> starts = structures.readUpdatePacket(packet);
 		if (MinecraftClient.getInstance().player != null && !starts.isEmpty()) {
 			SurveyorExploration exploration = (packet.shared() ? SurveyorClient.getSharedExploration() : SurveyorClient.getPersonalExploration());
 			starts.forEach((key, pos) -> exploration.addStructure(summary.dimension(), key, pos));
@@ -92,23 +97,26 @@ public class SurveyorClientNetworking {
 
 	private static void handleLandmarksAdded(ClientPlayNetworkHandler handler, SyncLandmarksAddedPacket packet) {
 		WorldSummary summary = SurveyorClient.getSummary(packet.dimension(), handler);
-		if (summary.landmarks() == null) return;
-		summary.landmarks().readUpdatePacket(packet, null);
+		WorldLandmarks landmarks = summary == null ? null : summary.landmarks();
+		if (landmarks == null) return;
+		landmarks.readUpdatePacket(packet, null);
 		Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(packet.landmarks());
 		Surveyor.LOGGER.info("[Surveyor] Received {} landmarks from the server - {}", keys.size(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 
 	private static void handleLandmarksRemoved(ClientPlayNetworkHandler handler, SyncLandmarksRemovedPacket packet) {
 		WorldSummary summary = SurveyorClient.getSummary(packet.dimension(), handler);
-		if (summary.landmarks() == null) return;
-		summary.landmarks().readUpdatePacket(packet, null);
+		WorldLandmarks landmarks = summary == null ? null : summary.landmarks();
+		if (landmarks == null) return;
+		landmarks.readUpdatePacket(packet, null);
 		Surveyor.LOGGER.info("[Surveyor] Received {} landmark removals from the server - {}", packet.landmarks().size(), packet.landmarks().values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 
 	private static void handleLandmarksRequested(ClientPlayNetworkHandler handler, SyncLandmarksRequestedPacket packet) {
 		WorldSummary summary = SurveyorClient.getSummary(packet.dimension(), handler);
-		if (summary.landmarks() == null) return;
-		summary.landmarks().createUpdatePacket(packet.landmarks()).send();
+		WorldLandmarks landmarks = summary == null ? null : summary.landmarks();
+		if (landmarks == null) return;
+		landmarks.createUpdatePacket(packet.landmarks()).send();
 		Surveyor.LOGGER.info("[Surveyor] Received {} landmark requests from the server - {}", packet.landmarks().size(), packet.landmarks().values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 

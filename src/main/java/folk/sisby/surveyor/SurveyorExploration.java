@@ -133,9 +133,10 @@ public interface SurveyorExploration {
 	default void updateClientForMergeRegion(WorldSummary summary, RegionPos regionPos, BitSet chunks) {
 		SurveyorClientEvents.Invoke.terrainUpdated(summary, Map.of(regionPos, chunks));
 		Multimap<UUID, Identifier> landmarkKeys = HashMultimap.create();
-		if (summary.landmarks() == null) return;
+		WorldLandmarks landmarks = summary == null ? null : summary.landmarks();
+		if (landmarks == null) return;
 		Set<ChunkPos> terrainKeys = chunks.stream().mapToObj(regionPos::toChunk).collect(Collectors.toSet());
-		summary.landmarks().asMap(this).values().forEach(landmark -> {
+		landmarks.asMap(this).values().forEach(landmark -> {
 			if (landmark.components().contains(LandmarkComponentTypes.POS) && terrainKeys.contains(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(landmark.owner(), landmark.id());
 		});
 		SurveyorClientEvents.Invoke.landmarksAdded(summary, landmarkKeys);
@@ -166,8 +167,9 @@ public interface SurveyorExploration {
 	default void updateClientForAddChunk(WorldSummary summary, ChunkPos chunkPos) {
 		SurveyorClientEvents.Invoke.terrainUpdated(summary, chunkPos);
 		Multimap<UUID, Identifier> landmarkKeys = HashMultimap.create();
-		if (summary.landmarks() == null) return;
-		summary.landmarks().asMap(this).values().forEach(landmark -> {
+		WorldLandmarks landmarks = summary == null ? null : summary.landmarks();
+		if (landmarks == null) return;
+		landmarks.asMap(this).values().forEach(landmark -> {
 			if (landmark.components().contains(LandmarkComponentTypes.POS) && chunkPos.equals(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(landmark.owner(), landmark.id());
 		});
 		SurveyorClientEvents.Invoke.landmarksAdded(summary, landmarkKeys);
