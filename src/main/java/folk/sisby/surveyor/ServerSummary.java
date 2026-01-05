@@ -300,7 +300,7 @@ public final class ServerSummary {
 			MapUtil.asTable(worlds.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> Optional.ofNullable(e.getValue().structures()).map(t -> MapUtil.asListMap(t.keySet(null)).entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e2 -> LongSet.of(e2.getValue().stream().mapToLong(ChunkPos::toLong).toArray())))).orElse(Map.of())))),
 			false
 		);
-		return PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(sharing.stream().map(this::getExploration).collect(Collectors.toSet()));
+		return PlayerSummary.OfflinePlayerSummary.OfflinePlayerExploration.ofMerged(sharing.stream().map(this::getExploration).filter(Objects::nonNull).collect(Collectors.toSet()));
 	}
 
 	public Set<ServerPlayerEntity> getSharingPlayers(UUID player, NetworkMode mode, boolean withSelf) {
