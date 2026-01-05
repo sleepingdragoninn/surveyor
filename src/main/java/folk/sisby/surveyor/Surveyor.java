@@ -1,12 +1,11 @@
 package folk.sisby.surveyor;
 
-import com.google.common.collect.Multimap;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SurveyorConfig;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
+import folk.sisby.surveyor.structure.StructureStartSummary;
 import folk.sisby.surveyor.structure.WorldStructures;
 import folk.sisby.surveyor.terrain.WorldTerrain;
-import folk.sisby.surveyor.util.MapUtil;
 import folk.sisby.surveyor.util.RaycastUtil;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.fabricmc.api.ModInitializer;
@@ -22,7 +21,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.structure.StructurePiece;
-import net.minecraft.structure.StructureStart;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -41,7 +39,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class Surveyor implements ModInitializer {
 	public static final String ID = "surveyor";
@@ -65,29 +62,26 @@ public class Surveyor implements ModInitializer {
 		SurveyorExploration exploration = SurveyorExploration.of(player);
 		Map<Structure, LongSet> structureReferences = world.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.STRUCTURE_REFERENCES).getStructureReferences();
 		if (!structureReferences.isEmpty()) {
-			Multimap<RegistryKey<Structure>, ChunkPos> unexploredStructures = MapUtil.asMultiMap(structureReferences.entrySet().stream().collect(Collectors.toMap(
-				e -> structureRegistry.getKey(e.getKey()).orElseThrow(),
-				e -> e.getValue().longStream().mapToObj(ChunkPos::new).toList()
-			)));
-			unexploredStructures.entries().removeIf(e -> exploration.exploredStructure(world.getRegistryKey(), e.getKey(), e.getValue()));
-			unexploredStructures.entries().removeIf(e -> !structures.contains(e.getKey(), e.getValue()));
-			unexploredStructures.forEach((structureKey, startPos) -> {
-				Structure structure = structureRegistry.get(structureKey);
-				StructureStart start = world.getChunk(startPos.x, startPos.z, ChunkStatus.STRUCTURE_STARTS).getStructureStart(structure);
-				boolean found = false;
-				if (start != null && start.hasChildren() && start.getBoundingBox().contains(pos)) {
-					for (StructurePiece piece : start.getChildren()) {
-						if (piece.getBoundingBox().expand(2).contains(pos)) {
-							exploration.addStructure(world.getRegistryKey(), structureKey, start.getPos());
-							found = true;
-							break;
+			for (Structure structure : structureReferences.keySet()) {
+				RegistryKey<Structure> structureKey = structureRegistry.getKey(structure).orElseThrow();
+				for (Long longPos : structureReferences.get(structure)) {
+					ChunkPos startPos = new ChunkPos(longPos);
+					if (exploration.exploredStructure(world.getRegistryKey(), structureKey, startPos)) continue;
+					StructureStartSummary start = structures.get(structureKey, startPos);
+					if (start == null) continue;
+					if (start.getBoundingBox().expand(2).contains(pos)) {
+						for (StructurePiece piece : start.getChildren()) {
+							if (piece.getBoundingBox().expand(2).contains(pos)) {
+								exploration.addStructure(world.getRegistryKey(), structureKey, startPos);
+								if (CONFIG.discoveryMessages) {
+									player.sendMessageToClient(Text.literal("Discovered ").append(Text.literal(WordUtils.capitalize(structureKey.getValue().getPath().replace("_", " "))).formatted(Formatting.GREEN)).append(Text.literal(" at ")).append(Text.literal("[%s,%s]".formatted(startPos.x << 4, startPos.z << 4)).formatted(Formatting.GOLD)).formatted(Formatting.GRAY), true);
+								}
+								break;
+							}
 						}
 					}
 				}
-				if (found && CONFIG.discoveryMessages) {
-					player.sendMessageToClient(Text.literal("Discovered ").append(Text.literal(WordUtils.capitalize(structureKey.getValue().getPath().replace("_", " "))).formatted(Formatting.GREEN)).append(Text.literal(" at ")).append(Text.literal("[%s,%s]".formatted(startPos.x << 4, startPos.z << 4)).formatted(Formatting.GOLD)).formatted(Formatting.GRAY), true);
-				}
-			});
+			}
 		}
 	}
 
