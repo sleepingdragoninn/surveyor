@@ -14,7 +14,7 @@ public class StructureStartSummary {
 
 	public BlockBox getBoundingBox() {
 		if (boundingBox == null) {
-			BlockBox.encompass(children.stream().map(StructurePieceSummary::getBoundingBox)::iterator).ifPresent(blockBox -> boundingBox = blockBox);
+			boundingBox = BlockBox.encompass(children.stream().map(StructurePieceSummary::getBoundingBox)::iterator).orElse(null);
 			if (boundingBox == null) return new BlockBox(0, 0, 0, 0, 0, 0);
 		}
 		return boundingBox;
