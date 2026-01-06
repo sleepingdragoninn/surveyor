@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public record S2CStructuresAddedPacket(RegistryKey<World> dimension, boolean shared, Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary> starts, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> types, Multimap<RegistryKey<Structure>, TagKey<Structure>> tags) implements S2CPacket {
+public record S2CStructuresAddedPacket(RegistryKey<World> dimension, boolean shared, Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary> starts, Map<RegistryKey<Structure>, RegistryKey<StructureType<?>>> types, Multimap<RegistryKey<Structure>, TagKey<Structure>> tags) implements S2CPacket, ShareFlagged<S2CStructuresAddedPacket> {
 	public static final Identifier ID = Surveyor.id("s2c_structures_added");
 
 	public static S2CStructuresAddedPacket of(boolean shared, Multimap<RegistryKey<Structure>, ChunkPos> starts, WorldStructures structures) {
@@ -33,6 +33,11 @@ public record S2CStructuresAddedPacket(RegistryKey<World> dimension, boolean sha
 
 	public static S2CStructuresAddedPacket of(boolean shared, RegistryKey<Structure> key, ChunkPos pos, WorldStructures structures) {
 		return of(shared, MapUtil.asMultiMap(Map.of(key, List.of(pos))), structures);
+	}
+
+	@Override
+	public S2CStructuresAddedPacket withShared(boolean shared) {
+		return new S2CStructuresAddedPacket(dimension, shared, starts, types, tags);
 	}
 
 	public static S2CStructuresAddedPacket read(PacketByteBuf buf) {

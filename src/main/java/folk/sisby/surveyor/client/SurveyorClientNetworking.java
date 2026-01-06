@@ -55,7 +55,7 @@ public class SurveyorClientNetworking {
 		WorldTerrain terrain = summary == null ? null : summary.terrain();
 		if (terrain == null) return;
 		BitSet changed = terrain.getRegion(packet.regionPos()).readUpdatePacket(packet);
-		(packet.shared() ? SurveyorClient.getSharedExploration() : SurveyorClient.getPersonalExploration()).mergeRegion(packet.dimension(), packet.regionPos(), packet.set());
+		(packet.shared() ? SurveyorClient.getSharedExploration() : SurveyorClient.getPersonalExploration()).mergeRegion(packet.dimension(), packet.regionPos(), packet.set(), false);
 		if (changed.cardinality() > 1) {
 			Surveyor.LOGGER.info("[Surveyor] Received {} chunks in {} from the server.", changed.cardinality(), packet.regionPos());
 		}
@@ -79,7 +79,7 @@ public class SurveyorClientNetworking {
 			SurveyorClient.getSharedExploration().groupPlayers().addAll(packet.players().keySet());
 		}
 		ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).matchSummaries(packet.players());
-		SurveyorClient.getSharedExploration().replaceTerrain(packet.chunks());
+		SurveyorClient.getSharedExploration().replaceTerrain(packet.chunks(), false);
 		SurveyorClient.getSharedExploration().replaceStructures(packet.starts());
 		SurveyorClient.getSummaries(handler).values().forEach(summary -> SurveyorClient.getSharedExploration().updateClientForLandmarks(summary));
 		SurveyorClient.sendKnownData(handler);

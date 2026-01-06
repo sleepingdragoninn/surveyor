@@ -4,8 +4,14 @@ import folk.sisby.kaleido.api.WrappedConfig;
 import folk.sisby.kaleido.lib.quiltconfig.api.annotations.Comment;
 import folk.sisby.kaleido.lib.quiltconfig.api.annotations.IntegerRange;
 import folk.sisby.kaleido.lib.quiltconfig.api.values.ValueList;
+import folk.sisby.kaleido.lib.quiltconfig.api.values.ValueMap;
+import net.minecraft.item.map.MapIcon;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("CanBeFinal")
 public class SurveyorConfig extends WrappedConfig {
@@ -93,5 +99,32 @@ public class SurveyorConfig extends WrappedConfig {
 
 		@Comment("Whether to automatically add player death waypoints")
 		public boolean playerDeathWaypoints = true;
+
+		@Comment("Allows recording terrain and waypoints from map items by sneak+using them at a cartography table.")
+		@Comment("Viable blocks configured via #surveyor:record_from_map")
+		public boolean recordFromMapItems = true;
+
+		public Map<String, Boolean> recordIcons = ValueMap.builder(true)
+			.put("PLAYER", false)
+			.put("PLAYER_OFF_MAP", false)
+			.put("PLAYER_OFF_LIMITS", false)
+			.put("FRAME", false)
+			.build();
+
+		public Set<MapIcon.Type> recordIcons() {
+			recordIcons.keySet().removeIf(s -> Arrays.stream(MapIcon.Type.values()).noneMatch(t -> t.name().equals(s)));
+			for (MapIcon.Type value : MapIcon.Type.values()) recordIcons.putIfAbsent(value.name(), true);
+			return Arrays.stream(MapIcon.Type.values()).filter(t -> recordIcons.get(t.name())).collect(Collectors.toSet());
+		}
+
+		public enum RecordStyle {
+			NONE,
+			EXPLORER,
+			COLOR
+		}
+
+		@Comment("Allows recording terrain to map items by sneak+using them at a cartography table.")
+		@Comment("Viable blocks configured via #surveyor:record_to_map")
+		public RecordStyle recordToMapItems = RecordStyle.EXPLORER;
 	}
 }

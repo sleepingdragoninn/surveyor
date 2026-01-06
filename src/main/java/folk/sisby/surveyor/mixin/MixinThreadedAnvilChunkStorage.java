@@ -15,6 +15,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinThreadedAnvilChunkStorage {
 	@Inject(method = "sendChunkDataPackets", at = @At("HEAD"))
 	private void sendChunkDataPackets(ServerPlayerEntity player, MutableObject<ChunkDataS2CPacket> cachedDataPacket, WorldChunk chunk, CallbackInfo ci) {
-		SurveyorExploration.of(player).addChunk(chunk.getWorld().getRegistryKey(), chunk.getPos());
+		SurveyorExploration.of(player).addChunk(chunk.getWorld().getRegistryKey(), chunk.getPos(), false);
 	}
 }

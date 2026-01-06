@@ -139,7 +139,7 @@ public final class ServerSummary {
 			new S2CGroupUpdatedPacket(groupSummaries).send(player);
 		}
 		// update global group members
-		if (!known && Surveyor.CONFIG.networking.globalSharing) new S2CGroupAmendedPacket(uuid).send(uuid, server, server.getPlayerManager().getPlayerList(), NetworkMode.GROUP, false);
+		if (!known && Surveyor.CONFIG.networking.globalSharing) new S2CGroupAmendedPacket(uuid).send(uuid, server, NetworkMode.GROUP, false);
 	}
 
 	public static void onTick(MinecraftServer server) {
@@ -152,7 +152,7 @@ public final class ServerSummary {
 				var player = server.getPlayerManager().getPlayer(uuid);
 				if (player != null) onlinePlayers.put(uuid, PlayerSummary.of(player));
 			}
-			if (onlinePlayers.size() > 1) new S2CGroupUpdatedPacket(onlinePlayers).send(null, server, onlinePlayers.keySet().stream().map(server.getPlayerManager()::getPlayer).toList(), Surveyor.CONFIG.networking.positions, true);
+			if (onlinePlayers.size() > 1) new S2CGroupUpdatedPacket(onlinePlayers).send(null, server, p -> onlinePlayers.containsKey(Surveyor.getUuid(p)), Surveyor.CONFIG.networking.positions, true);
 		}
 	}
 
@@ -220,7 +220,7 @@ public final class ServerSummary {
 	public void updatePlayer(UUID uuid, NbtCompound nbt, boolean online) {
 		PlayerSummary newSummary = new PlayerSummary.OfflinePlayerSummary(uuid, nbt, online);
 		offlineSummaries.put(uuid, newSummary);
-		S2CGroupUpdatedPacket.of(uuid, newSummary).send(null, server, getSharingPlayers(uuid, Surveyor.CONFIG.networking.positions, false), Surveyor.CONFIG.networking.positions, false);
+		S2CGroupUpdatedPacket.of(uuid, newSummary).send(null, server, getSharingPlayers(uuid, Surveyor.CONFIG.networking.positions, false)::contains, Surveyor.CONFIG.networking.positions, false);
 	}
 
 	public Set<Set<UUID>> getPositionGroups() {
@@ -314,5 +314,9 @@ public final class ServerSummary {
 
 	private void dirty() {
 		dirty = true;
+	}
+
+	public MinecraftServer getServer() {
+		return server;
 	}
 }
