@@ -161,7 +161,7 @@ public class SurveyorMapIntegration {
 		int offsetX = state.centerX / blocksPerPixel - 64;
 		int offsetZ = state.centerZ / blocksPerPixel - 64;
 		Map<ChunkPos, LayerSummary.Raw> chunks = new HashMap<>();
-		Registry<Biome> biomeRegistry = summary.getServer().getRegistryManager().get(RegistryKeys.BIOME);
+		Registry<Biome> biomeRegistry = summary.getServer().getRegistryManager().getOrThrow(RegistryKeys.BIOME);
 
 		for (int pixelX = 0; pixelX < 128; pixelX++) {
 			for (int pixelZ = 0; pixelZ < 128; pixelZ++) {
