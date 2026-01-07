@@ -4,17 +4,18 @@
   "package": "folk.sisby.surveyor.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-	  	"MixinChunkDataSender",
-    "MixinMinecraftServer",
-    "MixinNetherPortal",
-    "MixinServerPlayerEntity",
-    "MixinServerWorld",
-    "MixinStructureStart"
-  ],
-  "client": [
-    "client.MixinClientPlayNetworkHandler"
-  ],
-  "injectors": {
-    "defaultRequire": 1
+	  	"MixinFilledMapItem",
+		"MixinChunkDataSender",
+		"MixinMinecraftServer",
+		"MixinNetherPortal",
+		"MixinServerPlayerEntity",
+		"MixinServerWorld",
+		"MixinStructureStart"
+	],
+	"client": [
+		"client.MixinClientPlayNetworkHandler"
+	],
+	"injectors": {
+		"defaultRequire": 1
 	}
 }

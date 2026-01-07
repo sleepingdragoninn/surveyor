@@ -14,6 +14,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinChunkDataSender {
 	@Inject(method = "sendChunkData", at = @At("HEAD"))
 	private static void sendChunkData(ServerPlayNetworkHandler handler, ServerWorld world, WorldChunk chunk, CallbackInfo ci) {
-		SurveyorExploration.of(handler.getPlayer()).addChunk(chunk.getWorld().getRegistryKey(), chunk.getPos());
+		SurveyorExploration.of(handler.getPlayer()).addChunk(chunk.getWorld().getRegistryKey(), chunk.getPos(), false);
 	}
 }

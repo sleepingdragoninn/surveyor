@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-public record S2CUpdateRegionPacket(RegistryKey<World> dimension, boolean shared, RegionPos regionPos, List<Integer> biomePalette, List<Integer> blockPalette, BitSet set, List<ChunkSummary> chunks) implements S2CPacket {
+public record S2CUpdateRegionPacket(RegistryKey<World> dimension, boolean shared, RegionPos regionPos, List<Integer> biomePalette, List<Integer> blockPalette, BitSet set, List<ChunkSummary> chunks) implements S2CPacket, ShareFlagged<S2CUpdateRegionPacket> {
 	public static final Id<S2CUpdateRegionPacket> ID = new Id<>(Surveyor.id("s2c_update_region"));
 	public static final PacketCodec<RegistryByteBuf, S2CUpdateRegionPacket> CODEC = PacketCodec.tuple(
 		PacketCodec.tuple(
@@ -40,6 +40,11 @@ public record S2CUpdateRegionPacket(RegistryKey<World> dimension, boolean shared
 
 	public static S2CUpdateRegionPacket of(RegistryKey<World> dimension, boolean shared, RegionPos regionPos, RegionSummary summary, BitSet keys) {
 		return summary.createUpdatePacket(dimension, shared, regionPos, keys);
+	}
+
+	@Override
+	public S2CUpdateRegionPacket withShared(boolean shared) {
+		return new S2CUpdateRegionPacket(dimension, shared, regionPos, biomePalette, blockPalette, set, chunks);
 	}
 
 	@Override

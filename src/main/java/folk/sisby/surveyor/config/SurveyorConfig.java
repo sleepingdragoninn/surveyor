@@ -4,8 +4,16 @@ import folk.sisby.kaleido.api.WrappedConfig;
 import folk.sisby.kaleido.lib.quiltconfig.api.annotations.Comment;
 import folk.sisby.kaleido.lib.quiltconfig.api.annotations.IntegerRange;
 import folk.sisby.kaleido.lib.quiltconfig.api.values.ValueList;
+import folk.sisby.kaleido.lib.quiltconfig.api.values.ValueMap;
+import net.minecraft.item.map.MapDecorationType;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.entry.RegistryEntry;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @SuppressWarnings("CanBeFinal")
 public class SurveyorConfig extends WrappedConfig {
@@ -93,5 +101,33 @@ public class SurveyorConfig extends WrappedConfig {
 
 		@Comment("Whether to automatically add player death waypoints")
 		public boolean playerDeathWaypoints = true;
+
+		@Comment("Allows recording terrain and waypoints from map items by sneak+using them at a cartography table.")
+		@Comment("Viable blocks configured via #surveyor:record_from_map")
+		public boolean recordFromMapItems = true;
+
+		public Map<String, Boolean> recordIcons = ValueMap.builder(true)
+			.put("minecraft:player", false)
+			.put("minecraft:player_off_map", false)
+			.put("minecraft:player_off_limits", false)
+			.put("minecraft:frame", false)
+			.build();
+
+		public Set<RegistryEntry<MapDecorationType>> recordIcons() {
+			List<RegistryEntry<MapDecorationType>> decorations = StreamSupport.stream(Registries.MAP_DECORATION_TYPE.getIndexedEntries().spliterator(), false).toList();
+			recordIcons.keySet().removeIf(s -> decorations.stream().noneMatch(e -> e.getIdAsString().equals(s)));
+			for (RegistryEntry<MapDecorationType> value : decorations) recordIcons.putIfAbsent(value.getIdAsString(), true);
+			return decorations.stream().filter(t -> recordIcons.get(t.getIdAsString())).collect(Collectors.toSet());
+		}
+
+		public enum RecordStyle {
+			NONE,
+			EXPLORER,
+			COLOR
+		}
+
+		@Comment("Allows recording terrain to map items by sneak+using them at a cartography table.")
+		@Comment("Viable blocks configured via #surveyor:record_to_map")
+		public RecordStyle recordToMapItems = RecordStyle.EXPLORER;
 	}
 }

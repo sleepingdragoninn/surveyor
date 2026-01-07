@@ -152,14 +152,14 @@ public interface SurveyorExploration {
 		SurveyorClientEvents.Invoke.landmarksRemoved(summary, unexploredLandmarks);
 	}
 
-	default void mergeRegion(RegistryKey<World> dimension, RegionPos regionPos, BitSet chunks) {
+	default void mergeRegion(RegistryKey<World> dimension, RegionPos regionPos, BitSet chunks, boolean updateClient) {
 		if (!chunks().contains(dimension, regionPos)) chunks().put(dimension, regionPos, new BitSet(RegionPos.CHUNK_AREA));
 		chunks().get(dimension, regionPos).or(chunks);
 	}
 
-	default void replaceTerrain(Table<RegistryKey<World>, RegionPos, BitSet> chunks) {
+	default void replaceTerrain(Table<RegistryKey<World>, RegionPos, BitSet> chunks, boolean updateClient) {
 		for (RegistryKey<World> dimension : chunks.rowKeySet()) { // merge first for client updates
-			chunks.row(dimension).forEach((regionPos, bitSet) -> mergeRegion(dimension, regionPos, bitSet));
+			chunks.row(dimension).forEach((regionPos, bitSet) -> mergeRegion(dimension, regionPos, bitSet, updateClient));
 		}
 		chunks().putAll(chunks); // then replace to ditch anything else
 	}
@@ -175,7 +175,7 @@ public interface SurveyorExploration {
 		SurveyorClientEvents.Invoke.landmarksAdded(summary, landmarkKeys);
 	}
 
-	default void addChunk(RegistryKey<World> dimension, ChunkPos pos) {
+	default void addChunk(RegistryKey<World> dimension, ChunkPos pos, boolean updateClient) {
 		RegionPos regionPos = RegionPos.of(pos);
 		if (!chunks().contains(dimension, regionPos)) chunks().put(dimension, regionPos, new BitSet(RegionPos.CHUNK_AREA));
 		chunks().get(dimension, regionPos).set(RegionPos.chunkToBit(pos));

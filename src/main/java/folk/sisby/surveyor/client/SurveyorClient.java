@@ -250,7 +250,7 @@ public class SurveyorClient implements ClientModInitializer {
 			if (MinecraftClient.getInstance().worldRenderer.getCompletedChunkCount() <= 10 || !MinecraftClient.getInstance().worldRenderer.isTerrainRenderComplete()) return;
 			for (WorldChunk chunk : new HashSet<>(LOADING_CHUNKS.get(world.getRegistryKey()))) {
 				WorldTerrain.onChunkLoad(world, chunk);
-				ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal.addChunk(world.getRegistryKey(), chunk.getPos());
+				ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal.addChunk(world.getRegistryKey(), chunk.getPos(), false);
 				LOADING_CHUNKS.remove(world.getRegistryKey(), chunk);
 			}
 		}));
@@ -284,15 +284,15 @@ public class SurveyorClient implements ClientModInitializer {
 		}
 
 		@Override
-		public void mergeRegion(RegistryKey<World> dimension, RegionPos regionPos, BitSet chunks) {
-			SurveyorExploration.super.mergeRegion(dimension, regionPos, chunks);
+		public void mergeRegion(RegistryKey<World> dimension, RegionPos regionPos, BitSet chunks, boolean updateClient) {
+			SurveyorExploration.super.mergeRegion(dimension, regionPos, chunks, updateClient);
 			WorldSummary summary = tryGetSummary(dimension);
 			if (summary != null) updateClientForMergeRegion(summary, regionPos, chunks);
 		}
 
 		@Override
-		public void addChunk(RegistryKey<World> dimension, ChunkPos pos) {
-			SurveyorExploration.super.addChunk(dimension, pos);
+		public void addChunk(RegistryKey<World> dimension, ChunkPos pos, boolean updateClient) {
+			SurveyorExploration.super.addChunk(dimension, pos, updateClient);
 			WorldSummary summary = tryGetSummary(dimension);
 			if (summary != null) updateClientForAddChunk(summary, pos);
 		}
