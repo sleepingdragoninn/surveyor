@@ -11,3 +11,4 @@ accessible field net/minecraft/client/network/ClientLoginNetworkHandler serverIn
 accessible field net/minecraft/world/chunk/PalettedContainer data Lnet/minecraft/world/chunk/PalettedContainer$Data;
 accessible field net/minecraft/world/chunk/PalettedContainer$Data storage Lnet/minecraft/util/collection/PaletteStorage;
 accessible field net/minecraft/world/chunk/PalettedContainer$Data palette Lnet/minecraft/world/chunk/Palette;
+accessible field net/minecraft/item/map/MapState unlimitedTracking Z
