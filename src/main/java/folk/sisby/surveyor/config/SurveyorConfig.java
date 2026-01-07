@@ -5,13 +5,15 @@ import folk.sisby.kaleido.lib.quiltconfig.api.annotations.Comment;
 import folk.sisby.kaleido.lib.quiltconfig.api.annotations.IntegerRange;
 import folk.sisby.kaleido.lib.quiltconfig.api.values.ValueList;
 import folk.sisby.kaleido.lib.quiltconfig.api.values.ValueMap;
-import net.minecraft.item.map.MapIcon;
+import net.minecraft.item.map.MapDecorationType;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.entry.RegistryEntry;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @SuppressWarnings("CanBeFinal")
 public class SurveyorConfig extends WrappedConfig {
@@ -105,16 +107,17 @@ public class SurveyorConfig extends WrappedConfig {
 		public boolean recordFromMapItems = true;
 
 		public Map<String, Boolean> recordIcons = ValueMap.builder(true)
-			.put("PLAYER", false)
-			.put("PLAYER_OFF_MAP", false)
-			.put("PLAYER_OFF_LIMITS", false)
-			.put("FRAME", false)
+			.put("minecraft:player", false)
+			.put("minecraft:player_off_map", false)
+			.put("minecraft:player_off_limits", false)
+			.put("minecraft:frame", false)
 			.build();
 
-		public Set<MapIcon.Type> recordIcons() {
-			recordIcons.keySet().removeIf(s -> Arrays.stream(MapIcon.Type.values()).noneMatch(t -> t.name().equals(s)));
-			for (MapIcon.Type value : MapIcon.Type.values()) recordIcons.putIfAbsent(value.name(), true);
-			return Arrays.stream(MapIcon.Type.values()).filter(t -> recordIcons.get(t.name())).collect(Collectors.toSet());
+		public Set<RegistryEntry<MapDecorationType>> recordIcons() {
+			List<RegistryEntry<MapDecorationType>> decorations = StreamSupport.stream(Registries.MAP_DECORATION_TYPE.getIndexedEntries().spliterator(), false).toList();
+			recordIcons.keySet().removeIf(s -> decorations.stream().noneMatch(e -> e.getIdAsString().equals(s)));
+			for (RegistryEntry<MapDecorationType> value : decorations) recordIcons.putIfAbsent(value.getIdAsString(), true);
+			return decorations.stream().filter(t -> recordIcons.get(t.getIdAsString())).collect(Collectors.toSet());
 		}
 
 		public enum RecordStyle {

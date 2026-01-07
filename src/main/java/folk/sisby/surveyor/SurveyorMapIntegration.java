@@ -16,7 +16,9 @@ import net.minecraft.block.MapColor;
 import net.minecraft.item.BannerItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
-import net.minecraft.item.map.MapIcon;
+import net.minecraft.item.map.MapDecoration;
+import net.minecraft.item.map.MapDecorationType;
+import net.minecraft.item.map.MapDecorationTypes;
 import net.minecraft.item.map.MapState;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
@@ -38,7 +40,6 @@ import org.apache.commons.lang3.text.WordUtils;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -46,34 +47,42 @@ public class SurveyorMapIntegration {
 	public static final TagKey<Block> RECORD_FROM_MAP = TagKey.of(RegistryKeys.BLOCK, Surveyor.id("record_from_map"));
 	public static final TagKey<Block> RECORD_TO_MAP = TagKey.of(RegistryKeys.BLOCK, Surveyor.id("record_to_map"));
 
-	public static final Map<MapIcon.Type, Item> VANILLA_ICON_STACKS = Map.ofEntries(
-		Map.entry(MapIcon.Type.PLAYER, Items.PLAYER_HEAD),
-		Map.entry(MapIcon.Type.FRAME, Items.ITEM_FRAME),
-		Map.entry(MapIcon.Type.RED_MARKER, Items.RED_DYE),
-		Map.entry(MapIcon.Type.BLUE_MARKER, Items.BLUE_DYE),
-		Map.entry(MapIcon.Type.TARGET_X, Items.NETHER_STAR),
-		Map.entry(MapIcon.Type.TARGET_POINT, Items.REDSTONE),
-		Map.entry(MapIcon.Type.PLAYER_OFF_MAP, Items.PLAYER_HEAD),
-		Map.entry(MapIcon.Type.PLAYER_OFF_LIMITS, Items.PLAYER_HEAD),
-		Map.entry(MapIcon.Type.MANSION, Items.TOTEM_OF_UNDYING),
-		Map.entry(MapIcon.Type.MONUMENT, Items.TRIDENT),
-		Map.entry(MapIcon.Type.BANNER_WHITE, Items.WHITE_BANNER),
-		Map.entry(MapIcon.Type.BANNER_ORANGE, Items.ORANGE_BANNER),
-		Map.entry(MapIcon.Type.BANNER_MAGENTA, Items.MAGENTA_BANNER),
-		Map.entry(MapIcon.Type.BANNER_LIGHT_BLUE, Items.LIGHT_BLUE_BANNER),
-		Map.entry(MapIcon.Type.BANNER_YELLOW, Items.YELLOW_BANNER),
-		Map.entry(MapIcon.Type.BANNER_LIME, Items.LIME_BANNER),
-		Map.entry(MapIcon.Type.BANNER_PINK, Items.PINK_BANNER),
-		Map.entry(MapIcon.Type.BANNER_GRAY, Items.GRAY_BANNER),
-		Map.entry(MapIcon.Type.BANNER_LIGHT_GRAY, Items.LIGHT_GRAY_BANNER),
-		Map.entry(MapIcon.Type.BANNER_CYAN, Items.CYAN_BANNER),
-		Map.entry(MapIcon.Type.BANNER_PURPLE, Items.PURPLE_BANNER),
-		Map.entry(MapIcon.Type.BANNER_BLUE, Items.BLUE_BANNER),
-		Map.entry(MapIcon.Type.BANNER_BROWN, Items.BROWN_BANNER),
-		Map.entry(MapIcon.Type.BANNER_GREEN, Items.GREEN_BANNER),
-		Map.entry(MapIcon.Type.BANNER_RED, Items.RED_BANNER),
-		Map.entry(MapIcon.Type.BANNER_BLACK, Items.BLACK_BANNER),
-		Map.entry(MapIcon.Type.RED_X, Items.CHEST)
+	public static final Map<RegistryEntry<MapDecorationType>, Item> VANILLA_ICON_STACKS = Map.ofEntries(
+		Map.entry(MapDecorationTypes.PLAYER, Items.PLAYER_HEAD),
+		Map.entry(MapDecorationTypes.FRAME, Items.ITEM_FRAME),
+		Map.entry(MapDecorationTypes.RED_MARKER, Items.RED_DYE),
+		Map.entry(MapDecorationTypes.BLUE_MARKER, Items.BLUE_DYE),
+		Map.entry(MapDecorationTypes.TARGET_X, Items.NETHER_STAR),
+		Map.entry(MapDecorationTypes.TARGET_POINT, Items.REDSTONE),
+		Map.entry(MapDecorationTypes.PLAYER_OFF_MAP, Items.PLAYER_HEAD),
+		Map.entry(MapDecorationTypes.PLAYER_OFF_LIMITS, Items.PLAYER_HEAD),
+		Map.entry(MapDecorationTypes.MANSION, Items.TOTEM_OF_UNDYING),
+		Map.entry(MapDecorationTypes.MONUMENT, Items.TRIDENT),
+		Map.entry(MapDecorationTypes.BANNER_WHITE, Items.WHITE_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_ORANGE, Items.ORANGE_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_MAGENTA, Items.MAGENTA_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_LIGHT_BLUE, Items.LIGHT_BLUE_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_YELLOW, Items.YELLOW_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_LIME, Items.LIME_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_PINK, Items.PINK_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_GRAY, Items.GRAY_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_LIGHT_GRAY, Items.LIGHT_GRAY_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_CYAN, Items.CYAN_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_PURPLE, Items.PURPLE_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_BLUE, Items.BLUE_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_BROWN, Items.BROWN_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_GREEN, Items.GREEN_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_RED, Items.RED_BANNER),
+		Map.entry(MapDecorationTypes.BANNER_BLACK, Items.BLACK_BANNER),
+		Map.entry(MapDecorationTypes.RED_X, Items.CHEST),
+		Map.entry(MapDecorationTypes.VILLAGE_DESERT, Items.SANDSTONE),
+		Map.entry(MapDecorationTypes.VILLAGE_PLAINS, Items.OAK_LOG),
+		Map.entry(MapDecorationTypes.VILLAGE_SAVANNA, Items.ACACIA_LOG),
+		Map.entry(MapDecorationTypes.VILLAGE_SNOWY, Items.SNOW_BLOCK),
+		Map.entry(MapDecorationTypes.VILLAGE_TAIGA, Items.SPRUCE_LOG),
+		Map.entry(MapDecorationTypes.JUNGLE_TEMPLE, Items.MOSSY_COBBLESTONE),
+		Map.entry(MapDecorationTypes.SWAMP_HUT, Items.BREWING_STAND),
+		Map.entry(MapDecorationTypes.TRIAL_CHAMBERS, Items.TRIAL_SPAWNER)
 	);
 
 	public static void applyMapData(ServerPlayerEntity player, MapState mapState) {
@@ -109,20 +118,20 @@ public class SurveyorMapIntegration {
 			}
 			exploredChunks.forEach(c -> exploration.addChunk(mapState.dimension, c, true));
 		}
-		Set<MapIcon.Type> recordIcons = Surveyor.CONFIG.builtins.recordIcons();
+		Set<RegistryEntry<MapDecorationType>> recordIcons = Surveyor.CONFIG.builtins.recordIcons();
 		WorldLandmarks landmarks = ServerSummary.of(player.getServer()).getWorld(mapState.dimension).landmarks();
 		UUID owner = Surveyor.getUuid(player);
 		if (landmarks != null) {
-			for (MapIcon icon : mapState.getIcons()) {
-				if (recordIcons.contains(icon.getType())) {
-					int x = MathHelper.floor(((((double) icon.getX()) - 0.5) / 2.0) * blocksPerPixel + mapState.centerX);
-					int z = MathHelper.floor(((((double) icon.getZ()) - 0.5) / 2.0) * blocksPerPixel + mapState.centerZ);
-					Identifier id = Identifier.of("minecraft", "map/%s/%d/%d".formatted(icon.getType().name().toLowerCase(), x, z));
+			for (MapDecoration icon : mapState.getDecorations()) {
+				if (recordIcons.contains(icon.type())) {
+					int x = MathHelper.floor(((((double) icon.x()) - 0.5) / 2.0) * blocksPerPixel + mapState.centerX);
+					int z = MathHelper.floor(((((double) icon.z()) - 0.5) / 2.0) * blocksPerPixel + mapState.centerZ);
+					Identifier id = Identifier.of("minecraft", "map/%s/%d/%d".formatted(icon.getAssetId().getPath().toLowerCase(), x, z));
 					if (!landmarks.contains(owner, id)) {
-						Item item = VANILLA_ICON_STACKS.getOrDefault(icon.getType(), Items.STICK);
+						Item item = VANILLA_ICON_STACKS.getOrDefault(icon.type(), Items.STICK);
 						exploredWaypoints.add(Landmark.create(owner, id, b -> b
 							.add(LandmarkComponentTypes.POS, new BlockPos(x, 0, z))
-							.add(LandmarkComponentTypes.NAME, Objects.requireNonNullElse(icon.getText(), item instanceof BannerItem ? item.getName() : Text.literal(WordUtils.capitalizeFully(icon.getType().name().replace('_', ' ')))))
+							.add(LandmarkComponentTypes.NAME, icon.name().orElse(item instanceof BannerItem ? item.getName() : Text.literal(WordUtils.capitalizeFully(icon.type().getIdAsString().replace("minecraft:", "").replace(":", " ").replace('_', ' ')))))
 							.add(LandmarkComponentTypes.STACK, item.getDefaultStack().copy())
 						));
 					}
