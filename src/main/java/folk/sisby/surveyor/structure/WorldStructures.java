@@ -88,7 +88,7 @@ public class WorldStructures {
 			structureTags.putAll(key, tags);
 		}
 		for (RegionStructureSummary region : regions.values()) {
-			region.starts.keySet().removeIf(k -> !structureTypes.containsKey(k));
+			region.starts.rowMap().keySet().removeIf(k -> !structureTypes.containsKey(k));
 		}
 		return new WorldStructures(summary, regions, structureTypes, structureTags);
 	}
