@@ -1,6 +1,9 @@
 package folk.sisby.surveyor.structure;
 
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Table;
+import com.google.common.collect.Tables;
+import com.google.common.collect.HashBasedTable;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.util.MapUtil;
@@ -31,13 +34,13 @@ public class RegionStructureSummary {
 	public static final String KEY_STARTS = "starts";
 	public static final String KEY_PIECES = "pieces";
 
-	protected final Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> starts = new ConcurrentHashMap<>();
+	protected final Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary> starts = Tables.synchronisedTable(HashBasedTable.create());
 	protected boolean dirty = false;
 
 	RegionStructureSummary() {
 	}
 
-	RegionStructureSummary(Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> starts) {
+	RegionStructureSummary(Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary> starts) {
 		this.starts.putAll(starts);
 	}
 
@@ -62,7 +65,7 @@ public class RegionStructureSummary {
 	}
 
 	protected static RegionStructureSummary readNbt(NbtCompound nbt) {
-		Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>> structures = new ConcurrentHashMap<>();
+		Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary> starts = HashBasedTable.create();
 		NbtCompound structuresCompound = nbt.getCompound(KEY_STRUCTURES);
 		for (String structureId : structuresCompound.getKeys()) {
 			RegistryKey<Structure> key = RegistryKey.of(RegistryKeys.STRUCTURE, new Identifier(structureId));
@@ -76,10 +79,10 @@ public class RegionStructureSummary {
 				for (NbtElement pieceElement : startCompound.getList(KEY_PIECES, NbtElement.COMPOUND_TYPE)) {
 					pieces.add(readStructurePieceNbt((NbtCompound) pieceElement));
 				}
-				structures.computeIfAbsent(key, p -> new ConcurrentHashMap<>()).put(new ChunkPos(x, z), new StructureStartSummary(pieces));
+				starts.put(key, new ChunkPos(x, z), new StructureStartSummary(pieces));
 			}
 		}
-		return new RegionStructureSummary(structures);
+		return new RegionStructureSummary(starts);
 	}
 
 	public boolean contains(World world, StructureStart start) {
@@ -88,15 +91,15 @@ public class RegionStructureSummary {
 			Surveyor.LOGGER.error("Encountered an unregistered structure! {} | {}", start, start.getStructure());
 			return true;
 		}
-		return starts.containsKey(key) && starts.get(key).containsKey(start.getPos());
+		return contains(key, start.getPos());
 	}
 
 	public boolean contains(RegistryKey<Structure> key, ChunkPos pos) {
-		return starts.containsKey(key) && starts.get(key).containsKey(pos);
+		return starts.contains(key, pos);
 	}
 
 	public StructureStartSummary get(RegistryKey<Structure> key, ChunkPos pos) {
-		return starts.get(key).get(pos);
+		return starts.get(key, pos);
 	}
 
 	public Multimap<RegistryKey<Structure>, ChunkPos> keySet() {
@@ -105,24 +108,21 @@ public class RegionStructureSummary {
 
 	public void put(ServerWorld world, StructureStart start) {
 		RegistryKey<Structure> key = world.getRegistryManager().get(RegistryKeys.STRUCTURE).getKey(start.getStructure()).orElseThrow();
-		starts.computeIfAbsent(key, k -> new ConcurrentHashMap<>());
-		ChunkPos pos = start.getPos();
 		StructureStartSummary summary = summarisePieces(StructureContext.from(world), start);
-		starts.get(key).put(pos, summary);
-		dirty();
+		put(key, start.getPos(), summary);
 	}
 
 	public void put(RegistryKey<Structure> key, ChunkPos pos, StructureStartSummary summary) {
-		starts.computeIfAbsent(key, k -> new ConcurrentHashMap<>()).put(pos, summary);
+		starts.put(key, pos, summary);
 		dirty();
 	}
 
 	protected NbtCompound writeNbt(NbtCompound nbt) {
 		NbtCompound structuresCompound = new NbtCompound();
-		starts.forEach((key, starts) -> {
+		starts.rowMap().forEach((key, inner) -> {
 			NbtCompound structureCompound = new NbtCompound();
 			NbtCompound startsCompound = new NbtCompound();
-			starts.forEach((pos, summary) -> {
+			inner.forEach((pos, summary) -> {
 				NbtList pieceList = new NbtList(summary.getChildren().stream().map(p -> (NbtElement) p.toNbt()).toList(), NbtElement.COMPOUND_TYPE);
 				NbtCompound startCompound = new NbtCompound();
 				startCompound.put(KEY_PIECES, pieceList);
