@@ -34,7 +34,7 @@ public class RegionStructureSummary {
 	public static final String KEY_STARTS = "starts";
 	public static final String KEY_PIECES = "pieces";
 
-	protected final Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary> starts = Tables.synchronisedTable(HashBasedTable.create());
+	protected final Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary> starts = Tables.synchronizedTable(HashBasedTable.create());
 	protected boolean dirty = false;
 
 	RegionStructureSummary() {
