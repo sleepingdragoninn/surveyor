@@ -14,7 +14,10 @@ Along with handling the generation and saving of map data like terrain and waypo
 - Enables **live map sharing** with other players of your choosing - terrain, waypoints, the lot!
 - Allows swapping map frontends any time without losing your map data!
 - Imports waypoints from Xaero's Minimap, and has integration for mods like [Waystones](https://modrinth.com/mod/surveystones) and [OPAC](https://modrinth.com/mod/surveyalot).
-- Is fully modular - so mods like [Atlas HUD](https://modrinth.com/mod/antique-atlas-compass-hud) can utilize waypoints without enabling terrain scanning.
+- Is fully modular - so mods like [Dead Reckoning](https://modrinth.com/mod/dead-reckoning) can utilize waypoints without enabling terrain scanning.
+- Has builtin integration to sync with vanilla maps via sneak+using at a cartography table!
+
+![vanilla map integration preview](https://cdn.modrinth.com/data/4KjqhPc9/images/e888d799c43d38ff5665c39fc844286ee05d5ed0.png)
 
 ### Commands
 
@@ -33,6 +36,7 @@ Surveyor's configuration can be edited in `config/surveyor.toml`, or in-game usi
 - What data should be networked to clients / the server, and between group members.
 - Whether all players on the server should be considered part of one global map sharing group.
 - How often to send player position updates to clients, and how fast to sync missing terrain to clients.
+- Whether to allow / how to handle syncing filled maps with surveyor data, including full-color rendering.
 
 ### Mod Developers
 
