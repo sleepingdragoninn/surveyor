@@ -89,7 +89,7 @@ public class WorldStructures {
 			structureTags.putAll(key, tags);
 		}
 		for (RegionStructureSummary region : regions.values()) {
-			region.starts.keySet().removeIf(k -> !structureTypes.containsKey(k));
+			region.starts.rowMap().keySet().removeIf(k -> !structureTypes.containsKey(k));
 		}
 		return new WorldStructures(summary, regions, structureTypes, structureTags);
 	}
@@ -106,13 +106,6 @@ public class WorldStructures {
 		}
 		Map<RegionPos, RegionStructureSummary> regions = new HashMap<>();
 		ChunkUtil.getRegionNbt(folder, "s").forEach((pos, nbt) -> regions.put(pos, RegionStructureSummary.readNbt(nbt)));
-		if (regions.isEmpty()) { // Try load legacy data
-			RegionStructureSummary region = RegionStructureSummary.readNbt(worldNbt);
-			region.starts.forEach((key, map) -> map.forEach((pos, start) -> {
-				RegionPos regionPos = RegionPos.of(pos);
-				regions.computeIfAbsent(regionPos, k -> new RegionStructureSummary()).put(key, pos, start);
-			}));
-		}
 		return readNbt(summary, worldNbt, regions);
 	}
 
