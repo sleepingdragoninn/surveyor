@@ -59,8 +59,8 @@ public abstract class MixinClientPlayNetworkHandler implements SurveyorNetworkHa
 	private void onDeathScreen(DeathMessageS2CPacket packet, CallbackInfo ci) {
 		if (!Surveyor.CONFIG.builtins.playerDeathWaypoints) return;
 		ClientPlayerEntity player = MinecraftClient.getInstance().player;
-		if (player == null || player.getWorld() == null) return;
-		WorldSummary summary = WorldSummary.of(player.getWorld());
+		if (player == null || player.getEntityWorld() == null) return;
+		WorldSummary summary = WorldSummary.of(player.getEntityWorld());
 		if (summary == null) return;
 		if (summary.isClient()) {
 			WorldLandmarks landmarks = summary.landmarks();
@@ -69,7 +69,7 @@ public abstract class MixinClientPlayNetworkHandler implements SurveyorNetworkHa
                     Landmark.createIncremental(landmarks, SurveyorClient.getClientUuid(), Surveyor.id("grave"), builder -> builder
 					.add(LandmarkComponentTypes.POS, player.getBlockPos())
 					.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(packet.message()))
-					.add(LandmarkComponentTypes.TIME, player.getWorld().getTimeOfDay())
+					.add(LandmarkComponentTypes.TIME, player.getEntityWorld().getTime())
 					.add(LandmarkComponentTypes.SEED, player.getRandom().nextInt())
 				)
 			);

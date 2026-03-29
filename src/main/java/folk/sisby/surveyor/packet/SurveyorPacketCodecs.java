@@ -46,7 +46,7 @@ public interface SurveyorPacketCodecs {
 	PacketCodec<RegistryByteBuf, Map<RegistryKey<World>, Multimap<RegistryKey<Structure>, ChunkPos>>> STRUCTURE_KEYS = PacketCodecs.map(HashMap::new,
 		RegistryKey.createPacketCodec(RegistryKeys.WORLD), PacketCodecs.<RegistryByteBuf, RegistryKey<Structure>, List<ChunkPos>, Map<RegistryKey<Structure>, List<ChunkPos>>>map(HashMap::new,
 			RegistryKey.createPacketCodec(RegistryKeys.STRUCTURE),
-			PacketCodecs.VAR_LONG.xmap(ChunkPos::new, ChunkPos::toLong).collect(PacketCodecs.toList())
+			PacketCodecs.VAR_LONG.xmap(ChunkPos::fromLong, ChunkPos::toLong).collect(PacketCodecs.toList())
 		).xmap(MapUtil::asMultiMap, MapUtil::asListMap)
 	);
 
@@ -74,7 +74,7 @@ public interface SurveyorPacketCodecs {
 	PacketCodec<RegistryByteBuf, Table<RegistryKey<Structure>, ChunkPos, StructureStartSummary>> STRUCTURE_SUMMARIES = PacketCodecs.<RegistryByteBuf, RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>, Map<RegistryKey<Structure>, Map<ChunkPos, StructureStartSummary>>>map(HashMap::new,
 		RegistryKey.createPacketCodec(RegistryKeys.STRUCTURE),
 		PacketCodecs.map(HashMap::new,
-			PacketCodecs.VAR_LONG.xmap(ChunkPos::new, ChunkPos::toLong),
+			PacketCodecs.VAR_LONG.xmap(ChunkPos::fromLong, ChunkPos::toLong),
 			PacketCodec.of((StructurePieceSummary s, RegistryByteBuf b) -> b.writeNbt(s.toNbt()), (RegistryByteBuf b) -> RegionStructureSummary.readStructurePieceNbt(b.readNbt())).collect(PacketCodecs.toList()).xmap(StructureStartSummary::new, StructureStartSummary::getChildren)
 		)
 	).xmap(MapUtil::asTable, Table::rowMap);

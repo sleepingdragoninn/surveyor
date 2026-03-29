@@ -57,7 +57,7 @@ public record S2CUpdateRegionPacket(RegistryKey<World> dimension, boolean shared
 		} else {
 			if (set.cardinality() == 1) {
 				int bit = set.stream().findFirst().orElseThrow();
-				Surveyor.LOGGER.error("Couldn't create a terrain update packet at {} - an individual chunk would be too large to send!", "[%d,%d]".formatted(regionPos.toChunk(bit).x, regionPos.toChunk(bit).z));
+				Surveyor.LOGGER.error("Couldn't create a terrain update packet at {} - an individual chunk would be too large to send!", "[%d,%d]".formatted(regionPos.toChunk(bit).x(), regionPos.toChunk(bit).z()));
 				return List.of();
 			}
 			for (BitSet splitChunks : BitSetUtil.half(set)) {

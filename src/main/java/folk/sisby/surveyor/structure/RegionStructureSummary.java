@@ -25,8 +25,6 @@ import net.minecraft.world.gen.structure.Structure;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionStructureSummary {
 	public static final String KEY_STRUCTURES = "structures";
@@ -125,7 +123,7 @@ public class RegionStructureSummary {
 				NbtList pieceList = new NbtList(summary.getChildren().stream().map(p -> (NbtElement) p.toNbt()).toList());
 				NbtCompound startCompound = new NbtCompound();
 				startCompound.put(KEY_PIECES, pieceList);
-				startsCompound.put("%s,%s".formatted(pos.x, pos.z), startCompound);
+				startsCompound.put("%s,%s".formatted(pos.x(), pos.z()), startCompound);
 			});
 			structureCompound.put(KEY_STARTS, startsCompound);
 			structuresCompound.put(key.getValue().toString(), structureCompound);

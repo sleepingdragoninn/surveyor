@@ -24,8 +24,8 @@ public class RaycastUtil {
 		int blockRadius = renderDistance << 4;
 		double y = blockRadius * Math.tan(phi);
 		double distance;
-		double bottom = player.getWorld().getBottomY() - cameraPos.y;
-		double top = player.getWorld().getTopYInclusive() - cameraPos.y;
+		double bottom = player.getEntityWorld().getBottomY() - cameraPos.y;
+		double top = player.getEntityWorld().getTopYInclusive() - cameraPos.y;
 		if (y < bottom || y > top) { // Distance To Circular Planes
 			distance = Math.abs(MathHelper.clamp(y, bottom, top) / Math.sin(phi));
 		} else { // Distance To Curved Surface
@@ -42,7 +42,7 @@ public class RaycastUtil {
 				cameraPos, endPos, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, player
 			),
 			(innerContext, pos) -> {
-				WorldChunk chunk = player.getWorld().getChunkManager().getWorldChunk(ChunkSectionPos.getSectionCoord(pos.getX()), ChunkSectionPos.getSectionCoord(pos.getZ()));
+				WorldChunk chunk = player.getEntityWorld().getChunkManager().getWorldChunk(ChunkSectionPos.getSectionCoord(pos.getX()), ChunkSectionPos.getSectionCoord(pos.getZ()));
 				if (chunk == null) {
 					Vec3d vec3d = innerContext.getStart().subtract(innerContext.getEnd());
 					return BlockHitResult.createMissed(pos.toCenterPos(), Direction.getFacing(vec3d.x, vec3d.y, vec3d.z), pos);
@@ -51,9 +51,9 @@ public class RaycastUtil {
 				FluidState fluidState = blockState.getFluidState();
 				Vec3d vec3d = innerContext.getStart();
 				Vec3d vec3d2 = innerContext.getEnd();
-				VoxelShape voxelShape = innerContext.getBlockShape(blockState, player.getWorld(), pos);
-				BlockHitResult blockHitResult = player.getWorld().raycastBlock(vec3d, vec3d2, pos, voxelShape, blockState);
-				VoxelShape voxelShape2 = innerContext.getFluidShape(fluidState, player.getWorld(), pos);
+				VoxelShape voxelShape = innerContext.getBlockShape(blockState, player.getEntityWorld(), pos);
+				BlockHitResult blockHitResult = player.getEntityWorld().raycastBlock(vec3d, vec3d2, pos, voxelShape, blockState);
+				VoxelShape voxelShape2 = innerContext.getFluidShape(fluidState, player.getEntityWorld(), pos);
 				BlockHitResult blockHitResult2 = voxelShape2.raycast(vec3d, vec3d2, pos);
 				double d = blockHitResult == null ? Double.MAX_VALUE : innerContext.getStart().squaredDistanceTo(blockHitResult.getPos());
 				double e = blockHitResult2 == null ? Double.MAX_VALUE : innerContext.getStart().squaredDistanceTo(blockHitResult2.getPos());

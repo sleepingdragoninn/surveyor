@@ -88,7 +88,7 @@ public class SurveyorClientNetworking {
 	private static void handleGroupAmended(ClientPlayNetworkHandler handler, S2CGroupAmendedPacket packet) {
 		SurveyorClient.getSharedExploration().groupPlayers().add(packet.player());
 		PlayerEntity player = MinecraftClient.getInstance().world == null ? null : MinecraftClient.getInstance().world.getPlayerByUuid(packet.player());
-		Surveyor.LOGGER.info("[Surveyor] Received additional share group player {}", player == null ? packet.player() : player.getGameProfile().getName());
+		Surveyor.LOGGER.info("[Surveyor] Received additional share group player {}", player == null ? packet.player() : player.getGameProfile().name());
 	}
 
 	private static void handleGroupUpdated(ClientPlayNetworkHandler handler, S2CGroupUpdatedPacket packet) {

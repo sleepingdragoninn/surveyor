@@ -53,8 +53,8 @@ public class WorldTerrain {
 	}
 
 	public static Set<ChunkPos> toKeys(Map<RegionPos, BitSet> bitSets, ChunkPos originChunk) {
-		ChunkPos oPos = new ChunkPos(RegionPos.chunkToRegion(originChunk.x), RegionPos.chunkToRegion(originChunk.z));
-		return toKeys(bitSets, Comparator.comparingDouble(pos -> (oPos.x - pos.x()) * (oPos.x - pos.x()) + (oPos.z - pos.z()) * (oPos.z - pos.z())));
+		ChunkPos oPos = new ChunkPos(RegionPos.chunkToRegion(originChunk.x()), RegionPos.chunkToRegion(originChunk.z()));
+		return toKeys(bitSets, Comparator.comparingDouble(pos -> (oPos.x() - pos.x()) * (oPos.x() - pos.x()) + (oPos.z() - pos.z()) * (oPos.z() - pos.z())));
 	}
 
 	public static Set<ChunkPos> toKeys(Map<RegionPos, BitSet> bitSets, Comparator<RegionPos> regionComparator) {
@@ -69,7 +69,7 @@ public class WorldTerrain {
 		return new WorldTerrain(summary, regions, folder);
 	}
 
-	public static void onChunkLoad(World world, WorldChunk chunk) {
+	public static void onChunkLoad(World world, WorldChunk chunk, boolean generated) {
 		WorldTerrain terrain = WorldTerrain.of(world);
 		if (terrain == null) return;
 		ChunkSummary chunkSummary = terrain.get(chunk.getPos());

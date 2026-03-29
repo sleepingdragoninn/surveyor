@@ -32,7 +32,7 @@ public class MixinFilledMapItem {
 				didThing = true;
 			}
 			if (didThing) {
-				context.getPlayer().getWorld().playSoundFromEntity(null, context.getPlayer(), SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, context.getPlayer().getSoundCategory(), 1.0F, 0.7F);
+				context.getWorld().playSoundFromEntity(null, context.getPlayer(), SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, context.getPlayer().getSoundCategory(), 1.0F, 0.7F);
 				cir.setReturnValue(ActionResult.SUCCESS);
 			}
 		}

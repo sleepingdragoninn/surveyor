@@ -150,7 +150,7 @@ public class SurveyorClient implements ClientModInitializer {
 	public static UUID getClientUuid() { // UUID needs to always match what the server is using.
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) return ServerSummary.HOST;
 		GameProfile profile = ((SurveyorNetworkHandler) MinecraftClient.getInstance().getNetworkHandler()).getProfile();
-		return profile.getId();
+		return profile.id();
 	}
 
 	public static ServerWorld stealServerWorld(RegistryKey<World> dimension) {
@@ -174,7 +174,7 @@ public class SurveyorClient implements ClientModInitializer {
 
 	public static boolean canModify(UUID landmarkOwner) {
 		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
-			return Surveyor.canModify(landmarkOwner, MinecraftClient.getInstance().getServer().getPlayerManager().getPlayer(MinecraftClient.getInstance().player.getGameProfile().getId()));
+			return Surveyor.canModify(landmarkOwner, MinecraftClient.getInstance().getServer().getPlayerManager().getPlayer(MinecraftClient.getInstance().player.getGameProfile().id()));
 		}
 		return landmarkOwner.equals(SurveyorClient.getClientUuid()) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && SurveyorClient.getSharedExploration().groupPlayers().contains(landmarkOwner));
 	}
@@ -246,10 +246,10 @@ public class SurveyorClient implements ClientModInitializer {
 		ClientChunkEvents.CHUNK_UNLOAD.register((world, chunk) -> {
 			if (!MinecraftClient.getInstance().isInSingleplayer()) WorldTerrain.onChunkUnload(world, chunk);
 		});
-		ClientTickEvents.END_WORLD_TICK.register((world -> {
+		ClientTickEvents.END_LEVEL_TICK.register((world -> {
 			if (MinecraftClient.getInstance().worldRenderer.getCompletedChunkCount() <= 10 || !MinecraftClient.getInstance().worldRenderer.isTerrainRenderComplete()) return;
 			for (WorldChunk chunk : new HashSet<>(LOADING_CHUNKS.get(world.getRegistryKey()))) {
-				WorldTerrain.onChunkLoad(world, chunk);
+				WorldTerrain.onChunkLoad(world, chunk, false);
 				ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal.addChunk(world.getRegistryKey(), chunk.getPos(), false);
 				LOADING_CHUNKS.remove(world.getRegistryKey(), chunk);
 			}

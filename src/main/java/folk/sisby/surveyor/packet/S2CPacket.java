@@ -4,6 +4,7 @@ import com.google.common.base.Predicates;
 import folk.sisby.surveyor.ServerSummary;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.config.NetworkMode;
+import folk.sisby.surveyor.mixin.AccessServerPlayerEntity;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -21,7 +22,7 @@ public interface S2CPacket extends SurveyorPacket {
 		List<SurveyorPacket> split = this.toPayloads(players.stream().findFirst().orElseThrow().getRegistryManager());
 		if (split.isEmpty()) return;
 		for (ServerPlayerEntity player : players) {
-			if (!ServerPlayNetworking.canSend(player, getId()) || player.getServer().isHost(player.getGameProfile())) continue;
+			if (!ServerPlayNetworking.canSend(player, getId()) || ((AccessServerPlayerEntity) player).getServer().isHost(player.getPlayerConfigEntry())) continue;
 			split.forEach(p -> ServerPlayNetworking.send(player, p));
 		}
 	}

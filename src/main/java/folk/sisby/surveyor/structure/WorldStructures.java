@@ -109,7 +109,7 @@ public class WorldStructures {
 		return readNbt(summary, worldNbt, regions);
 	}
 
-	public static void onChunkLoad(ServerWorld world, WorldChunk chunk) {
+	public static void onChunkLoad(ServerWorld world, WorldChunk chunk, boolean generated) {
 		WorldStructures structures = WorldStructures.of(world);
 		if (structures == null) return;
 		chunk.getStructureStarts().forEach((structure, start) -> {

@@ -10,7 +10,6 @@ import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.TextUtil;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.packet.c2s.common.SyncedClientOptions;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -38,7 +37,7 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 	public void writeSurveyorData(WriteView view, CallbackInfo ci) {
 		ServerPlayerEntity self = (ServerPlayerEntity) (Object) this;
 		surveyor$summary.writeNbt(view);
-		ServerSummary.of(self.getServer()).updatePlayer(Surveyor.getUuid(self), view, false);
+		ServerSummary.of(((AccessServerPlayerEntity) self).getServer()).updatePlayer(Surveyor.getUuid(self), view, false);
 	}
 
 	@Inject(method = "readCustomData", at = @At("TAIL"))
@@ -50,12 +49,12 @@ public class MixinServerPlayerEntity implements SurveyorPlayer {
 	public void onDeath(DamageSource damageSource, CallbackInfo ci) {
 		if (!Surveyor.CONFIG.builtins.playerDeathWaypoints) return;
 		ServerPlayerEntity self = (ServerPlayerEntity) (Object) this;
-		WorldLandmarks landmarks = WorldLandmarks.of(self.getWorld());
+		WorldLandmarks landmarks = WorldLandmarks.of(self.getEntityWorld());
 		if (landmarks == null) return;
 		landmarks.put(Landmark.createIncremental(landmarks, Surveyor.getUuid(self), Surveyor.id("grave"), builder -> builder
 			.add(LandmarkComponentTypes.POS, self.getBlockPos())
 			.add(LandmarkComponentTypes.NAME, TextUtil.stripInteraction(self.getDamageTracker().getDeathMessage()))
-			.add(LandmarkComponentTypes.TIME, self.getWorld().getTimeOfDay())
+			.add(LandmarkComponentTypes.TIME, self.getEntityWorld().getTime())
 			.add(LandmarkComponentTypes.SEED, self.getRandom().nextInt())
 		));
 	}

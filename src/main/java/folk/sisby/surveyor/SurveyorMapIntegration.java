@@ -8,6 +8,7 @@ import folk.sisby.surveyor.config.SurveyorConfig;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
+import folk.sisby.surveyor.mixin.AccessServerPlayerEntity;
 import folk.sisby.surveyor.terrain.LayerSummary;
 import folk.sisby.surveyor.terrain.WorldTerrain;
 import net.minecraft.block.Block;
@@ -86,7 +87,7 @@ public class SurveyorMapIntegration {
 	);
 
 	public static void applyMapData(ServerPlayerEntity player, MapState mapState) {
-		ServerSummary summary = ServerSummary.of(player.getServer());
+		ServerSummary summary = ServerSummary.of(((AccessServerPlayerEntity) player).getServer());
 		SurveyorExploration exploration = summary.getSharingExploration(Surveyor.getUuid(player), Surveyor.CONFIG.networking.terrain, true);
 		if (Surveyor.CONFIG.builtins.recordToMapItems == SurveyorConfig.Builtins.RecordStyle.COLOR) {
 			fillMap(summary, exploration, mapState);
@@ -103,13 +104,13 @@ public class SurveyorMapIntegration {
 		int originZ = mapState.centerZ - 64 * blocksPerPixel;
 		int chunkWidth = blocksPerPixel * 128 / 16;
 		SurveyorExploration exploration = SurveyorExploration.of(player);
-		WorldTerrain terrain = ServerSummary.of(player.getServer()).getWorld(mapState.dimension).terrain();
+		WorldTerrain terrain = ServerSummary.of(((AccessServerPlayerEntity) player).getServer()).getWorld(mapState.dimension).terrain();
 		boolean explorer = mapState.unlimitedTracking;
 		if (terrain != null) {
 			for (int x = 0; x < chunkWidth; x++) {
 				for (int z = 0; z < chunkWidth; z++) {
 					if (explorer || mapState.colors[x * 16 / blocksPerPixel + 128 * z * 16 / blocksPerPixel] != MapColor.CLEAR.id) {
-						ChunkPos chunkPos = new ChunkPos(new BlockPos(originX + x * 16, 0, originZ + z * 16));
+						ChunkPos chunkPos = ChunkPos.fromBlockPos(new BlockPos(originX + x * 16, 0, originZ + z * 16));
 						if (!exploration.exploredChunk(mapState.dimension, chunkPos)) {
 							exploredChunks.add(chunkPos);
 						}
@@ -119,7 +120,7 @@ public class SurveyorMapIntegration {
 			exploredChunks.forEach(c -> exploration.addChunk(mapState.dimension, c, true));
 		}
 		Set<RegistryEntry<MapDecorationType>> recordIcons = Surveyor.CONFIG.builtins.recordIcons();
-		WorldLandmarks landmarks = ServerSummary.of(player.getServer()).getWorld(mapState.dimension).landmarks();
+		WorldLandmarks landmarks = ServerSummary.of(((AccessServerPlayerEntity) player).getServer()).getWorld(mapState.dimension).landmarks();
 		UUID owner = Surveyor.getUuid(player);
 		if (landmarks != null) {
 			for (MapDecoration icon : mapState.getDecorations()) {
@@ -131,7 +132,7 @@ public class SurveyorMapIntegration {
 						Item item = VANILLA_ICON_STACKS.getOrDefault(icon.type(), Items.STICK);
 						exploredWaypoints.add(Landmark.create(owner, id, b -> b
 							.add(LandmarkComponentTypes.POS, new BlockPos(x, 0, z))
-							.add(LandmarkComponentTypes.NAME, icon.name().orElse(item instanceof BannerItem ? item.getName() : Text.literal(WordUtils.capitalizeFully(icon.type().getIdAsString().replace("minecraft:", "").replace(":", " ").replace('_', ' ')))))
+							.add(LandmarkComponentTypes.NAME, icon.name().orElse(item instanceof BannerItem ? item.getName(item.getDefaultStack()) : Text.literal(WordUtils.capitalizeFully(icon.type().getIdAsString().replace("minecraft:", "").replace(":", " ").replace('_', ' ')))))
 							.add(LandmarkComponentTypes.STACK, item.getDefaultStack().copy())
 						));
 					}
@@ -147,8 +148,7 @@ public class SurveyorMapIntegration {
 					.append(exploredChunks.isEmpty() || exploredWaypoints.isEmpty() ? Text.empty() : Text.literal(" and ").formatted(Formatting.GREEN))
 					.append(exploredWaypoints.isEmpty() ? Text.empty() : Text.literal("%d".formatted(exploredWaypoints.size())))
 					.append(exploredWaypoints.isEmpty() ? Text.empty() : Text.literal(" new waypoints").formatted(Formatting.GREEN))
-					.append(Text.literal("!").formatted(Formatting.GREEN))
-				, true);
+					.append(Text.literal("!").formatted(Formatting.GREEN)));
 		}
 	}
 
@@ -166,7 +166,7 @@ public class SurveyorMapIntegration {
 		for (int pixelX = 0; pixelX < 128; pixelX++) {
 			for (int pixelZ = 0; pixelZ < 128; pixelZ++) {
 				BlockPos blockPos = new BlockPos((offsetX + pixelZ) * blocksPerPixel, 0, (offsetZ + pixelX) * blocksPerPixel);
-				ChunkPos chunkPos = new ChunkPos(blockPos);
+				ChunkPos chunkPos = ChunkPos.fromBlockPos(blockPos);
 				if (!terrain.contains(chunkPos) || (exploration != null && !exploration.exploredChunk(state.dimension, chunkPos))) continue;
 				LayerSummary.Raw chunk = chunks.computeIfAbsent(chunkPos, k -> terrain.get(k).toSingleLayer(null, null, 999));
 				if (chunk == null) continue;

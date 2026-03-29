@@ -153,7 +153,7 @@ public class RegionSummary {
 
 	public ChunkSummary get(ChunkPos pos) {
 		if (!contains(pos)) return null;
-		return get(RegionPos.regionRelative(pos.x), RegionPos.regionRelative(pos.z));
+		return get(RegionPos.regionRelative(pos.x()), RegionPos.regionRelative(pos.z()));
 	}
 
 	protected @Nullable ChunkSummary get(int x, int z) {
@@ -176,12 +176,12 @@ public class RegionSummary {
 		if (Surveyor.CONFIG.terrain == SystemMode.FROZEN) return;
 		if (world.getHeight() == 0) return;
 		if (chunks == null) readNbt(regionPos, false);
-		set(RegionPos.regionRelative(chunk.getPos().x), RegionPos.regionRelative(chunk.getPos().z), new ChunkSummary(world, chunk, DimensionSupport.getSummaryLayers(world), biomePalette, blockPalette, !(world instanceof ServerWorld)));
+		set(RegionPos.regionRelative(chunk.getPos().x()), RegionPos.regionRelative(chunk.getPos().z()), new ChunkSummary(world, chunk, DimensionSupport.getSummaryLayers(world), biomePalette, blockPalette, !(world instanceof ServerWorld)));
 		dirty();
 	}
 
 	public boolean isUnloaded(World world) {
-		return regionPos.toChunks().stream().noneMatch(c -> world.isChunkLoaded(c.x, c.z));
+		return regionPos.toChunks().stream().noneMatch(c -> world.isChunkLoaded(c.x(), c.z()));
 	}
 
 	public void save(boolean unload) {
@@ -204,7 +204,7 @@ public class RegionSummary {
 			ChunkSummary chunk = get(x, z);
 			if (chunk != null) {
 				ChunkPos pos = regionPos.toChunk(x, z);
-				chunksCompound.put("%s,%s".formatted(pos.x, pos.z), chunk.writeNbt(new NbtCompound()));
+				chunksCompound.put("%s,%s".formatted(pos.x(), pos.z()), chunk.writeNbt(new NbtCompound()));
 			}
 		});
 		nbt.put(KEY_CHUNKS, chunksCompound);

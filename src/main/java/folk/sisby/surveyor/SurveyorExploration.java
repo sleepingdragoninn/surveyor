@@ -9,6 +9,7 @@ import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
+import folk.sisby.surveyor.mixin.AccessServerPlayerEntity;
 import folk.sisby.surveyor.util.RegionPos;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
@@ -43,7 +44,7 @@ public interface SurveyorExploration {
 	}
 
 	static SurveyorExploration ofShared(ServerPlayerEntity player) {
-		return ofShared(Surveyor.getUuid(player), player.getServer());
+		return ofShared(Surveyor.getUuid(player), ((AccessServerPlayerEntity) player).getServer());
 	}
 
 	static SurveyorExploration ofShared(UUID player, MinecraftServer server) {
@@ -73,7 +74,7 @@ public interface SurveyorExploration {
 	}
 
 	default boolean exploredLandmark(RegistryKey<World> dimension, Landmark landmark) {
-		return landmark.owner().equals(WorldLandmarks.GLOBAL) ? !landmark.components().contains(LandmarkComponentTypes.POS) || exploredChunk(dimension, new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) : sharedPlayers().contains(landmark.owner());
+		return landmark.owner().equals(WorldLandmarks.GLOBAL) ? !landmark.components().contains(LandmarkComponentTypes.POS) || exploredChunk(dimension, ChunkPos.fromBlockPos(landmark.components().get(LandmarkComponentTypes.POS))) : sharedPlayers().contains(landmark.owner());
 	}
 
 	default int chunkCount() {
@@ -137,7 +138,7 @@ public interface SurveyorExploration {
 		if (landmarks == null) return;
 		Set<ChunkPos> terrainKeys = chunks.stream().mapToObj(regionPos::toChunk).collect(Collectors.toSet());
 		landmarks.asMap(this).values().forEach(landmark -> {
-			if (landmark.components().contains(LandmarkComponentTypes.POS) && terrainKeys.contains(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(landmark.owner(), landmark.id());
+			if (landmark.components().contains(LandmarkComponentTypes.POS) && terrainKeys.contains(ChunkPos.fromBlockPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(landmark.owner(), landmark.id());
 		});
 		SurveyorClientEvents.Invoke.landmarksAdded(summary, landmarkKeys);
 	}
@@ -170,7 +171,7 @@ public interface SurveyorExploration {
 		WorldLandmarks landmarks = summary == null ? null : summary.landmarks();
 		if (landmarks == null) return;
 		landmarks.asMap(this).values().forEach(landmark -> {
-			if (landmark.components().contains(LandmarkComponentTypes.POS) && chunkPos.equals(new ChunkPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(landmark.owner(), landmark.id());
+			if (landmark.components().contains(LandmarkComponentTypes.POS) && chunkPos.equals(ChunkPos.fromBlockPos(landmark.components().get(LandmarkComponentTypes.POS))) && landmark.owner().equals(WorldLandmarks.GLOBAL)) landmarkKeys.put(landmark.owner(), landmark.id());
 		});
 		SurveyorClientEvents.Invoke.landmarksAdded(summary, landmarkKeys);
 	}

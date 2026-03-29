@@ -54,7 +54,7 @@ public record RegionPos(int x, int z) {
 	}
 
 	public static int chunkToBit(ChunkPos pos) {
-		return chunkToBit(regionRelative(pos.x), regionRelative(pos.z));
+		return chunkToBit(regionRelative(pos.x()), regionRelative(pos.z()));
 	}
 
 	public static BitSet chunkToBitSet(ChunkPos pos) {
@@ -76,7 +76,7 @@ public record RegionPos(int x, int z) {
 	}
 
 	public static RegionPos of(ChunkPos pos) {
-		return new RegionPos(chunkToRegion(pos.x), chunkToRegion(pos.z));
+		return new RegionPos(chunkToRegion(pos.x()), chunkToRegion(pos.z()));
 	}
 
 	public static RegionPos of(long pos) {

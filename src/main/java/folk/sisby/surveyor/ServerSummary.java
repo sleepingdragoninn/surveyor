@@ -1,6 +1,5 @@
 package folk.sisby.surveyor;
 
-import com.mojang.authlib.GameProfile;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.packet.S2CGroupAmendedPacket;
@@ -23,7 +22,6 @@ import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.storage.WriteView;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.nbt.NbtCrashException;
 import net.minecraft.util.math.ChunkPos;
@@ -86,22 +84,17 @@ public final class ServerSummary {
 	public static ServerSummary load(MinecraftServer server) {
 		Map<UUID, Set<UUID>> shareGroups = Surveyor.CONFIG.networking.globalSharing ? null : loadShareGroups(server);
 
-		File playerFolder = server.getSavePath(WorldSavePath.PLAYERDATA).toFile();
+		File playerFolder = server.getSavePath(WorldSavePath.DATA_PLAYER).toFile();
 
 		Map<UUID, PlayerSummary> offlineSummaries = new ConcurrentHashMap<>();
 
-		NbtCompound hostData = server.getSaveProperties().getPlayerData();
-		UUID hostProfile = Optional.ofNullable(server.getHostProfile()).map(GameProfile::getId).orElse(null);
-		if (hostData != null) {
-			if (hostProfile != null) hostData.putString(PlayerSummary.KEY_USERNAME, server.getHostProfile().getName());
-			offlineSummaries.put(ServerSummary.HOST, new PlayerSummary.OfflinePlayerSummary(ServerSummary.HOST, hostData, false));
-		}
+		UUID hostProfile = server.getSaveProperties().getPlayerData();
 
 		for (File file : Optional.ofNullable(playerFolder.listFiles((dir, name) -> name.endsWith(".dat"))).orElse(new File[0])) {
 			UUID uuid;
 			try {
 				uuid = UUID.fromString(file.getName().substring(0, file.getName().length() - ".dat".length()));
-				if (uuid.equals(hostProfile)) continue;
+				if (uuid.equals(hostProfile)) uuid = ServerSummary.HOST;
 			} catch (IllegalArgumentException ex) {
 				continue;
 			}
@@ -222,6 +215,7 @@ public final class ServerSummary {
 
 	public void updatePlayer(UUID uuid, WriteView view, boolean online) {
 		PlayerSummary newSummary = offlineSummaries.get(uuid);
+		if (newSummary == null) return;
 		offlineSummaries.put(uuid, newSummary);
 		S2CGroupUpdatedPacket.of(uuid, newSummary).send(null, server, getSharingPlayers(uuid, Surveyor.CONFIG.networking.positions, false)::contains, Surveyor.CONFIG.networking.positions, false);
 	}

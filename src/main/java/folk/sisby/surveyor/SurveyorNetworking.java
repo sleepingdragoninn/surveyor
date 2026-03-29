@@ -18,7 +18,6 @@ import folk.sisby.surveyor.packet.S2CGroupUpdatedPacket;
 import folk.sisby.surveyor.packet.S2CStructuresAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksAddedPacket;
 import folk.sisby.surveyor.packet.SyncLandmarksRemovedPacket;
-import folk.sisby.surveyor.packet.SyncLandmarksRequestedPacket;
 import folk.sisby.surveyor.structure.WorldStructures;
 import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.MapUtil;
@@ -37,7 +36,6 @@ import net.minecraft.world.gen.structure.Structure;
 import java.util.BitSet;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -47,21 +45,21 @@ public class SurveyorNetworking {
 	};
 
 	public static void init() {
-		PayloadTypeRegistry.playC2S().register(C2SKnownTerrainPacket.ID, C2SKnownTerrainPacket.CODEC);
-		PayloadTypeRegistry.playC2S().register(C2SKnownStructuresPacket.ID, C2SKnownStructuresPacket.CODEC);
-		PayloadTypeRegistry.playC2S().register(C2SKnownLandmarksPacket.ID, C2SKnownLandmarksPacket.CODEC);
-		PayloadTypeRegistry.playC2S().register(SyncLandmarksAddedPacket.ID, SyncLandmarksAddedPacket.CODEC);
-		PayloadTypeRegistry.playC2S().register(SyncLandmarksRemovedPacket.ID, SyncLandmarksRemovedPacket.CODEC);
-		PayloadTypeRegistry.playC2S().register(SyncLandmarksRequestedPacket.ID, SyncLandmarksRequestedPacket.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(C2SKnownTerrainPacket.ID, C2SKnownTerrainPacket.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(C2SKnownStructuresPacket.ID, C2SKnownStructuresPacket.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(C2SKnownLandmarksPacket.ID, C2SKnownLandmarksPacket.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(SyncLandmarksAddedPacket.ID, SyncLandmarksAddedPacket.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(SyncLandmarksRemovedPacket.ID, SyncLandmarksRemovedPacket.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(SyncLandmarksRequestedPacket.ID, SyncLandmarksRequestedPacket.CODEC);
 
-		PayloadTypeRegistry.playS2C().register(S2CUpdateRegionPacket.ID, S2CUpdateRegionPacket.CODEC);
-		PayloadTypeRegistry.playS2C().register(S2CStructuresAddedPacket.ID, S2CStructuresAddedPacket.CODEC);
-		PayloadTypeRegistry.playS2C().register(S2CGroupChangedPacket.ID, S2CGroupChangedPacket.CODEC);
-		PayloadTypeRegistry.playS2C().register(S2CGroupAmendedPacket.ID, S2CGroupAmendedPacket.CODEC);
-		PayloadTypeRegistry.playS2C().register(S2CGroupUpdatedPacket.ID, S2CGroupUpdatedPacket.CODEC);
-		PayloadTypeRegistry.playS2C().register(SyncLandmarksAddedPacket.ID, SyncLandmarksAddedPacket.CODEC);
-		PayloadTypeRegistry.playS2C().register(SyncLandmarksRemovedPacket.ID, SyncLandmarksRemovedPacket.CODEC);
-		PayloadTypeRegistry.playS2C().register(SyncLandmarksRequestedPacket.ID, SyncLandmarksRequestedPacket.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(S2CUpdateRegionPacket.ID, S2CUpdateRegionPacket.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(S2CStructuresAddedPacket.ID, S2CStructuresAddedPacket.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(S2CGroupChangedPacket.ID, S2CGroupChangedPacket.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(S2CGroupAmendedPacket.ID, S2CGroupAmendedPacket.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(S2CGroupUpdatedPacket.ID, S2CGroupUpdatedPacket.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(SyncLandmarksAddedPacket.ID, SyncLandmarksAddedPacket.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(SyncLandmarksRemovedPacket.ID, SyncLandmarksRemovedPacket.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(SyncLandmarksRequestedPacket.ID, SyncLandmarksRequestedPacket.CODEC);
 
 		ServerPlayNetworking.registerGlobalReceiver(C2SKnownTerrainPacket.ID, (packet, context) -> handleServer(packet, context, SurveyorNetworking::handleKnownTerrain));
 		ServerPlayNetworking.registerGlobalReceiver(C2SKnownStructuresPacket.ID, (packet, context) -> handleServer(packet, context, SurveyorNetworking::handleKnownStructures));
@@ -90,7 +88,7 @@ public class SurveyorNetworking {
 				}
 			}
 		}
-		if (regions > 0) Surveyor.LOGGER.info("[Surveyor] Syncing {} missing chunks over {} regions to player {}.", chunks, regions, player.getGameProfile().getName());
+		if (regions > 0) Surveyor.LOGGER.info("[Surveyor] Syncing {} missing chunks over {} regions to player {}.", chunks, regions, player.getGameProfile().name());
 	}
 
 	private static void handleKnownStructures(MinecraftServer server, ServerPlayerEntity player, C2SKnownStructuresPacket packet) {
@@ -106,7 +104,7 @@ public class SurveyorNetworking {
 			if (!personalStarts.isEmpty()) S2CStructuresAddedPacket.of(false, personalStarts, structures).send(player);
 			personalStarts.forEach(starts::remove);
 			if (!starts.isEmpty()) S2CStructuresAddedPacket.of(true, starts, structures).send(player);
-			if (!personalStarts.isEmpty() || !starts.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Syncing {} personal and {} shared structures to player {} for {}", personalStarts.size(), starts.size(), player.getGameProfile().getName(), world.getRegistryKey().getValue());
+			if (!personalStarts.isEmpty() || !starts.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Syncing {} personal and {} shared structures to player {} for {}", personalStarts.size(), starts.size(), player.getGameProfile().name(), world.getRegistryKey().getValue());
 		}
 	}
 
@@ -130,7 +128,7 @@ public class SurveyorNetworking {
 			landmarks.keySet(null).get(uuid).forEach(id -> unknownWaypoints.remove(uuid, id));
 			removedLandmarks.get(uuid).forEach(id -> unknownWaypoints.remove(uuid, id));
 			if (!unknownWaypoints.isEmpty()) new SyncLandmarksRequestedPacket(summary.dimension(), unknownWaypoints).send(player);
-			if (!addLandmarks.isEmpty() || !removeLandmarks.isEmpty() || !unknownWaypoints.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Syncing {} landmarks and {} removals and {} unknowns from player {}", addLandmarks.size(), removeLandmarks.size(), unknownWaypoints.size(), player.getGameProfile().getName());
+			if (!addLandmarks.isEmpty() || !removeLandmarks.isEmpty() || !unknownWaypoints.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Syncing {} landmarks and {} removals and {} unknowns from player {}", addLandmarks.size(), removeLandmarks.size(), unknownWaypoints.size(), player.getGameProfile().name());
 		}
 	}
 
@@ -141,7 +139,7 @@ public class SurveyorNetworking {
 		WorldLandmarks landmarks = WorldLandmarks.of(world);
 		if (landmarks == null) return;
 		Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(landmarks.readUpdatePacket(packet, player));
-		if (!keys.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Adding landmark(s) from player {} - {}", player.getGameProfile().getName(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
+		if (!keys.isEmpty()) Surveyor.LOGGER.info("[Surveyor] Adding landmark(s) from player {} - {}", player.getGameProfile().name(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 	}
 
 	private static void handleLandmarksRemoved(MinecraftServer server, ServerPlayerEntity sender, SyncLandmarksRemovedPacket packet) {
@@ -153,7 +151,7 @@ public class SurveyorNetworking {
 		Table<UUID, Identifier, Landmark> changed = landmarks.readUpdatePacket(packet, sender);
 		if (!changed.isEmpty()) {
 			Multimap<UUID, Identifier> keys = MapUtil.keyMultiMap(changed);
-			Surveyor.LOGGER.info("[Surveyor] Removing landmark(s) for player {} - {}", sender.getGameProfile().getName(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
+			Surveyor.LOGGER.info("[Surveyor] Removing landmark(s) for player {} - {}", sender.getGameProfile().name(), keys.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 		}
 	}
 
@@ -166,7 +164,7 @@ public class SurveyorNetworking {
 		Multimap<UUID, Identifier> allowed = SurveyorExploration.ofShared(player).limit(world.getRegistryKey(), landmarks, HashMultimap.create(packet.landmarks()));
 		if (!allowed.isEmpty()) {
 			landmarks.createUpdatePacket(allowed).send(player);
-			Surveyor.LOGGER.info("[Surveyor] Sending requested landmark(s) to player {} - {}", player.getGameProfile().getName(), allowed.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
+			Surveyor.LOGGER.info("[Surveyor] Sending requested landmark(s) to player {} - {}", player.getGameProfile().name(), allowed.values().stream().map(Identifier::toString).collect(Collectors.joining(", ")));
 		}
 	}
 

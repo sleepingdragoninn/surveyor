@@ -3,6 +3,7 @@ package folk.sisby.surveyor;
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SurveyorConfig;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
+import folk.sisby.surveyor.mixin.AccessServerPlayerEntity;
 import folk.sisby.surveyor.structure.StructureStartSummary;
 import folk.sisby.surveyor.structure.WorldStructures;
 import folk.sisby.surveyor.terrain.WorldTerrain;
@@ -14,6 +15,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.command.DefaultPermissions;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -65,7 +67,7 @@ public class Surveyor implements ModInitializer {
 			for (Structure structure : structureReferences.keySet()) {
 				RegistryKey<Structure> structureKey = structureRegistry.getKey(structure).orElseThrow();
 				for (Long longPos : structureReferences.get(structure)) {
-					ChunkPos startPos = new ChunkPos(longPos);
+					ChunkPos startPos = ChunkPos.fromLong(longPos);
 					if (exploration.exploredStructure(world.getRegistryKey(), structureKey, startPos)) continue;
 					StructureStartSummary start = structures.get(structureKey, startPos);
 					if (start == null) continue;
@@ -74,7 +76,7 @@ public class Surveyor implements ModInitializer {
 							if (piece.getBoundingBox().expand(2).contains(pos)) {
 								exploration.addStructure(world.getRegistryKey(), structureKey, startPos);
 								if (CONFIG.discoveryMessages) {
-									player.sendMessageToClient(Text.literal("Discovered ").append(Text.literal(WordUtils.capitalize(structureKey.getValue().getPath().replace("_", " "))).formatted(Formatting.GREEN)).append(Text.literal(" at ")).append(Text.literal("[%s,%s]".formatted(startPos.x << 4, startPos.z << 4)).formatted(Formatting.GOLD)).formatted(Formatting.GRAY), true);
+									player.sendMessageToClient(Text.literal("Discovered ").append(Text.literal(WordUtils.capitalize(structureKey.getValue().getPath().replace("_", " "))).formatted(Formatting.GREEN)).append(Text.literal(" at ")).append(Text.literal("[%s,%s]".formatted(startPos.x() << 4, startPos.z() << 4)).formatted(Formatting.GOLD)).formatted(Formatting.GRAY), true);
 								}
 								break;
 							}
@@ -86,15 +88,15 @@ public class Surveyor implements ModInitializer {
 	}
 
 	public static boolean canModify(UUID landmark, @Nullable ServerPlayerEntity player) {
-		return player == null || player.hasPermissionLevel(2) || landmark.equals(Surveyor.getUuid(player)) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && ServerSummary.of(player.getServer()).getGroup(Surveyor.getUuid(player)).contains(landmark));
+		return player == null || player.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS) || landmark.equals(Surveyor.getUuid(player)) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && ServerSummary.of(((AccessServerPlayerEntity) player).getServer()).getGroup(Surveyor.getUuid(player)).contains(landmark));
 	}
 
 	public static UUID getUuid(ServerPlayerEntity player) {
-		return player.getServer() != null && player.getServer().isHost(player.getGameProfile()) ? ServerSummary.HOST : player.getUuid();
+		return ((AccessServerPlayerEntity) player).getServer() != null && ((AccessServerPlayerEntity) player).getServer().isHost(player.getPlayerConfigEntry()) ? ServerSummary.HOST : player.getUuid();
 	}
 
 	public static ServerPlayerEntity getPlayer(MinecraftServer server, UUID uuid) {
-		return server.getPlayerManager().getPlayer(uuid == ServerSummary.HOST && server.getHostProfile() != null ? server.getHostProfile().getId() : uuid);
+		return server.getPlayerManager().getPlayer(uuid == ServerSummary.HOST && server.getHostProfile() != null ? server.getHostProfile().id() : uuid);
 	}
 
 	static SurveyorExploration explorationForMode(NetworkMode mode, ServerPlayerEntity player) {
@@ -111,8 +113,8 @@ public class Surveyor implements ModInitializer {
 		ServerChunkEvents.CHUNK_LOAD.register(WorldStructures::onChunkLoad);
 		ServerChunkEvents.CHUNK_UNLOAD.register(WorldTerrain::onChunkUnload);
 		ServerTickEvents.END_SERVER_TICK.register(ServerSummary::onTick);
-		ServerTickEvents.END_WORLD_TICK.register(WorldTerrain::onTick);
-		ServerTickEvents.END_WORLD_TICK.register((world -> {
+		ServerTickEvents.END_LEVEL_TICK.register(WorldTerrain::onTick);
+		ServerTickEvents.END_LEVEL_TICK.register((world -> {
 			if ((world.getTime() & 7) != 0) return;
 			for (ServerPlayerEntity player : world.getPlayers()) {
 				checkStructureExploration(world, player, player.getBlockPos());

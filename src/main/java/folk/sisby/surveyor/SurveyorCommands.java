@@ -16,11 +16,13 @@ import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentType;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
+import folk.sisby.surveyor.mixin.AccessServerPlayerEntity;
 import folk.sisby.surveyor.structure.WorldStructures;
 import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.TextUtil;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.CommandSource;
+import net.minecraft.command.DefaultPermissions;
 import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.command.argument.DefaultPosArgument;
 import net.minecraft.command.argument.DimensionArgumentType;
@@ -78,7 +80,7 @@ public class SurveyorCommands {
 				.append(Text.literal(" other" + (group.size() - 1 > 1 ? " players:" : " player:")).formatted(Formatting.GOLD))
 		);
 		feedback.accept(
-			TextUtil.highlightStrings(group.stream().map(PlayerSummary::username).filter(u -> !u.equals(player.getGameProfile().getName())).toList(), s -> Formatting.WHITE).formatted(Formatting.GOLD)
+			TextUtil.highlightStrings(group.stream().map(PlayerSummary::username).filter(u -> !u.equals(player.getGameProfile().name())).toList(), s -> Formatting.WHITE).formatted(Formatting.GOLD)
 		);
 	}
 
@@ -196,13 +198,13 @@ public class SurveyorCommands {
 				return 0;
 			}
 			requests.removeAll(Surveyor.getUuid(player)); // clear all other requests
-			ServerSummary.of(player.getServer()).joinGroup(Surveyor.getUuid(player), Surveyor.getUuid(sharePlayer));
+			ServerSummary.of(((AccessServerPlayerEntity) player).getServer()).joinGroup(Surveyor.getUuid(player), Surveyor.getUuid(sharePlayer));
 			feedback.accept(prefix().append(Text.literal("You're now sharing map exploration with ").formatted(Formatting.GREEN)).append(Text.literal("%d".formatted(summary.groupSize(Surveyor.getUuid(player)) - 1)).formatted(Formatting.WHITE)).append(Text.literal((summary.groupSize(Surveyor.getUuid(player)) - 1) > 1 ? " players:" : " player:").formatted(Formatting.GREEN)));
-			feedback.accept(TextUtil.highlightStrings(summary.groupPlayers(Surveyor.getUuid(player)).stream().map(PlayerSummary::username).filter(u -> !u.equals(player.getGameProfile().getName())).toList(), s -> Formatting.WHITE).formatted(Formatting.GREEN));
+			feedback.accept(TextUtil.highlightStrings(summary.groupPlayers(Surveyor.getUuid(player)).stream().map(PlayerSummary::username).filter(u -> !u.equals(player.getGameProfile().name())).toList(), s -> Formatting.WHITE).formatted(Formatting.GREEN));
 			for (ServerPlayerEntity friend : summary.getSharingPlayers(Surveyor.getUuid(player), NetworkMode.GROUP, false)) {
 				friend.sendMessage(prefix().append(player.getDisplayName().copy().formatted(Formatting.WHITE)).append(Text.literal(" is now sharing their map with you.").formatted(Formatting.AQUA)));
 				friend.sendMessage(prefix().append(Text.literal("You're now sharing map exploration with ").formatted(Formatting.AQUA)).append(Text.literal("%d".formatted(summary.groupSize(Surveyor.getUuid(player)) - 1)).formatted(Formatting.WHITE)).append(Text.literal((summary.groupSize(Surveyor.getUuid(player)) - 1) > 1 ? " players:" : " player:").formatted(Formatting.AQUA)));
-				friend.sendMessage(TextUtil.highlightStrings(summary.groupPlayers(Surveyor.getUuid(player)).stream().map(PlayerSummary::username).filter(u -> !u.equals(friend.getGameProfile().getName())).toList(), s -> Formatting.WHITE).formatted(Formatting.AQUA));
+				friend.sendMessage(TextUtil.highlightStrings(summary.groupPlayers(Surveyor.getUuid(player)).stream().map(PlayerSummary::username).filter(u -> !u.equals(friend.getGameProfile().name())).toList(), s -> Formatting.WHITE).formatted(Formatting.AQUA));
 			}
 			return 1;
 		} else if (!requests.containsEntry(Surveyor.getUuid(sharePlayer), Surveyor.getUuid(player))) { // Make Request
@@ -219,7 +221,7 @@ public class SurveyorCommands {
 				feedback.accept(prefix().append(Text.literal("If accepted, they'll share with your group of ").formatted(Formatting.GREEN)).append(Text.literal("%d".formatted(summary.groupSize(Surveyor.getUuid(player)))).formatted(Formatting.WHITE)).append(Text.literal(".").formatted(Formatting.GREEN)));
 				sharePlayer.sendMessage(prefix().append(Text.literal("To share with their group of ").append(Text.literal("%d".formatted(summary.groupSize(Surveyor.getUuid(player)))).formatted(Formatting.WHITE)).formatted(Formatting.AQUA)).append(Text.literal(", enter:").formatted(Formatting.AQUA)));
 			}
-			sharePlayer.sendMessage(prefix().append(Text.literal("/surveyor share %s".formatted(player.getGameProfile().getName())).formatted(Formatting.GOLD)));
+			sharePlayer.sendMessage(prefix().append(Text.literal("/surveyor share %s".formatted(player.getGameProfile().name())).formatted(Formatting.GOLD)));
 			return 1;
 		} else {
 			feedback.accept(prefix().append(Text.literal("You've already sent this player a share request!").formatted(Formatting.YELLOW)));
@@ -236,13 +238,13 @@ public class SurveyorCommands {
 			return 0;
 		} else {
 			Set<ServerPlayerEntity> friends = summary.getSharingPlayers(Surveyor.getUuid(player), NetworkMode.GROUP, false);
-			ServerSummary.of(player.getServer()).leaveGroup(Surveyor.getUuid(player));
+			ServerSummary.of(((AccessServerPlayerEntity) player).getServer()).leaveGroup(Surveyor.getUuid(player));
 			feedback.accept(prefix().append(Text.literal("Stopped sharing map exploration with ").formatted(Formatting.GREEN)).append(Text.literal("%d".formatted(shareNumber)).formatted(Formatting.WHITE)).append(Text.literal(shareNumber > 1 ? " players." : " player.").formatted(Formatting.GREEN)));
 			for (ServerPlayerEntity friend : friends) {
 				int groupSize = summary.groupSize(Surveyor.getUuid(friend)) - 1;
 				friend.sendMessage(prefix().append(player.getDisplayName().copy().formatted(Formatting.WHITE)).append(Text.literal(" is no longer sharing with you.").formatted(Formatting.AQUA)));
 				friend.sendMessage(prefix().append(Text.literal("You're now sharing map exploration with ").formatted(Formatting.AQUA)).append(Text.literal("%d".formatted(groupSize)).formatted(Formatting.WHITE)).append(Text.literal(groupSize == 0 ? " players." : groupSize > 1 ? " players:" : " player:").formatted(Formatting.AQUA)));
-				if (groupSize > 0) friend.sendMessage(TextUtil.highlightStrings(summary.groupPlayers(Surveyor.getUuid(friend)).stream().map(PlayerSummary::username).filter(u -> !u.equals(friend.getGameProfile().getName())).toList(), s -> Formatting.WHITE).formatted(Formatting.AQUA));
+				if (groupSize > 0) friend.sendMessage(TextUtil.highlightStrings(summary.groupPlayers(Surveyor.getUuid(friend)).stream().map(PlayerSummary::username).filter(u -> !u.equals(friend.getGameProfile().name())).toList(), s -> Formatting.WHITE).formatted(Formatting.AQUA));
 			}
 			return 1;
 		}
@@ -250,7 +252,7 @@ public class SurveyorCommands {
 
 	private static int getLandmarks(MinecraftServer server, @Nullable ServerPlayerEntity player, Consumer<Text> feedback, boolean global) {
 		Map<Identifier, Collection<Landmark>> dimensionLandmarks = new LinkedHashMap<>();
-		boolean op = player == null || player.hasPermissionLevel(2);
+		boolean op = player == null || player.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS);
 		for (ServerWorld world : server.getWorlds()) {
 			WorldLandmarks landmarks = WorldLandmarks.of(world);
 			if (landmarks == null) {
@@ -432,7 +434,7 @@ public class SurveyorCommands {
 	private static int addIdLandmark(@Nullable ServerPlayerEntity player, Consumer<Text> feedback, ServerWorld world, UUID owner, Identifier id, BlockPos pos, ItemStackArgument stack, Text name, Text lore) {
 		ItemStack icon;
 		try {
-			icon = stack.createStack(1, false);
+			icon = stack.createStack(1);
 		} catch (CommandSyntaxException e) {
 			throw new RuntimeException(e);
 		}
@@ -465,7 +467,7 @@ public class SurveyorCommands {
 	private static CompletableFuture<Suggestions> suggestLandmarks(CommandContext<ServerCommandSource> c, SuggestionsBuilder b, boolean global) {
 		ServerPlayerEntity player = c.getSource().getPlayer();
 		if (player == null) return b.buildFuture();
-		boolean op = player.hasPermissionLevel(2);
+		boolean op = player.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS);
 		SurveyorExploration exploration = op ? null : Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player);
 		ServerWorld world;
 		try {
@@ -481,7 +483,7 @@ public class SurveyorCommands {
 	private static CompletableFuture<Suggestions> suggestOwners(CommandContext<ServerCommandSource> c, SuggestionsBuilder b) {
 		ServerPlayerEntity player = c.getSource().getPlayer();
 		if (player == null) return b.buildFuture();
-		boolean op = player.hasPermissionLevel(2);
+		boolean op = player.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS);
 		SurveyorExploration exploration = op ? null : Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player);
 		ServerWorld world;
 		Identifier id;
@@ -521,7 +523,7 @@ public class SurveyorCommands {
 						.executes(c -> execute(c, SurveyorCommands::informGlobal)) :
 					CommandManager.literal("share")
 						.then(CommandManager.argument("player", StringArgumentType.word())
-							.suggests((c, b) -> CommandSource.suggestMatching(c.getSource().getServer().getPlayerManager().getPlayerList().stream().filter(p -> c.getSource().getPlayer() != p).map(p -> p.getGameProfile().getName()), b))
+							.suggests((c, b) -> CommandSource.suggestMatching(c.getSource().getServer().getPlayerManager().getPlayerList().stream().filter(p -> c.getSource().getPlayer() != p).map(p -> p.getGameProfile().name()), b))
 							.executes(c -> execute(c, (s, p, e, f) -> share(s, p, f, c.getArgument("player", String.class))))
 						)
 				).then(Surveyor.CONFIG.networking.globalSharing ?
@@ -536,7 +538,7 @@ public class SurveyorCommands {
 				.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.DISABLED)
 				.executes(c -> execute(c, (s, p, e, f) -> getLandmarks(s, p, f, true)))
 				.then(CommandManager.literal("new")
-					.requires(c -> c.hasPermissionLevel(2) && Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
+					.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS) && Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
 					.then(CommandManager.literal("block")
 						.then(CommandManager.argument("pos", BlockPosArgumentType.blockPos())
 							.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
@@ -553,7 +555,7 @@ public class SurveyorCommands {
 									f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 									return 0;
 								}
-								return addBlockLandmark(p, f, p.getWorld(), WorldLandmarks.GLOBAL, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
+								return addBlockLandmark(p, f, p.getEntityWorld(), WorldLandmarks.GLOBAL, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
 							}))
 						)
 					)
@@ -580,7 +582,7 @@ public class SurveyorCommands {
 					)
 				)
 				.then(CommandManager.literal("append")
-					.requires(c -> c.hasPermissionLevel(2))
+					.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 					.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
 						.suggests((c, b) -> suggestLandmarks(c, b, true))
 						.then(CommandManager.literal("surveyor:color")
@@ -598,7 +600,7 @@ public class SurveyorCommands {
 					)
 				)
 				.then(CommandManager.literal("trim")
-					.requires(c -> c.hasPermissionLevel(2))
+					.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 					.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
 						.suggests((c, b) -> suggestLandmarks(c, b, true))
 						.then(CommandManager.argument("component", IdentifierArgumentType.identifier())
@@ -643,7 +645,7 @@ public class SurveyorCommands {
 					)
 				)
 				.then(CommandManager.literal("remove")
-					.requires(c -> c.hasPermissionLevel(2) && Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
+					.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS) && Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
 					.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
 						.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
 							.suggests((c, b) -> suggestLandmarks(c, b, true))
@@ -669,7 +671,7 @@ public class SurveyorCommands {
 							.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
 								.then(CommandManager.argument("owner", UuidArgumentType.uuid())
 									.suggests(SurveyorCommands::suggestOwners)
-									.requires(c -> c.hasPermissionLevel(2))
+									.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 									.executes(c -> execute(c, (s, p, e, f) -> {
 										try {
 											return addBlockLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
@@ -695,7 +697,7 @@ public class SurveyorCommands {
 									f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 									return 0;
 								}
-								return addBlockLandmark(p, f, p.getWorld(), Surveyor.getUuid(p), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
+								return addBlockLandmark(p, f, p.getEntityWorld(), Surveyor.getUuid(p), c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(c.getSource()));
 							}))
 						)
 					)
@@ -747,7 +749,7 @@ public class SurveyorCommands {
 					)
 				)
 				.then(CommandManager.literal("append")
-					.requires(c -> c.hasPermissionLevel(2))
+					.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 					.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
 						.suggests((c, b) -> suggestLandmarks(c, b, true))
 						.then(CommandManager.literal("surveyor:color")
@@ -756,7 +758,7 @@ public class SurveyorCommands {
 								.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
 									.then(CommandManager.argument("owner", UuidArgumentType.uuid())
 									.suggests(SurveyorCommands::suggestOwners)
-										.requires(c -> c.hasPermissionLevel(2))
+										.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 										.executes(c -> execute(c, (s, p, e, f) -> {
 											try {
 												return appendColor(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
@@ -782,14 +784,14 @@ public class SurveyorCommands {
 										f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 										return 0;
 									}
-									return appendColor(p, f, p.getWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
+									return appendColor(p, f, p.getEntityWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
 								}))
 							)
 						)
 					)
 				)
 				.then(CommandManager.literal("trim")
-					.requires(c -> c.hasPermissionLevel(2))
+					.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 					.then(CommandManager.argument("id", IdentifierArgumentType.identifier())
 						.suggests((c, b) -> suggestLandmarks(c, b, true))
 						.then(CommandManager.argument("component", IdentifierArgumentType.identifier())
@@ -797,7 +799,7 @@ public class SurveyorCommands {
 							.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
 								.then(CommandManager.argument("owner", UuidArgumentType.uuid())
 									.suggests(SurveyorCommands::suggestOwners)
-									.requires(c -> c.hasPermissionLevel(2))
+									.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 									.executes(c -> execute(c, (s, p, e, f) -> {
 										try {
 											return trimLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
@@ -823,7 +825,7 @@ public class SurveyorCommands {
 									f.accept(prefix().append(Text.literal("missing UUID argument for server console").formatted(Formatting.RED)));
 									return 0;
 								}
-								return trimLandmark(p, f, p.getWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
+								return trimLandmark(p, f, p.getEntityWorld(), Surveyor.getUuid(p), c.getArgument("id", Identifier.class), c.getArgument("component", Identifier.class));
 							}))
 						)
 					)
@@ -834,7 +836,7 @@ public class SurveyorCommands {
 							.suggests((c, b) -> suggestLandmarks(c, b, false))
 							.then(CommandManager.argument("owner", UuidArgumentType.uuid())
 									.suggests(SurveyorCommands::suggestOwners)
-								.requires(c -> c.hasPermissionLevel(2))
+								.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
 										return viewLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), false);
@@ -864,7 +866,7 @@ public class SurveyorCommands {
 							.suggests((c, b) -> suggestLandmarks(c, b, true))
 							.then(CommandManager.argument("owner", UuidArgumentType.uuid())
 									.suggests(SurveyorCommands::suggestOwners)
-								.requires(c -> c.hasPermissionLevel(2))
+								.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
 										return viewLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class), true);
@@ -894,7 +896,7 @@ public class SurveyorCommands {
 							.suggests((c, b) -> suggestLandmarks(c, b, false))
 							.then(CommandManager.argument("owner", UuidArgumentType.uuid())
 									.suggests(SurveyorCommands::suggestOwners)
-								.requires(c -> c.hasPermissionLevel(2))
+								.requires(c -> c.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
 										return removeLandmark(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), UuidArgumentType.getUuid(c, "owner"), c.getArgument("id", Identifier.class));

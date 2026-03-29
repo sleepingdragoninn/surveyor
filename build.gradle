@@ -12,7 +12,8 @@ version = "$baseVersion+$branch"
 base.archivesName = project.slug
 
 repositories {
-	maven { url "https://repo.sleeping.town/" }
+	maven { url = "https://repo.sleeping.town/" }
+	maven { url = "https://repo.codemc.io/repository/relativitymc/" }
 	mavenLocal()
 }
 
@@ -51,13 +52,13 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.encoding = "UTF-8"
-	it.options.release = 17
+	it.options.release = 25
 }
 
 java {
 	withSourcesJar()
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {
@@ -68,6 +69,8 @@ jar {
 
 loom {
 	accessWidenerPath = file("src/main/resources/${modId}.accesswidener")
+	useIntermediateMappings = true
+	intermediaryUrl = 'https://repo.codemc.io/repository/relativitymc/org/relativitymc/intermediary/%1$s/intermediary-%1$s-v2.jar'
 }
 
 publishing {

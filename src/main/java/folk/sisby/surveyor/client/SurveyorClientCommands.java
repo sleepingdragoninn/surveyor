@@ -9,15 +9,17 @@ import folk.sisby.surveyor.config.SystemMode;
 import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.CommandSource;
+import net.minecraft.command.DefaultPermissions;
 import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.command.argument.DefaultPosArgument;
 import net.minecraft.command.argument.IdentifierArgumentType;
+import net.minecraft.command.permission.PermissionPredicate;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -130,7 +132,7 @@ public class SurveyorClientCommands {
 		ClientPlayerEntity player = context.getSource().getPlayer();
 		SurveyorExploration exploration = SurveyorClient.getExploration();
 		try {
-			return executor.execute(WorldSummary.of(context.getSource().getWorld()), player, context.getSource().getWorld(), exploration, t -> context.getSource().sendFeedback(t));
+			return executor.execute(WorldSummary.of(context.getSource().getLevel()), player, context.getSource().getLevel(), exploration, t -> context.getSource().sendFeedback(t));
 		} catch (Exception e) {
 			if (feedback) context.getSource().sendFeedback(Text.literal("Command failed! Check log for details.").formatted(Formatting.RED));
 			if (feedback) Surveyor.LOGGER.error("[Surveyor] Error while executing command: {}", context.getInput(), e);
@@ -143,40 +145,40 @@ public class SurveyorClientCommands {
 	}
 
 	private static ServerCommandSource sourceForPos(FabricClientCommandSource source) {
-		return new ServerCommandSource(null, source.getPosition(), source.getRotation(), null, 0, null, null, null, source.getEntity());
+		return new ServerCommandSource(null, source.getPosition(), source.getRotation(), null, PermissionPredicate.NONE, null, null, null, source.getEntity());
 	}
 
 	public static void registerCommands(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
 		dispatcher.register(
-			ClientCommandManager.literal("waypointsc")
+			ClientCommands.literal("waypointsc")
 				.requires(c -> !c.getClient().isInSingleplayer() && c.getClient().getNetworkHandler().getCommandDispatcher().findNode(List.of("surveyor")) == null)
 				.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.DISABLED)
 				.executes(c -> execute(c, (w, p, sw, e, f) -> getLandmarks(w, e, f, false)))
-				.then(ClientCommandManager.literal("new")
+				.then(ClientCommands.literal("new")
 					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
-					.then(ClientCommandManager.literal("block")
-						.then(ClientCommandManager.argument("pos", BlockPosArgumentType.blockPos())
+					.then(ClientCommands.literal("block")
+						.then(ClientCommands.argument("pos", BlockPosArgumentType.blockPos())
 							.executes(c -> execute(c, (w, p, sw, e, f) -> addBlockLandmark(w, sw, f, c.getArgument("pos", DefaultPosArgument.class).toAbsoluteBlockPos(sourceForPos(c.getSource())), false)))
 						)
 					)
 				)
-				.then(ClientCommandManager.literal("view")
-					.then(ClientCommandManager.argument("id", IdentifierArgumentType.identifier())
-						.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(SurveyorClient.getClientUuid(), p.hasPermissionLevel(2) ? null : e).keySet(), false), b))
+				.then(ClientCommands.literal("view")
+					.then(ClientCommands.argument("id", IdentifierArgumentType.identifier())
+						.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(SurveyorClient.getClientUuid(), p.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS) ? null : e).keySet(), false), b))
 						.executes(c -> execute(c, (w, p, sw, e, f) -> viewLandmark(w, f, c.getArgument("id", Identifier.class), false)))
 					)
 				)
-				.then(ClientCommandManager.literal("raw")
+				.then(ClientCommands.literal("raw")
 					.requires(c -> Surveyor.CONFIG.debugCommands)
-					.then(ClientCommandManager.argument("id", IdentifierArgumentType.identifier())
-						.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(SurveyorClient.getClientUuid(), p.hasPermissionLevel(2) ? null : e).keySet(), false), b))
+					.then(ClientCommands.argument("id", IdentifierArgumentType.identifier())
+						.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(SurveyorClient.getClientUuid(), p.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS) ? null : e).keySet(), false), b))
 						.executes(c -> execute(c, (w, p, sw, e, f) -> rawLandmark(w, f, c.getArgument("id", Identifier.class), false)))
 					)
 				)
-				.then(ClientCommandManager.literal("remove")
+				.then(ClientCommands.literal("remove")
 					.requires(c -> Surveyor.CONFIG.landmarks != SystemMode.FROZEN)
-					.then(ClientCommandManager.argument("id", IdentifierArgumentType.identifier())
-						.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(SurveyorClient.getClientUuid(), p.hasPermissionLevel(2) ? null : e).keySet(), false), b))
+					.then(ClientCommands.argument("id", IdentifierArgumentType.identifier())
+						.suggests((c, b) -> CommandSource.suggestIdentifiers((Iterable<Identifier>) map(c, (w, p, sw, e, f) -> w.landmarks() == null ? new HashSet<Identifier>() : w.landmarks().asMap(SurveyorClient.getClientUuid(), p.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS) ? null : e).keySet(), false), b))
 						.executes(c -> execute(c, (w, p, sw, e, f) -> removeLandmark(w, f, c.getArgument("id", Identifier.class), false)))
 					)
 				)
