@@ -2,6 +2,7 @@ package folk.sisby.surveyor.landmark.component;
 
 import com.mojang.serialization.Codec;
 import folk.sisby.surveyor.Surveyor;
+import folk.sisby.surveyor.mixin.AccessAbstractBlock;
 import folk.sisby.surveyor.util.RegionPos;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.MapColor;
@@ -44,7 +45,7 @@ public class LandmarkComponentTypes {
 
 	public static LandmarkComponentMap.Builder forBlock(LandmarkComponentMap.Builder builder, WorldAccess world, BlockPos pos) {
 		BlockState state = world.getBlockState(pos);
-		ItemStack stack = state.getBlock().getPickStack(world, pos, world.getBlockState(pos), true);
+		ItemStack stack = ((AccessAbstractBlock) state.getBlock()).invokeGetPickStack(world, pos, world.getBlockState(pos), true);
 		BlockEntity entity = world.getBlockEntity(pos);
 		if (entity != null && Registries.BLOCK_ENTITY_TYPE.getKey(entity.getType()).map(t -> Surveyor.CONFIG.builtins.allowedBlockEntities.contains(t.toString())).orElse(false)) {
 			try (ErrorReporter.Logging logging = new ErrorReporter.Logging(entity.getReporterContext(), Surveyor.LOGGER)) {

@@ -1,5 +1,6 @@
 package folk.sisby.surveyor.terrain;
 
+import folk.sisby.surveyor.mixin.AccessAbstractBlock;
 import folk.sisby.surveyor.util.ChunkUtil;
 import folk.sisby.surveyor.util.RegistryPalette;
 import folk.sisby.surveyor.util.uints.UInts;
@@ -66,7 +67,7 @@ public class ChunkSummary {
 						BlockState state = section.getBlockState(palettesFactory, x, y, z);
 						Fluid fluid = state.getFluidState().getFluid();
 
-						if (!state.isSolidBlock(world, pos) && fluid.matchesType(Fluids.EMPTY)) {
+						if (!((AccessAbstractBlock) state.getBlock()).isCollidable() && fluid.matchesType(Fluids.EMPTY)) {
 							walkspaceHeight++;
 							waterDepth = 0;
 							if (walkspaceHeight >= MINIMUM_AIR_DEPTH && state.getMapColor(world, pos) != MapColor.CLEAR) {

@@ -4,6 +4,7 @@
   "package": "folk.sisby.surveyor.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "AccessAbstractBlock",
     "AccessServerPlayerEntity",
     "MixinChunkDataSender",
     "MixinFilledMapItem",
