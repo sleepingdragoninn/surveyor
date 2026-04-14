@@ -1,12 +1,8 @@
 package folk.sisby.surveyor.util;
 
-import folk.sisby.surveyor.Surveyor;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.text.TextCodecs;
 import net.minecraft.text.Texts;
 import net.minecraft.util.Formatting;
 
@@ -17,13 +13,15 @@ import java.util.function.Function;
 
 public class TextUtil {
 	public static Text stripInteraction(Text text) {
-		try {
-			NbtCompound nbt = (NbtCompound) TextCodecs.CODEC.encodeStart(NbtOps.INSTANCE, text).resultOrPartial(Surveyor.LOGGER::error).orElseThrow();
-			NbtUtil.removeRecursive(nbt, List.of("hoverEvent", "clickEvent", "insertion"));
-			return TextCodecs.CODEC.decode(NbtOps.INSTANCE, nbt).resultOrPartial(Surveyor.LOGGER::error).orElseThrow().getFirst();
-		} catch (Exception e) {
-			return Text.literal(text.getString());
-		}
+		MutableText mutable = text.copy();
+		List<Text> siblings = mutable.getSiblings().stream().map(TextUtil::stripInteraction).toList();
+		mutable.getSiblings().clear();
+		mutable.getSiblings().addAll(siblings);
+		return stripInteractionNonRecursively(mutable);
+	}
+
+	public static Text stripInteractionNonRecursively(Text text) {
+		return text.copy().styled(s -> s.withHoverEvent(null).withClickEvent(null).withInsertion(null));
 	}
 
 	public static MutableText highlightStrings(Collection<String> list, Function<String, Formatting> highlighter) {
