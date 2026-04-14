@@ -55,7 +55,7 @@ Please match your addon licenses to LGPLv3 if possible - it helps improve the su
 (LGPLv3 is a copyleft license, so this is required for anything directly adapted from Surveyor)
 
 If you've made something, hit us up and we might link it here! We'll also answer questions for in-progress projects.<br/>
-You can reach out to us through the [modfest discord](https://discord.gg/gn543Ee) (#projects->Surveyor), on [mastodon](https://tech.lgbt/@sleepingdragoninn), or hell, via [email](mailto:sleepingdragoninn@gmail.com).
+Devs can reach out via the forum on [modfest](https://discord.gg/gn543Ee) (#projects->Surveyor), on [mastodon](https://tech.lgbt/@sleepingdragoninn), or hell, via [email](mailto:sleepingdragoninn@gmail.com).
 
 ## Afterword
 

@@ -9,7 +9,7 @@ public class BitSetUtil {
 		BitSet firstHalf = BitSet.valueOf(original.toLongArray());
 		BitSet secondHalf = BitSet.valueOf(original.toLongArray());
 		int fromIndex = 0;
-		for (int i = 0; i < original.size() / 2; i++) {
+		for (int i = 0; i < original.cardinality() / 2; i++) {
 			fromIndex = firstHalf.nextSetBit(fromIndex);
 			firstHalf.clear(fromIndex);
 		}
