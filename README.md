@@ -7,14 +7,13 @@ An open-source backend (and API) for world map and waypoint mods!<br/>
 
 ---
 
-**Surveyor** is the **map backend** for mods like [Antique Atlas 4](https://modrinth.com/mod/antique-atlas-4), [Hoofprint](https://modrinth.com/mod/hoofprint), and [Via Romana](https://modrinth.com/mod/via-romana).<br/>
+**Surveyor** is the **map backend** for mods like [Antique Atlas 4](https://modrinth.com/mod/antique-atlas-4), [Hoofprint](https://modrinth.com/mod/hoofprint), and [Dead Reckoning](https://modrinth.com/mod/dead-reckoning).<br/>
 Along with handling the generation and saving of map data like terrain and waypoints, Surveyor:
 - Shows other players on your map, even far away or in other dimensions!
 - Tracks your exploration, and will restore your map data from the server if it's lost or you change computers!
 - Enables **live map sharing** with other players of your choosing - terrain, waypoints, the lot!
 - Allows swapping map frontends any time without losing your map data!
 - Imports waypoints from Xaero's Minimap, and has integration for mods like [Waystones](https://modrinth.com/mod/surveystones) and [OPAC](https://modrinth.com/mod/surveyalot).
-- Is fully modular - so mods like [Dead Reckoning](https://modrinth.com/mod/dead-reckoning) can utilize waypoints without enabling terrain scanning.
 - Has builtin integration to sync with vanilla maps via sneak+using at a cartography table!
 
 ![vanilla map integration preview](https://cdn.modrinth.com/data/4KjqhPc9/images/e888d799c43d38ff5665c39fc844286ee05d5ed0.png)
