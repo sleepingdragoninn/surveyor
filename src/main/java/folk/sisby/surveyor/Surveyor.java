@@ -2,6 +2,7 @@ package folk.sisby.surveyor;
 
 import folk.sisby.surveyor.config.NetworkMode;
 import folk.sisby.surveyor.config.SurveyorConfig;
+import folk.sisby.surveyor.landmark.WorldLandmarks;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.mixin.AccessServerPlayerEntity;
 import folk.sisby.surveyor.structure.StructureStartSummary;
@@ -87,8 +88,8 @@ public class Surveyor implements ModInitializer {
 		}
 	}
 
-	public static boolean canModify(UUID landmark, @Nullable ServerPlayerEntity player) {
-		return player == null || player.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS) || landmark.equals(Surveyor.getUuid(player)) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && ServerSummary.of(((AccessServerPlayerEntity) player).getServer()).getGroup(Surveyor.getUuid(player)).contains(landmark));
+	public static boolean canModify(UUID landmarkOwner, @Nullable ServerPlayerEntity player) {
+		return player == null || player.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS) || landmarkOwner.equals(Surveyor.getUuid(player)) || !landmarkOwner.equals(WorldLandmarks.GLOBAL) && (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SERVER) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && ServerSummary.of(((AccessServerPlayerEntity) player).getServer()).getGroup(Surveyor.getUuid(player)).contains(landmarkOwner)));
 	}
 
 	public static UUID getUuid(ServerPlayerEntity player) {

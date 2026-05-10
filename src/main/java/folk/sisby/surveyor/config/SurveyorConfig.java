@@ -50,7 +50,7 @@ public class SurveyorConfig extends WrappedConfig {
     public static final class Networking implements Section {
 		@Comment("[Server] Whether to place every player in a single share group")
 		@Comment("Disables /surveyor share and /surveyor unshare")
-		public boolean globalSharing = false;
+		public boolean globalSharing = true;
 
 		@Comment("How much terrain data to send to clients")
 		@Comment("SERVER sends server-known data, GROUP sends group-known data, SOLO sends player-known data, NONE sends no data")
