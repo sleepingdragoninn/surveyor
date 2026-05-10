@@ -173,10 +173,8 @@ public class SurveyorClient implements ClientModInitializer {
 	}
 
 	public static boolean canModify(UUID landmarkOwner) {
-		if (MinecraftClient.getInstance().isIntegratedServerRunning()) {
-			return Surveyor.canModify(landmarkOwner, MinecraftClient.getInstance().getServer().getPlayerManager().getPlayer(MinecraftClient.getInstance().player.getGameProfile().getId()));
-		}
-		return landmarkOwner.equals(SurveyorClient.getClientUuid()) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && SurveyorClient.getSharedExploration().groupPlayers().contains(landmarkOwner));
+		if (MinecraftClient.getInstance().isIntegratedServerRunning()) return Surveyor.canModify(landmarkOwner, MinecraftClient.getInstance().getServer().getPlayerManager().getPlayer(MinecraftClient.getInstance().player.getGameProfile().getId()));
+		return landmarkOwner.equals(SurveyorClient.getClientUuid()) || !landmarkOwner.equals(WorldLandmarks.GLOBAL) && (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SERVER) || (Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) && SurveyorClient.getSharedExploration().groupPlayers().contains(landmarkOwner)));
 	}
 
 	public static @Nullable WorldSummary tryGetSummary(RegistryKey<World> dimension) {
