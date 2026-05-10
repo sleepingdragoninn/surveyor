@@ -257,7 +257,8 @@ public class SurveyorCommands {
 				feedback.accept(prefix().append(Text.literal("The landmark system is dynamically disabled!").formatted(Formatting.YELLOW)));
 				return 0;
 			}
-			Table<UUID, Identifier, Landmark> table = landmarks.asMap(op ? null : Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player));
+			NetworkMode mode = global ? Surveyor.CONFIG.networking.landmarks : Surveyor.CONFIG.networking.waypoints;
+			Table<UUID, Identifier, Landmark> table = landmarks.asMap(op || mode.atLeast(NetworkMode.SERVER) ? null : mode.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player));
 			if (global) {
 				if (table.containsRow(WorldLandmarks.GLOBAL)) {
 					dimensionLandmarks.put(world.getRegistryKey().getValue(), table.row(WorldLandmarks.GLOBAL).values());
@@ -466,7 +467,8 @@ public class SurveyorCommands {
 		ServerPlayerEntity player = c.getSource().getPlayer();
 		if (player == null) return b.buildFuture();
 		boolean op = player.hasPermissionLevel(2);
-		SurveyorExploration exploration = op ? null : Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player);
+		NetworkMode mode = global ? Surveyor.CONFIG.networking.landmarks : Surveyor.CONFIG.networking.waypoints;
+		SurveyorExploration exploration = op || mode.atLeast(NetworkMode.SERVER) ? null : mode.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player);
 		ServerWorld world;
 		try {
 			world = DimensionArgumentType.getDimensionArgument(c, "dim");
@@ -482,7 +484,7 @@ public class SurveyorCommands {
 		ServerPlayerEntity player = c.getSource().getPlayer();
 		if (player == null) return b.buildFuture();
 		boolean op = player.hasPermissionLevel(2);
-		SurveyorExploration exploration = op ? null : Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player);
+		SurveyorExploration exploration = op || Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.SERVER) ? null : Surveyor.CONFIG.networking.waypoints.atLeast(NetworkMode.GROUP) ? SurveyorExploration.ofShared(player) : SurveyorExploration.of(player);
 		ServerWorld world;
 		Identifier id;
 		try {

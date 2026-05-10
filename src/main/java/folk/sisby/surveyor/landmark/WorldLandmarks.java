@@ -330,7 +330,7 @@ public class WorldLandmarks {
 		dirty = true;
 	}
 
-	private void tryMigrateXaeros(boolean handleChanged) {
+	public void tryMigrateXaeros(boolean handleChanged) {
 		if (FabricLoader.getInstance().getEnvironmentType() != EnvType.CLIENT) return;
 		File saveFolder = SurveyorClient.getXaerosSavePath(summary.dimension());
 		if (saveFolder != null) {
@@ -363,10 +363,5 @@ public class WorldLandmarks {
 			Surveyor.LOGGER.info("[Surveyor] Migrated {} waypoints from xaeros data.", changed.size());
 			if (handleChanged) handleChanged(changed, Surveyor.CONFIG.networking.landmarks.atMost(NetworkMode.SOLO), null);
 		}
-	}
-
-	public void clientInitialized() {
-		tryMigrateXaeros(true);
-		if (Surveyor.CONFIG.networking.landmarks.atLeast(NetworkMode.SOLO)) C2SKnownLandmarksPacket.of(summary.dimension(), keySet(null)).send();
 	}
 }
