@@ -8,7 +8,6 @@ An open-source backend (and API) for co-op-enabled world map and waypoint mods!<
 ---
 
 **Surveyor** is the backend for map mods like [Antique Atlas 4](https://modrinth.com/mod/antique-atlas-4), [Hoofprint](https://modrinth.com/mod/hoofprint), and [Dead Reckoning](https://modrinth.com/mod/dead-reckoning).<br/>
-Maps using Surveyor are **cooperative** by default - map exploration and waypoints are server-wide, not per-player.
 
 **As a player, Surveyor allows you to:**
 - Map out explored terrain and structures, and mark points of interest with waypoints
@@ -17,7 +16,7 @@ Maps using Surveyor are **cooperative** by default - map exploration and waypoin
 - Automatically migrate waypoints directly from an existing Xaero's Minimap save
 
 **As a player on a Surveyor server, Surveyor allows you to:**
-- Explore map terrain and edit waypoints in co-operative groups (server-wide by default)
+- Explore map terrain and edit waypoints in co-operative groups **(server-wide by default)**
 - See other players on your map, even far away or in other dimensions
 - Swap instances or computers, with your map data restored from the server
 - Use op commands to create server-wide landmarks for POIs like spawn, shops, warp hubs, etc.
