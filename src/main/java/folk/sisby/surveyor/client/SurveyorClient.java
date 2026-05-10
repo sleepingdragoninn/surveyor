@@ -199,7 +199,10 @@ public class SurveyorClient implements ClientModInitializer {
 			WorldStructures structures = summary.structures();
 			if (structures != null) SurveyorClientEvents.Invoke.structuresAdded(summary, structures.keySet(exploration));
 			WorldLandmarks landmarks = summary.landmarks();
-			if (landmarks != null) SurveyorClientEvents.Invoke.landmarksAdded(summary, landmarks.keySet(exploration));
+			if (landmarks != null) {
+				landmarks.tryMigrateXaeros(false);
+				SurveyorClientEvents.Invoke.landmarksAdded(summary, landmarks.keySet(exploration));
+			}
 		}
 	}
 
