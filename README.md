@@ -8,20 +8,24 @@ An open-source backend (and API) for co-op-enabled world map and waypoint mods!<
 ---
 
 **Surveyor** is the backend for map mods like [Antique Atlas 4](https://modrinth.com/mod/antique-atlas-4), [Hoofprint](https://modrinth.com/mod/hoofprint), and [Dead Reckoning](https://modrinth.com/mod/dead-reckoning).<br/>
-These maps are **cooperative** by default - exploration, waypoints, and player positions are shared server-wide!
+Maps using Surveyor are **cooperative** by default - map exploration and waypoints are server-wide, not per-player.
 
-As a player, Surveyor allows you to:
+**As a player, Surveyor allows you to:**
+- Map out explored terrain and structures, and mark points of interest with waypoints
+- See on-map landmarks for other mods via compatibility addons, like for [Waystones](https://modrinth.com/mod/surveystones) and [OPAC](https://modrinth.com/mod/surveyalot)
+- Swap map frontends at any time, retaining all map data
+- Automatically migrate waypoints directly from an existing Xaero's Minimap save
+
+**As a player on a Surveyor server, Surveyor allows you to:**
+- Explore map terrain and edit waypoints in co-operative groups (server-wide by default)
 - See other players on your map, even far away or in other dimensions
-- Join a server from any computer, with your map automatically synchronized from the server
-- Swap map frontend mods at any time, and use a different frontend to other server players
-- Migrate directly from Xaero's Minimap with your waypoints intact
-- See mod-specific landmarks on the map via addons, such as for [Waystones](https://modrinth.com/mod/surveystones) and [OPAC](https://modrinth.com/mod/surveyalot)
-- Use commands to create operator-level landmarks for POIs like spawn, shops, warp hubs, etc.
-- Copy exploration from and to vanilla maps (`sneak+use` at a cartography table)
+- Swap instances or computers, with your map data restored from the server
+- Use op commands to create server-wide landmarks for POIs like spawn, shops, warp hubs, etc.
+- Copy exploration from and to vanilla maps by sneak+using a cartography table.
 
 ![vanilla map integration preview](https://cdn.modrinth.com/data/4KjqhPc9/images/e888d799c43d38ff5665c39fc844286ee05d5ed0.png)
 
-As a mod developer, Surveyor allows you to:
+**As a mod developer, Surveyor allows you to:**
 - Create **pure map frontends** by handling all map data itself - terrain, structures, and waypoints.
 - Create addons for custom on-map landmarks, with a flexible component-style data system.
 - Create any kind of frontend - server-optional, ingame/mixed-side, external/browser-based, etc.
@@ -30,7 +34,7 @@ As a mod developer, Surveyor allows you to:
 ### Configuration
 
 Surveyor can be configured via `config/surveyor.toml`, [McQoy](https://modrinth.com/mod/mcqoy), or [QoMC](https://modrinth.com/mod/qomc). Most changes require a restart.
-- Disable **global cooperative mode** by setting `globalSharing=false` (**highly** recommended for public servers)
+- Disable **server-wide co-op** by setting `globalSharing=false` (**recommended for public servers**)
 - Tweak what data is synchronized between players, groups, and the server in the `Networking` section
 - Toggle builtin automatic waypoints (e.g. nether portals, grave markers) in the `Builtins` section.
 
@@ -42,7 +46,7 @@ Surveyor can mostly be interacted with via map frontends, but comes with a few u
 - Use `/waypoints new/remove` to create/edit custom waypoints (e.g. if a frontend is not installed)
 - Use `/landmarks new/remove` (op 2) to create/edit operator-level global waypoints (e.g. for server spawn)
 
-### Troubleshooting
+## Troubleshooting
 
 Report any unique replicable issue to the [issues page](https://github.com/sisby-folk/surveyor/issues) with logs, screenshots, and replication steps where possible.
 
@@ -54,7 +58,7 @@ When encountering issues, you might like to try any of the following:
 - Disabling networking for a subsystem (e.g. for a terrain packet client kick, set `networking.terrain` to `NONE`)
 - Disabling a subsystem (e.g. for extreme server memory usage, set `terrain` to `DISABLED` on the server)
 
-### Mod Developers
+## Contributions / Addons
 
 Feel free to reach out if you'd like to develop something with surveyor - or just go for it! We appreciate:
 - PRs making shots at [surveyor enhancements and bugs](https://github.com/sisby-folk/surveyor/issues?q=is%3Aissue%20state%3Aopen%20(label%3Abug%20OR%20label%3Aenhancement)).
@@ -64,7 +68,7 @@ Feel free to reach out if you'd like to develop something with surveyor - or jus
 
 Check out the [frontend dev guide](https://github.com/sisby-folk/surveyor/blob/1.20/FRONTENDS.md) for a breakdown of the complicated parts of the internals. <br/>
 
-#### Licensing + Credit
+### Licensing / Credit
 
 Please match your addon licenses to LGPLv3 if possible - it helps improve the surveyor ecosystem!<br/>
 (LGPLv3 is a copyleft license, so this is required for anything directly adapted from Surveyor)
