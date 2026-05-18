@@ -1,27 +1,25 @@
 package folk.sisby.surveyor.util;
 
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.text.Texts;
+import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
 
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
 public class TextUtil {
 	public static Text stripInteraction(Text text) {
-		MutableText mutable = text.copy();
-		List<Text> siblings = mutable.getSiblings().stream().map(TextUtil::stripInteraction).toList();
-		mutable.getSiblings().clear();
-		mutable.getSiblings().addAll(siblings);
-		return stripInteractionNonRecursively(mutable);
-	}
+		TextContent content = text.getContent() instanceof TranslatableTextContent t
+			? new TranslatableTextContent(t.getKey(), t.getFallback(), Arrays.stream(t.getArgs())
+																	   .map(a -> a instanceof Text c ? stripInteraction(c) : a)
+																	   .toArray())
+			: text.getContent();
 
-	public static Text stripInteractionNonRecursively(Text text) {
-		return text.copy().styled(s -> s.withHoverEvent(null).withClickEvent(null).withInsertion(null));
+		MutableText result = MutableText.of(content)
+			.setStyle(text.getStyle().withHoverEvent(null).withClickEvent(null).withInsertion(null));
+		text.getSiblings().forEach(s -> result.append(stripInteraction(s)));
+		return result;
 	}
 
 	public static MutableText highlightStrings(Collection<String> list, Function<String, Formatting> highlighter) {
