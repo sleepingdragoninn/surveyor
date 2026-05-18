@@ -248,7 +248,7 @@ public class SurveyorClient implements ClientModInitializer {
 			if (!MinecraftClient.getInstance().isInSingleplayer()) WorldTerrain.onChunkUnload(world, chunk);
 		});
 		ClientTickEvents.END_LEVEL_TICK.register((world -> {
-			if (MinecraftClient.getInstance().worldRenderer.getCompletedChunkCount() <= 10 || !MinecraftClient.getInstance().worldRenderer.isTerrainRenderComplete()) return;
+			if (MinecraftClient.getInstance().worldExtractor.getRenderedSectionCount() <= 10 || !MinecraftClient.getInstance().worldRenderer.isTerrainRenderComplete()) return;
 			for (WorldChunk chunk : new HashSet<>(LOADING_CHUNKS.get(world.getRegistryKey()))) {
 				WorldTerrain.onChunkLoad(world, chunk, false);
 				ClientSummary.of(MinecraftClient.getInstance().getNetworkHandler()).personal.addChunk(world.getRegistryKey(), chunk.getPos(), false);

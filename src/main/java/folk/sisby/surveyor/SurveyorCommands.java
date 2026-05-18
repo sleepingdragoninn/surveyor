@@ -49,16 +49,7 @@ import net.minecraft.util.math.BlockPos;
 import org.apache.commons.lang3.text.WordUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -589,7 +580,7 @@ public class SurveyorCommands {
 						.suggests((c, b) -> suggestLandmarks(c, b, true))
 						.then(CommandManager.literal("surveyor:color")
 							.then(CommandManager.argument("color", StringArgumentType.greedyString())
-								.suggests((c, s) -> CommandSource.suggestMatching(Formatting.getNames(true, false), s))
+								.suggests((c, s) -> CommandSource.suggestMatching(Arrays.stream(Formatting.values()).map(Formatting::name).toList(), s))
 								.executes(c -> execute(c, (s, p, e, f) -> {
 									try {
 										return appendColor(p, f, DimensionArgumentType.getDimensionArgument(c, "dim"), WorldLandmarks.GLOBAL, c.getArgument("id", Identifier.class), c.getArgument("color", String.class));
@@ -756,7 +747,7 @@ public class SurveyorCommands {
 						.suggests((c, b) -> suggestLandmarks(c, b, true))
 						.then(CommandManager.literal("surveyor:color")
 							.then(CommandManager.argument("color", StringArgumentType.greedyString())
-								.suggests((c, s) -> CommandSource.suggestMatching(Formatting.getNames(true, false), s))
+								.suggests((c, s) -> CommandSource.suggestMatching(Arrays.stream(Formatting.values()).map(Formatting::name), s))
 								.then(CommandManager.argument("dim", DimensionArgumentType.dimension())
 									.then(CommandManager.argument("owner", UuidArgumentType.uuid())
 									.suggests(SurveyorCommands::suggestOwners)

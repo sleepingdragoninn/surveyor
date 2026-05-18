@@ -1,5 +1,6 @@
 package folk.sisby.surveyor.packet;
 
+import com.mojang.datafixers.util.Pair;
 import folk.sisby.surveyor.Surveyor;
 import folk.sisby.surveyor.terrain.ChunkSummary;
 import folk.sisby.surveyor.terrain.RegionSummary;
@@ -14,7 +15,6 @@ import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
-import net.minecraft.util.Pair;
 import net.minecraft.util.dynamic.Codecs;
 import net.minecraft.world.World;
 
@@ -26,8 +26,8 @@ public record S2CUpdateRegionPacket(RegistryKey<World> dimension, boolean shared
 	public static final Id<S2CUpdateRegionPacket> ID = new Id<>(Surveyor.id("s2c_update_region"));
 	public static final PacketCodec<RegistryByteBuf, S2CUpdateRegionPacket> CODEC = PacketCodec.tuple(
 		PacketCodec.tuple(
-			RegistryKey.createPacketCodec(RegistryKeys.WORLD), Pair<RegistryKey<World>, Boolean>::getLeft,
-			PacketCodecs.BOOLEAN, Pair<RegistryKey<World>, Boolean>::getRight,
+			RegistryKey.createPacketCodec(RegistryKeys.WORLD), Pair<RegistryKey<World>, Boolean>::getFirst,
+			PacketCodecs.BOOLEAN, Pair<RegistryKey<World>, Boolean>::getSecond,
 			Pair::new
 		), p -> new Pair<>(p.dimension(), p.shared()),
 		RegionPos.PACKET_CODEC, S2CUpdateRegionPacket::regionPos,
@@ -35,7 +35,7 @@ public record S2CUpdateRegionPacket(RegistryKey<World> dimension, boolean shared
 		PacketCodecs.INTEGER.collect(PacketCodecs.toList()), S2CUpdateRegionPacket::blockPalette,
 		PacketCodecs.codec(Codecs.BIT_SET), S2CUpdateRegionPacket::set,
 		PacketCodec.of(ChunkSummary::writeBuf, ChunkSummary::new).collect(PacketCodecs.toList()), S2CUpdateRegionPacket::chunks,
-		(pair, rp, bi, bl, s, c) -> new S2CUpdateRegionPacket(pair.getLeft(), pair.getRight(), rp, bi, bl, s, c)
+		(pair, rp, bi, bl, s, c) -> new S2CUpdateRegionPacket(pair.getFirst(), pair.getSecond(), rp, bi, bl, s, c)
 	);
 
 	public static S2CUpdateRegionPacket of(RegistryKey<World> dimension, boolean shared, RegionPos regionPos, RegionSummary summary, BitSet keys) {
