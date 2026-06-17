@@ -73,7 +73,7 @@ Please match your addon licenses to LGPLv3 if possible - it helps improve the su
 (LGPLv3 is a copyleft license, so this is required for anything directly adapted from Surveyor)
 
 If you've written something, hit us up and we might link it here! We'll also answer questions for in-progress projects.<br/>
-Devs can reach out via the forum on [mastodon](https://tech.lgbt/@sleepingdragoninn) or via [email](mailto:sleepingdragoninn@gmail.com).
+Devs can reach out on [mastodon](https://tech.lgbt/@sleepingdragoninn) or via [email](mailto:sleepingdragoninn@gmail.com).
 
 ## Afterword
 
