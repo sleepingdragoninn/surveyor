@@ -45,7 +45,7 @@ public class RaycastUtil {
 				WorldChunk chunk = player.getEntityWorld().getChunkManager().getWorldChunk(ChunkSectionPos.getSectionCoord(pos.getX()), ChunkSectionPos.getSectionCoord(pos.getZ()));
 				if (chunk == null) {
 					Vec3d vec3d = innerContext.getStart().subtract(innerContext.getEnd());
-					return BlockHitResult.createMissed(pos.toCenterPos(), Direction.getFacing(vec3d.x, vec3d.y, vec3d.z), pos);
+					return BlockHitResult.createMissed(Vec3d.ofCenter(pos), Direction.getFacing(vec3d.x, vec3d.y, vec3d.z), pos);
 				}
 				BlockState blockState = chunk.getBlockState(pos);
 				FluidState fluidState = blockState.getFluidState();

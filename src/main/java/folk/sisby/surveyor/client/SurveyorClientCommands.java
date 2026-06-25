@@ -22,6 +22,7 @@ import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.command.permission.PermissionPredicate;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
+import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -57,7 +58,7 @@ public class SurveyorClientCommands {
 					.append(Text.literal(landmark.id().getPath()))
 					.append(!landmark.components().contains(LandmarkComponentTypes.NAME) ? Text.of("") :
 						Text.literal(": \"")
-							.append(landmark.components().get(LandmarkComponentTypes.NAME).copy().styled(s -> s.withColor(landmark.components().contains(LandmarkComponentTypes.COLOR) ? 0xFFFFFF & landmark.components().get(LandmarkComponentTypes.COLOR) : Formatting.GREEN.getColorValue())))
+							.append(landmark.components().get(LandmarkComponentTypes.NAME).copy().styled(s -> s.withColor(landmark.components().contains(LandmarkComponentTypes.COLOR) ? 0xFFFFFF & landmark.components().get(LandmarkComponentTypes.COLOR) : TextColor.GREEN.getRgb())))
 							.append(Text.literal("\""))
 					)
 			);
